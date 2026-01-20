@@ -17,15 +17,23 @@
       "bundleIdentifier": "com.mentormatch.app"
     },
     "android": {
+      "package": "com.mentormatch.app",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#ffffff"
       },
-      "package": "com.mentormatch.app"
+      "permissions": []
     },
     "scheme": "mentormatch",
     "plugins": [
       "expo-router",
       "expo-font"
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "a027433a-a98a-499c-8e19-e4581565b366"
+      }
+    }
   }
 }

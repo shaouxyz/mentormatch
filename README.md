@@ -42,14 +42,35 @@ npm start
 
 ### Building for Production
 
-#### Android
-```bash
-npm run android
-```
+#### Building Android APK
+
+To build a distributable APK file:
+
+1. **Login to Expo** (if not already logged in):
+   ```bash
+   eas login
+   ```
+
+2. **Build the APK**:
+   ```bash
+   # For testing (preview build)
+   eas build --platform android --profile preview
+   
+   # For production (signed APK)
+   eas build --platform android --profile production
+   ```
+
+3. **Download the APK**: After build completes (10-20 minutes), download from:
+   - The link provided in terminal, or
+   - https://expo.dev/accounts/[your-username]/projects/mentormatch/builds
+
+4. **Install on Android**: Users can install by enabling "Install from Unknown Sources" and opening the APK file.
+
+For detailed build instructions, see [BUILD_INSTRUCTIONS.md](./BUILD_INSTRUCTIONS.md)
 
 #### iOS
 ```bash
-npm run ios
+eas build --platform ios --profile production
 ```
 
 ## Project Structure
