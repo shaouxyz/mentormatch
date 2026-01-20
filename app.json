@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "MentorMatch",
+    "slug": "mentormatch",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.mentormatch.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.mentormatch.app"
+    },
+    "scheme": "mentormatch",
+    "plugins": [
+      "expo-router",
+      "expo-font"
+    ]
+  }
+}
