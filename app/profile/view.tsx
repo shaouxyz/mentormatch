@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -27,58 +27,92 @@ export default function ViewProfileScreen() {
   const params = useLocalSearchParams();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const isLoadingRef = useRef(false);
+  const lastParamsRef = useRef<string>('');
+
+  // Memoize the actual string values to prevent unnecessary re-renders
+  const emailValue = useMemo(() => {
+    return params.email ? String(params.email) : '';
+  }, [params.email]);
+
+  const profileValue = useMemo(() => {
+    return params.profile ? String(params.profile) : '';
+  }, [params.profile]);
 
   useEffect(() => {
-    loadProfile();
-  }, [params]);
+    // Create a stable key from memoized values
+    const currentKey = `${emailValue}|${profileValue}`;
 
-  const loadProfile = async () => {
-    try {
-      // If profile is passed directly
-      if (params.profile) {
-        try {
-          const parsed = JSON.parse(params.profile as string);
-          setProfile(parsed);
-          setLoading(false);
-          return;
-        } catch (error) {
-          console.error('Error parsing profile:', error);
-        }
-      }
+    // Check if params actually changed
+    if (currentKey === lastParamsRef.current && lastParamsRef.current !== '') {
+      return; // Same params, skip
+    }
 
-      // If email is passed, load from storage
-      if (params.email) {
-        const email = params.email as string;
-        
-        // Try to get from allProfiles
-        const allProfilesData = await AsyncStorage.getItem('allProfiles');
-        if (allProfilesData) {
-          const allProfiles: Profile[] = JSON.parse(allProfilesData);
-          const foundProfile = allProfiles.find((p) => p.email === email);
-          if (foundProfile) {
-            setProfile(foundProfile);
+    // Prevent concurrent loads
+    if (isLoadingRef.current) return;
+
+    // Update ref immediately
+    lastParamsRef.current = currentKey;
+    isLoadingRef.current = true;
+
+    const loadProfile = async () => {
+      try {
+        // If profile is passed directly
+        if (profileValue) {
+          try {
+            const parsed = JSON.parse(profileValue);
+            setProfile(parsed);
             setLoading(false);
+            isLoadingRef.current = false;
+            return;
+          } catch (error) {
+            console.error('Error parsing profile:', error);
+          }
+        }
+
+        // If email is passed, load from storage
+        if (emailValue) {
+          const email = emailValue;
+          
+          // Try to get from allProfiles
+          const allProfilesData = await AsyncStorage.getItem('allProfiles');
+          if (allProfilesData) {
+            const allProfiles: Profile[] = JSON.parse(allProfilesData);
+            const foundProfile = allProfiles.find((p) => p.email === email);
+            if (foundProfile) {
+              setProfile(foundProfile);
+              setLoading(false);
+              isLoadingRef.current = false;
+              return;
+            }
+          }
+
+          // Try to get from test profiles
+          const testProfileKey = `testProfile_${email}`;
+          const testProfileData = await AsyncStorage.getItem(testProfileKey);
+          if (testProfileData) {
+            const testProfile = JSON.parse(testProfileData);
+            setProfile(testProfile);
+            setLoading(false);
+            isLoadingRef.current = false;
             return;
           }
         }
 
-        // Try to get from test profiles
-        const testProfileKey = `testProfile_${email}`;
-        const testProfileData = await AsyncStorage.getItem(testProfileKey);
-        if (testProfileData) {
-          const testProfile = JSON.parse(testProfileData);
-          setProfile(testProfile);
-          setLoading(false);
-          return;
-        }
+        // If we get here and haven't loaded anything, set loading to false
+        setProfile(null);
+        setLoading(false);
+      } catch (error) {
+        console.error('Error loading profile:', error);
+        setProfile(null);
+        setLoading(false);
+      } finally {
+        isLoadingRef.current = false;
       }
+    };
 
-      setLoading(false);
-    } catch (error) {
-      console.error('Error loading profile:', error);
-      setLoading(false);
-    }
-  };
+    loadProfile();
+  }, [emailValue, profileValue]); // Depend on memoized stable values
 
   const handleEmail = () => {
     if (profile?.email) {

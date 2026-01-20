@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -45,32 +45,52 @@ export default function SendRequestScreen() {
   const [loading, setLoading] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const hasLoadedRef = useRef(false);
+  const isLoadingRef = useRef(false);
+  const lastProfileParamRef = useRef<string | null>(null);
+
+  // Extract stable value from params
+  const profileParam = params.profile ? String(params.profile) : undefined;
 
   useEffect(() => {
-    if (params.profile) {
+    // Load profile from params (only when it changes)
+    if (profileParam && profileParam !== lastProfileParamRef.current) {
+      lastProfileParamRef.current = profileParam;
       try {
-        const parsed = JSON.parse(params.profile as string);
+        const parsed = JSON.parse(profileParam);
         setProfile(parsed);
       } catch (error) {
         console.error('Error parsing profile:', error);
       }
     }
-    loadCurrentUser();
-  }, [params]);
+  }, [profileParam]); // Only depend on the actual profile string
 
-  const loadCurrentUser = async () => {
-    try {
-      const userData = await AsyncStorage.getItem('user');
-      const profileData = await AsyncStorage.getItem('profile');
-      if (userData && profileData) {
-        const user = JSON.parse(userData);
-        const profile = JSON.parse(profileData);
-        setCurrentUser({ ...user, ...profile });
+  useEffect(() => {
+    // Load current user only once on mount - no dependencies to prevent re-runs
+    if (hasLoadedRef.current) return;
+    hasLoadedRef.current = true;
+
+    const loadCurrentUser = async () => {
+      if (isLoadingRef.current) return;
+      isLoadingRef.current = true;
+
+      try {
+        const userData = await AsyncStorage.getItem('user');
+        const profileData = await AsyncStorage.getItem('profile');
+        if (userData && profileData) {
+          const user = JSON.parse(userData);
+          const profile = JSON.parse(profileData);
+          setCurrentUser({ ...user, ...profile });
+        }
+      } catch (error) {
+        console.error('Error loading current user:', error);
+      } finally {
+        isLoadingRef.current = false;
       }
-    } catch (error) {
-      console.error('Error loading current user:', error);
-    }
-  };
+    };
+
+    loadCurrentUser();
+  }, []); // Empty array - only run once on mount
 
   const handleSendRequest = async () => {
     if (!profile || !currentUser) {

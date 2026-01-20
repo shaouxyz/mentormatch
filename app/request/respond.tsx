@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -34,17 +34,23 @@ export default function RespondRequestScreen() {
   const [request, setRequest] = useState<MentorshipRequest | null>(null);
   const [responseNote, setResponseNote] = useState('');
   const [loading, setLoading] = useState(false);
+  const lastRequestParamRef = useRef<string | null>(null);
+
+  // Extract stable value from params
+  const requestParam = params.request ? String(params.request) : undefined;
 
   useEffect(() => {
-    if (params.request) {
+    // Only load if requestParam changed
+    if (requestParam && requestParam !== lastRequestParamRef.current) {
+      lastRequestParamRef.current = requestParam;
       try {
-        const parsed = JSON.parse(params.request as string);
+        const parsed = JSON.parse(requestParam);
         setRequest(parsed);
       } catch (error) {
         console.error('Error parsing request:', error);
       }
     }
-  }, [params]);
+  }, [requestParam]); // Only depend on the actual request string
 
   const handleRespond = async (status: 'accepted' | 'declined') => {
     if (!request) return;
