@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,8 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
+import { logger } from '@/utils/logger';
+import { safeParseJSON, validateProfileSchema, validateMentorshipRequestSchema } from '@/utils/schemaValidation';
 
 interface Profile {
   name: string;
@@ -71,7 +73,19 @@ export default function MentorshipScreen() {
         return;
       }
 
-      const user = JSON.parse(userData);
+      const user = safeParseJSON<{ email: string }>(
+        userData,
+        (data): data is { email: string } => typeof data === 'object' && data !== null && 'email' in data && typeof (data as { email: unknown }).email === 'string',
+        null
+      );
+      
+      if (!user) {
+        setMentors([]);
+        setMentees([]);
+        setLoading(false);
+        return;
+      }
+      
       const userEmail = user.email;
 
       const requestsData = await AsyncStorage.getItem('mentorshipRequests');
@@ -82,7 +96,14 @@ export default function MentorshipScreen() {
         return;
       }
 
-      const allRequests: MentorshipRequest[] = JSON.parse(requestsData);
+      const allRequests = safeParseJSON<MentorshipRequest[]>(
+        requestsData,
+        (data): data is MentorshipRequest[] => {
+          if (!Array.isArray(data)) return false;
+          return data.every(req => validateMentorshipRequestSchema(req));
+        },
+        []
+      ) || [];
       const acceptedRequests = allRequests.filter((r) => r.status === 'accepted');
 
       // Mentors: People who accepted requests from the current user
@@ -105,7 +126,14 @@ export default function MentorshipScreen() {
           let mentorProfile: Profile | null = null;
           
           if (allProfilesData) {
-            const allProfiles: Profile[] = JSON.parse(allProfilesData);
+            const allProfiles = safeParseJSON<Profile[]>(
+              allProfilesData,
+              (data): data is Profile[] => {
+                if (!Array.isArray(data)) return false;
+                return data.every(p => validateProfileSchema(p));
+              },
+              []
+            ) || [];
             mentorProfile = allProfiles.find((p) => p.email === req.mentorEmail) || null;
           }
 
@@ -114,7 +142,11 @@ export default function MentorshipScreen() {
             const testProfileKey = `testProfile_${req.mentorEmail}`;
             const testProfileData = await AsyncStorage.getItem(testProfileKey);
             if (testProfileData) {
-              mentorProfile = JSON.parse(testProfileData);
+              mentorProfile = safeParseJSON(
+                testProfileData,
+                validateProfileSchema,
+                null
+              );
             }
           }
 
@@ -137,7 +169,14 @@ export default function MentorshipScreen() {
           let menteeProfile: Profile | null = null;
           
           if (allProfilesData) {
-            const allProfiles: Profile[] = JSON.parse(allProfilesData);
+            const allProfiles = safeParseJSON<Profile[]>(
+              allProfilesData,
+              (data): data is Profile[] => {
+                if (!Array.isArray(data)) return false;
+                return data.every(p => validateProfileSchema(p));
+              },
+              []
+            ) || [];
             menteeProfile = allProfiles.find((p) => p.email === req.requesterEmail) || null;
           }
 
@@ -146,7 +185,11 @@ export default function MentorshipScreen() {
             const testProfileKey = `testProfile_${req.requesterEmail}`;
             const testProfileData = await AsyncStorage.getItem(testProfileKey);
             if (testProfileData) {
-              menteeProfile = JSON.parse(testProfileData);
+              menteeProfile = safeParseJSON(
+                testProfileData,
+                validateProfileSchema,
+                null
+              );
             }
           }
 
@@ -165,7 +208,7 @@ export default function MentorshipScreen() {
       setMentors(mentorsList);
       setMentees(menteesList);
     } catch (error) {
-      console.error('Error loading connections:', error);
+      logger.error('Error loading connections', error instanceof Error ? error : new Error(String(error)));
     } finally {
       setLoading(false);
     }
@@ -205,6 +248,8 @@ export default function MentorshipScreen() {
                     params: { email: mentor.email },
                   });
                 }}
+                accessibilityLabel={`Mentor ${mentor.name}`}
+                accessibilityHint={`Tap to view ${mentor.name}'s profile. Expertise: ${mentor.expertise}`}
               >
                 <View style={styles.connectionHeader}>
                   <View style={styles.connectionAvatar}>
@@ -253,6 +298,8 @@ export default function MentorshipScreen() {
                     params: { email: mentee.email },
                   });
                 }}
+                accessibilityLabel={`Mentee ${mentee.name}`}
+                accessibilityHint={`Tap to view ${mentee.name}'s profile. Learning: ${mentee.interest}`}
               >
                 <View style={styles.connectionHeader}>
                   <View style={styles.connectionAvatar}>

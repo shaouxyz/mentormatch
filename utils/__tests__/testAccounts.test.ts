@@ -3,7 +3,6 @@ import {
   TEST_ACCOUNTS,
   initializeTestAccounts,
   getTestAccount,
-  TestUser,
 } from '../testAccounts';
 
 // Mock AsyncStorage

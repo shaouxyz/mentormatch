@@ -1,6 +1,18 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
+/**
+ * Tabs Layout Component
+ * 
+ * Defines the bottom tab navigation structure with:
+ * - Discover tab (home)
+ * - Mentorship tab
+ * - Requests tab
+ * - Profile tab
+ * 
+ * @component
+ * @returns {JSX.Element} Tab navigation layout
+ */
 export default function TabsLayout() {
   return (
     <Tabs

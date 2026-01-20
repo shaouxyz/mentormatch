@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { logger } from './logger';
 
 export interface TestUser {
   email: string;
@@ -53,18 +54,12 @@ export async function initializeTestAccounts() {
       return; // Already initialized
     }
 
-    // Store test accounts
-    const testAccountsData = TEST_ACCOUNTS.map((account) => ({
-      email: account.email,
-      password: account.password,
-      id: `test-${account.email}`,
-      createdAt: new Date().toISOString(),
-      isTestAccount: true,
-    }));
+    // Note: We do NOT store passwords in AsyncStorage for security
+    // Test accounts are identified by email and passwords are checked against
+    // the in-memory TEST_ACCOUNTS array only. When test accounts are used,
+    // they are created as regular users with hashed passwords.
 
-    await AsyncStorage.setItem('testAccounts', JSON.stringify(testAccountsData));
-
-    // Store test profiles
+    // Store test profiles only (no passwords)
     for (const account of TEST_ACCOUNTS) {
       if (account.profile) {
         const profileKey = `testProfile_${account.email}`;
@@ -74,24 +69,23 @@ export async function initializeTestAccounts() {
 
     await AsyncStorage.setItem('testAccountsInitialized', 'true');
   } catch (error) {
-    console.error('Error initializing test accounts:', error);
+    logger.error('Error initializing test accounts', error instanceof Error ? error : new Error(String(error)));
   }
 }
 
+/**
+ * Get test account by email
+ * Note: Test accounts are stored in-memory only (TEST_ACCOUNTS array)
+ * Passwords are never stored in AsyncStorage for security
+ */
 export async function getTestAccount(email: string): Promise<TestUser | null> {
   try {
-    const testAccountsData = await AsyncStorage.getItem('testAccounts');
-    if (!testAccountsData) return null;
-
-    const accounts = JSON.parse(testAccountsData);
-    const account = accounts.find((a: any) => a.email === email);
-    
-    if (!account) return null;
-
+    // Test accounts are identified from in-memory array only
+    // No passwords are stored in AsyncStorage
     const testAccount = TEST_ACCOUNTS.find((ta) => ta.email === email);
     return testAccount || null;
   } catch (error) {
-    console.error('Error getting test account:', error);
+    logger.error('Error getting test account', error instanceof Error ? error : new Error(String(error)));
     return null;
   }
 }

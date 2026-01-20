@@ -274,7 +274,7 @@ describe('SendRequestScreen', () => {
       fireEvent.press(getByText('Send Request'));
     });
 
-    await waitFor(() => {
+    await waitFor(async () => {
       const requestsData = await AsyncStorage.getItem('mentorshipRequests');
       const requests = JSON.parse(requestsData || '[]');
       expect(requests[0].note).toBe('Note with spaces');

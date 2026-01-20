@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
   ScrollView,
@@ -13,6 +12,13 @@ import {
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
+import { validateProfile } from '@/utils/validation';
+import { SUCCESS_MESSAGES } from '@/utils/constants';
+import { ErrorHandler } from '@/utils/errorHandler';
+import { validateProfileSchema } from '@/utils/schemaValidation';
+import { logger } from '@/utils/logger';
+import { sanitizeString, sanitizeEmail, sanitizePhoneNumber } from '@/utils/security';
+import { ProfileFormFields } from '@/components/ProfileFormFields';
 
 interface ProfileData {
   name: string;
@@ -24,6 +30,19 @@ interface ProfileData {
   phoneNumber: string;
 }
 
+/**
+ * Create Profile Screen Component
+ * 
+ * Allows new users to create their profile with:
+ * - All required profile fields
+ * - Input validation and sanitization
+ * - Character limits and constraints
+ * - Profile synchronization with allProfiles
+ * - Schema validation before storage
+ * 
+ * @component
+ * @returns {JSX.Element} Profile creation form
+ */
 export default function CreateProfileScreen() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -49,69 +68,62 @@ export default function CreateProfileScreen() {
         setProfile(prev => ({ ...prev, email: user.email }));
       }
     } catch (error) {
-      console.error('Error loading user email:', error);
+      logger.error('Error loading user email', error instanceof Error ? error : new Error(String(error)));
     }
   };
 
   const handleSave = async () => {
-    // Validation
-    if (!profile.name.trim()) {
-      Alert.alert('Error', 'Please enter your name');
-      return;
-    }
-    if (!profile.expertise.trim()) {
-      Alert.alert('Error', 'Please enter your expertise area');
-      return;
-    }
-    if (!profile.interest.trim()) {
-      Alert.alert('Error', 'Please enter your interest area');
-      return;
-    }
-    if (!profile.expertiseYears || isNaN(Number(profile.expertiseYears)) || Number(profile.expertiseYears) < 0) {
-      Alert.alert('Error', 'Please enter a valid number of years for expertise');
-      return;
-    }
-    if (!profile.interestYears || isNaN(Number(profile.interestYears)) || Number(profile.interestYears) < 0) {
-      Alert.alert('Error', 'Please enter a valid number of years for interest');
-      return;
-    }
-    if (!profile.email.trim()) {
-      Alert.alert('Error', 'Please enter your email');
-      return;
-    }
-    if (!profile.phoneNumber.trim()) {
-      Alert.alert('Error', 'Please enter your phone number');
-      return;
-    }
-
-    // Basic phone validation
-    const phoneRegex = /^[\d\s\-\+\(\)]+$/;
-    if (!phoneRegex.test(profile.phoneNumber)) {
-      Alert.alert('Error', 'Please enter a valid phone number');
+    // Validation using shared validation utility
+    const validation = validateProfile(profile);
+    if (!validation.isValid) {
+      Alert.alert('Error', validation.error || 'Please check your input');
       return;
     }
 
     setLoading(true);
 
     try {
+      // Sanitize all profile data before storing
       const profileData = {
-        ...profile,
+        name: sanitizeString(profile.name),
+        expertise: sanitizeString(profile.expertise),
+        interest: sanitizeString(profile.interest),
         expertiseYears: Number(profile.expertiseYears),
         interestYears: Number(profile.interestYears),
+        email: sanitizeEmail(profile.email),
+        phoneNumber: sanitizePhoneNumber(profile.phoneNumber),
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
 
       await AsyncStorage.setItem('profile', JSON.stringify(profileData));
-      Alert.alert('Success', 'Profile created successfully!', [
+      
+      // Add profile to allProfiles array so it's visible in discover
+      const allProfilesData = await AsyncStorage.getItem('allProfiles');
+      let allProfiles: typeof profileData[] = allProfilesData ? JSON.parse(allProfilesData) : [];
+      
+      // Remove existing profile with same email if it exists (update case)
+      allProfiles = allProfiles.filter((p) => p.email !== profileData.email);
+      
+      // Add new/updated profile
+      allProfiles.push(profileData);
+      
+      // Validate before storing
+      if (!validateProfileSchema(profileData)) {
+        ErrorHandler.handleError(new Error('Invalid profile data'), 'Profile data validation failed');
+        return;
+      }
+
+      await AsyncStorage.setItem('allProfiles', JSON.stringify(allProfiles));
+      
+      Alert.alert('Success', SUCCESS_MESSAGES.PROFILE_CREATED, [
         {
           text: 'OK',
           onPress: () => router.replace('/(tabs)/home'),
         },
       ]);
     } catch (error) {
-      Alert.alert('Error', 'Failed to save profile. Please try again.');
-      console.error('Profile save error:', error);
+      ErrorHandler.handleStorageError(error, 'save profile');
     } finally {
       setLoading(false);
     }
@@ -130,85 +142,15 @@ export default function CreateProfileScreen() {
         </View>
 
         <View style={styles.form}>
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Name *</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your full name"
-              value={profile.name}
-              onChangeText={(text) => setProfile({ ...profile, name: text })}
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Expertise (Where you can mentor) *</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g., Software Development, Marketing, Design"
-              value={profile.expertise}
-              onChangeText={(text) => setProfile({ ...profile, expertise: text })}
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Years of Experience in Expertise *</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter number of years"
-              value={profile.expertiseYears}
-              onChangeText={(text) => setProfile({ ...profile, expertiseYears: text })}
-              keyboardType="numeric"
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Interest (Where you want to learn) *</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g., Data Science, Business Strategy, Photography"
-              value={profile.interest}
-              onChangeText={(text) => setProfile({ ...profile, interest: text })}
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Years of Experience in Interest *</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter number of years"
-              value={profile.interestYears}
-              onChangeText={(text) => setProfile({ ...profile, interestYears: text })}
-              keyboardType="numeric"
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Email *</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your email"
-              value={profile.email}
-              onChangeText={(text) => setProfile({ ...profile, email: text })}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Phone Number *</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your phone number"
-              value={profile.phoneNumber}
-              onChangeText={(text) => setProfile({ ...profile, phoneNumber: text })}
-              keyboardType="phone-pad"
-            />
-          </View>
+          <ProfileFormFields profile={profile} onProfileChange={setProfile} />
 
           <TouchableOpacity
             style={[styles.button, loading && styles.buttonDisabled]}
             onPress={handleSave}
             disabled={loading}
+            accessibilityLabel="Save profile button"
+            accessibilityHint="Tap to save your profile"
+            accessibilityState={{ disabled: loading }}
           >
             <Text style={styles.buttonText}>
               {loading ? 'Saving...' : 'Save Profile'}
@@ -245,23 +187,6 @@ const styles = StyleSheet.create({
   },
   form: {
     flex: 1,
-  },
-  inputContainer: {
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1e293b',
-    marginBottom: 8,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    backgroundColor: '#f8fafc',
   },
   button: {
     backgroundColor: '#2563eb',

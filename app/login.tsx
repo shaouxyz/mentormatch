@@ -12,8 +12,28 @@ import {
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
-import { initializeTestAccounts, getTestAccount } from '../utils/testAccounts';
+import { initializeTestAccounts, getTestAccount } from '@/utils/testAccounts';
+import { ERROR_MESSAGES } from '@/utils/constants';
+import { logger } from '@/utils/logger';
+import { ErrorHandler } from '@/utils/errorHandler';
+import { authenticateUser, setCurrentUser, createUser } from '@/utils/userManagement';
+import { sanitizeEmail } from '@/utils/security';
+import { isRateLimited, resetRateLimit, getRemainingAttempts } from '@/utils/rateLimiter';
+import { startSession } from '@/utils/sessionManager';
 
+/**
+ * Login Screen Component
+ * 
+ * Handles user authentication with:
+ * - Email and password validation
+ * - Rate limiting protection
+ * - Test account support (t0, t1)
+ * - Session management
+ * - Secure password verification
+ * 
+ * @component
+ * @returns {JSX.Element} Login form with email and password inputs
+ */
 export default function LoginScreen() {
   const router = useRouter();
   const [email, setEmail] = useState('');
@@ -22,32 +42,77 @@ export default function LoginScreen() {
 
   useEffect(() => {
     // Initialize test accounts silently in background
-    initializeTestAccounts().catch(console.error);
+    initializeTestAccounts().catch((error) => {
+      logger.error('Failed to initialize test accounts', error instanceof Error ? error : new Error(String(error)));
+    });
   }, []);
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
+      Alert.alert('Error', ERROR_MESSAGES.FILL_ALL_FIELDS);
       return;
     }
 
     setLoading(true);
 
     try {
-      // First check test accounts
-      const testAccount = await getTestAccount(email);
+      // Sanitize email input
+      const sanitizedEmail = sanitizeEmail(email);
+      
+      // Check rate limiting
+      if (await isRateLimited(sanitizedEmail)) {
+        Alert.alert(
+          'Too Many Attempts',
+          `Too many login attempts. Please try again later.`,
+          [{ text: 'OK' }]
+        );
+        setLoading(false);
+        return;
+      }
+      
+      // First check test accounts (backward compatibility)
+      const testAccount = await getTestAccount(sanitizedEmail);
       if (testAccount && testAccount.password === password) {
-        // Login as test account
-        const userData = {
-          email: testAccount.email,
-          password: testAccount.password,
-          id: `test-${testAccount.email}`,
-          createdAt: new Date().toISOString(),
-          isTestAccount: true,
-        };
-        
-        await AsyncStorage.setItem('user', JSON.stringify(userData));
-        await AsyncStorage.setItem('isAuthenticated', 'true');
+        // Login as test account - create user account for test account
+        try {
+          const testUser = await createUser(testAccount.email, testAccount.password);
+          await setCurrentUser(testUser.email);
+          
+          // Reset rate limit on successful login
+          await resetRateLimit(sanitizedEmail);
+          
+          // Start session
+          await startSession();
+          
+          // Store user data for backward compatibility
+          await AsyncStorage.setItem('user', JSON.stringify({
+            email: testUser.email,
+            id: testUser.id,
+            createdAt: testUser.createdAt,
+            isTestAccount: true,
+          }));
+        } catch (error) {
+          // User might already exist, try to authenticate
+          const authenticatedUser = await authenticateUser(sanitizedEmail, password);
+          if (authenticatedUser) {
+            await setCurrentUser(authenticatedUser.email);
+            
+            // Reset rate limit on successful login
+            await resetRateLimit(sanitizedEmail);
+            
+            // Start session
+            await startSession();
+            
+            await AsyncStorage.setItem('user', JSON.stringify({
+              email: authenticatedUser.email,
+              id: authenticatedUser.id,
+              createdAt: authenticatedUser.createdAt,
+              isTestAccount: true,
+            }));
+          } else {
+            throw new Error('Test account authentication failed');
+          }
+        }
         
         // Set test profile if exists
         if (testAccount.profile) {
@@ -59,24 +124,38 @@ export default function LoginScreen() {
         return;
       }
 
-      // Check regular user account
-      const userData = await AsyncStorage.getItem('user');
+      // Authenticate regular user account (with password hashing)
+      const user = await authenticateUser(sanitizedEmail, password);
       
-      if (!userData) {
-        Alert.alert('Error', 'No account found. Please sign up first.');
+      if (!user) {
+        // Increment rate limit on failed attempt
+        await isRateLimited(sanitizedEmail);
+        const remainingAttempts = await getRemainingAttempts(sanitizedEmail);
+        
+        if (remainingAttempts > 0) {
+          Alert.alert('Error', `${ERROR_MESSAGES.INVALID_PASSWORD}\n${remainingAttempts} attempt${remainingAttempts > 1 ? 's' : ''} remaining.`);
+        } else {
+          Alert.alert('Error', 'Too many failed attempts. Please try again later.');
+        }
         setLoading(false);
         return;
       }
 
-      const user = JSON.parse(userData);
+      // Reset rate limit on successful login
+      await resetRateLimit(sanitizedEmail);
       
-      if (user.email !== email || user.password !== password) {
-        Alert.alert('Error', 'Invalid email or password');
-        setLoading(false);
-        return;
-      }
-
-      await AsyncStorage.setItem('isAuthenticated', 'true');
+      // Set current user session
+      await setCurrentUser(user.email);
+      
+      // Start session
+      await startSession();
+      
+      // Store user data for backward compatibility (without password)
+      await AsyncStorage.setItem('user', JSON.stringify({
+        email: user.email,
+        id: user.id,
+        createdAt: user.createdAt,
+      }));
       
       // Check if profile exists
       const profile = await AsyncStorage.getItem('profile');
@@ -86,8 +165,7 @@ export default function LoginScreen() {
         router.replace('/profile/create');
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to log in. Please try again.');
-      console.error('Login error:', error);
+      ErrorHandler.handleError(error, 'Failed to log in. Please try again.', { email });
     } finally {
       setLoading(false);
     }
@@ -116,6 +194,8 @@ export default function LoginScreen() {
               keyboardType="email-address"
               autoCapitalize="none"
               autoComplete="email"
+              accessibilityLabel="Email input"
+              accessibilityHint="Enter your email address to log in"
             />
           </View>
 
@@ -128,6 +208,8 @@ export default function LoginScreen() {
               onChangeText={setPassword}
               secureTextEntry
               autoCapitalize="none"
+              accessibilityLabel="Password input"
+              accessibilityHint="Enter your password to log in"
             />
           </View>
 
@@ -135,6 +217,9 @@ export default function LoginScreen() {
             style={[styles.button, loading && styles.buttonDisabled]}
             onPress={handleLogin}
             disabled={loading}
+            accessibilityLabel="Log in button"
+            accessibilityHint="Tap to log in with your email and password"
+            accessibilityState={{ disabled: loading }}
           >
             <Text style={styles.buttonText}>
               {loading ? 'Logging in...' : 'Log In'}
@@ -144,6 +229,8 @@ export default function LoginScreen() {
           <TouchableOpacity
             style={styles.linkButton}
             onPress={() => router.push('/signup')}
+            accessibilityLabel="Sign up link"
+            accessibilityHint="Tap to navigate to sign up page"
           >
             <Text style={styles.linkText}>
               Don't have an account? Sign Up

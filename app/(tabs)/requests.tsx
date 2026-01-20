@@ -5,13 +5,14 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  Alert,
   RefreshControl,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
+import { logger } from '@/utils/logger';
+import { safeParseJSON, validateMentorshipRequestSchema } from '@/utils/schemaValidation';
 
 interface MentorshipRequest {
   id: string;
@@ -26,6 +27,23 @@ interface MentorshipRequest {
   respondedAt?: string;
 }
 
+/**
+ * Requests Tab Component
+ * 
+ * Manages mentorship requests with three tabs:
+ * - Incoming: Requests received from others
+ * - Sent: Requests sent to mentors
+ * - Processed: Accepted or declined requests
+ * 
+ * Features:
+ * - Accept/decline functionality
+ * - Request status tracking
+ * - Pull-to-refresh support
+ * - Memoized render functions for performance
+ * 
+ * @component
+ * @returns {JSX.Element} Requests screen with tabbed interface
+ */
 export default function RequestsScreen() {
   const router = useRouter();
   const [incomingRequests, setIncomingRequests] = useState<MentorshipRequest[]>([]);
@@ -33,6 +51,7 @@ export default function RequestsScreen() {
   const [processedRequests, setProcessedRequests] = useState<MentorshipRequest[]>([]);
   const [activeTab, setActiveTab] = useState<'incoming' | 'outgoing' | 'processed'>('incoming');
   const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [userEmail, setUserEmail] = useState<string>('');
   const isLoadingRef = useRef(false);
   const hasLoadedRef = useRef(false);
@@ -40,6 +59,7 @@ export default function RequestsScreen() {
   const loadRequests = useCallback(async () => {
     if (isLoadingRef.current) return;
     isLoadingRef.current = true;
+    setLoading(true);
     
     try {
       const userData = await AsyncStorage.getItem('user');
@@ -50,13 +70,33 @@ export default function RequestsScreen() {
         return;
       }
 
-      const user = JSON.parse(userData);
+      const user = safeParseJSON<{ email: string }>(
+        userData,
+        (data): data is { email: string } => typeof data === 'object' && data !== null && 'email' in data && typeof (data as { email: unknown }).email === 'string',
+        null
+      );
+      
+      if (!user) {
+        setIncomingRequests([]);
+        setOutgoingRequests([]);
+        setProcessedRequests([]);
+        isLoadingRef.current = false;
+        return;
+      }
+      
       const userEmail = user.email;
       setUserEmail(userEmail);
 
       const requestsData = await AsyncStorage.getItem('mentorshipRequests');
       if (requestsData) {
-        const allRequests: MentorshipRequest[] = JSON.parse(requestsData);
+        const allRequests = safeParseJSON<MentorshipRequest[]>(
+          requestsData,
+          (data): data is MentorshipRequest[] => {
+            if (!Array.isArray(data)) return false;
+            return data.every(req => validateMentorshipRequestSchema(req));
+          },
+          []
+        ) || [];
         
         // Incoming: requests where user is mentor and status is pending
         const incoming = allRequests.filter(
@@ -91,9 +131,10 @@ export default function RequestsScreen() {
         setProcessedRequests([]);
       }
     } catch (error) {
-      console.error('Error loading requests:', error);
+      logger.error('Error loading requests', error instanceof Error ? error : new Error(String(error)));
     } finally {
       isLoadingRef.current = false;
+      setLoading(false);
     }
   }, []);
 
@@ -132,66 +173,8 @@ export default function RequestsScreen() {
     });
   };
 
-  const updateRequestStatus = useCallback(async (
-    requestId: string,
-    status: 'accepted' | 'declined',
-    responseNote: string
-  ) => {
-    try {
-      const requestsData = await AsyncStorage.getItem('mentorshipRequests');
-      if (requestsData) {
-        const requests: MentorshipRequest[] = JSON.parse(requestsData);
-        const requestIndex = requests.findIndex((r) => r.id === requestId);
 
-        if (requestIndex !== -1) {
-          requests[requestIndex].status = status;
-          requests[requestIndex].responseNote = responseNote;
-          requests[requestIndex].respondedAt = new Date().toISOString();
-
-          await AsyncStorage.setItem('mentorshipRequests', JSON.stringify(requests));
-          
-          // Update local state directly instead of reloading
-          const userData = await AsyncStorage.getItem('user');
-          if (userData) {
-            const user = JSON.parse(userData);
-            const userEmail = user.email;
-            
-            const incoming = requests.filter(
-              (r) => r.mentorEmail === userEmail && r.status === 'pending'
-            );
-            const outgoing = requests.filter(
-              (r) => r.requesterEmail === userEmail && r.status === 'pending'
-            );
-            const processed = requests
-              .filter(
-                (r) => 
-                  (r.status === 'accepted' || r.status === 'declined') &&
-                  (r.mentorEmail === userEmail || r.requesterEmail === userEmail)
-              )
-              .sort((a, b) => {
-                const dateA = new Date(a.respondedAt || a.createdAt).getTime();
-                const dateB = new Date(b.respondedAt || b.createdAt).getTime();
-                return dateB - dateA; // Most recent first
-              });
-
-            setIncomingRequests(incoming);
-            setOutgoingRequests(outgoing);
-            setProcessedRequests(processed);
-          }
-
-          Alert.alert(
-            'Success',
-            `Request ${status === 'accepted' ? 'accepted' : 'declined'} successfully!`
-          );
-        }
-      }
-    } catch (error) {
-      Alert.alert('Error', 'Failed to update request. Please try again.');
-      console.error('Error updating request:', error);
-    }
-  }, []);
-
-  const renderIncomingRequest = ({ item }: { item: MentorshipRequest }) => (
+  const renderIncomingRequest = useCallback(({ item }: { item: MentorshipRequest }) => (
     <View style={styles.requestCard}>
       <View style={styles.requestHeader}>
         <View style={styles.avatar}>
@@ -219,6 +202,8 @@ export default function RequestsScreen() {
         <TouchableOpacity
           style={[styles.actionButton, styles.acceptButton]}
           onPress={() => handleAccept(item)}
+          accessibilityLabel={`Accept request from ${item.requesterName}`}
+          accessibilityHint="Tap to accept this mentorship request"
         >
           <Ionicons name="checkmark-circle" size={20} color="#fff" />
           <Text style={styles.acceptButtonText}>Accept</Text>
@@ -226,15 +211,17 @@ export default function RequestsScreen() {
         <TouchableOpacity
           style={[styles.actionButton, styles.declineButton]}
           onPress={() => handleDecline(item)}
+          accessibilityLabel={`Decline request from ${item.requesterName}`}
+          accessibilityHint="Tap to decline this mentorship request"
         >
           <Ionicons name="close-circle" size={20} color="#fff" />
           <Text style={styles.declineButtonText}>Decline</Text>
         </TouchableOpacity>
       </View>
     </View>
-  );
+  ), [handleAccept, handleDecline]);
 
-  const renderOutgoingRequest = ({ item }: { item: MentorshipRequest }) => (
+  const renderOutgoingRequest = useCallback(({ item }: { item: MentorshipRequest }) => (
     <View style={styles.requestCard}>
       <View style={styles.requestHeader}>
         <View style={styles.avatar}>
@@ -286,9 +273,9 @@ export default function RequestsScreen() {
         </View>
       )}
     </View>
-  );
+  ), []);
 
-  const renderProcessedRequest = ({ item }: { item: MentorshipRequest }) => {
+  const renderProcessedRequest = useCallback(({ item }: { item: MentorshipRequest }) => {
     // Determine if this was an incoming or outgoing request
     let otherPersonName = '';
     let otherPersonEmail = '';
@@ -365,7 +352,7 @@ export default function RequestsScreen() {
         )}
       </View>
     );
-  };
+  }, [userEmail]);
 
   const getDisplayRequests = () => {
     switch (activeTab) {
@@ -380,7 +367,7 @@ export default function RequestsScreen() {
     }
   };
 
-  const getRenderFunction = () => {
+  const getRenderFunction = useCallback(() => {
     switch (activeTab) {
       case 'incoming':
         return renderIncomingRequest;
@@ -391,9 +378,20 @@ export default function RequestsScreen() {
       default:
         return renderIncomingRequest;
     }
-  };
+  }, [activeTab, renderIncomingRequest, renderOutgoingRequest, renderProcessedRequest]);
 
   const displayRequests = getDisplayRequests();
+
+  if (loading && !hasLoadedRef.current) {
+    return (
+      <View style={styles.container}>
+        <StatusBar style="auto" />
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading requests...</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -403,6 +401,9 @@ export default function RequestsScreen() {
         <TouchableOpacity
           style={[styles.tab, activeTab === 'incoming' && styles.activeTab]}
           onPress={() => setActiveTab('incoming')}
+          accessibilityLabel="Incoming requests tab"
+          accessibilityHint={`Tap to view incoming requests. ${incomingRequests.length} requests`}
+          accessibilityState={{ selected: activeTab === 'incoming' }}
         >
           <Ionicons
             name="mail"
@@ -421,6 +422,9 @@ export default function RequestsScreen() {
         <TouchableOpacity
           style={[styles.tab, activeTab === 'outgoing' && styles.activeTab]}
           onPress={() => setActiveTab('outgoing')}
+          accessibilityLabel="Sent requests tab"
+          accessibilityHint={`Tap to view sent requests. ${outgoingRequests.length} requests`}
+          accessibilityState={{ selected: activeTab === 'outgoing' }}
         >
           <Ionicons
             name="send"
@@ -439,6 +443,9 @@ export default function RequestsScreen() {
         <TouchableOpacity
           style={[styles.tab, activeTab === 'processed' && styles.activeTab]}
           onPress={() => setActiveTab('processed')}
+          accessibilityLabel="Processed requests tab"
+          accessibilityHint={`Tap to view processed requests. ${processedRequests.length} requests`}
+          accessibilityState={{ selected: activeTab === 'processed' }}
         >
           <Ionicons
             name="archive"
@@ -698,6 +705,17 @@ const styles = StyleSheet.create({
   emptyStateSubtext: {
     fontSize: 16,
     color: '#94a3b8',
+    textAlign: 'center',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 48,
+  },
+  loadingText: {
+    fontSize: 18,
+    color: '#64748b',
     textAlign: 'center',
   },
 });

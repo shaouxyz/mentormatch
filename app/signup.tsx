@@ -13,7 +13,26 @@ import {
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
+import { validateEmail, validatePassword } from '@/utils/validation';
+import { ERROR_MESSAGES } from '@/utils/constants';
+import { ErrorHandler } from '@/utils/errorHandler';
+import { createUser, setCurrentUser } from '@/utils/userManagement';
+import { sanitizeEmail } from '@/utils/security';
+import { startSession } from '@/utils/sessionManager';
 
+/**
+ * Signup Screen Component
+ * 
+ * Handles new user registration with:
+ * - Email and password validation
+ * - Password confirmation matching
+ * - Secure password hashing
+ * - Multi-user account creation
+ * - Session initialization
+ * 
+ * @component
+ * @returns {JSX.Element} Signup form with email, password, and confirm password inputs
+ */
 export default function SignupScreen() {
   const router = useRouter();
   const [email, setEmail] = useState('');
@@ -23,47 +42,51 @@ export default function SignupScreen() {
 
   const handleSignup = async () => {
     if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
+      Alert.alert('Error', ERROR_MESSAGES.FILL_ALL_FIELDS);
       return;
     }
 
-    if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
+    // Validate password
+    const passwordValidation = validatePassword(password, confirmPassword);
+    if (!passwordValidation.isValid) {
+      Alert.alert('Error', passwordValidation.error || ERROR_MESSAGES.PASSWORD_TOO_SHORT);
       return;
     }
 
-    if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters');
-      return;
-    }
-
-    // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      Alert.alert('Error', 'Please enter a valid email address');
+    // Validate email
+    const emailValidation = validateEmail(email);
+    if (!emailValidation.isValid) {
+      Alert.alert('Error', emailValidation.error || ERROR_MESSAGES.INVALID_EMAIL);
       return;
     }
 
     setLoading(true);
 
     try {
-      // In a real app, you would make an API call here
-      // For now, we'll just store the user locally
-      const userData = {
-        email,
-        password, // In production, never store passwords in plain text
-        id: Date.now().toString(),
-        createdAt: new Date().toISOString(),
-      };
-
-      await AsyncStorage.setItem('user', JSON.stringify(userData));
-      await AsyncStorage.setItem('isAuthenticated', 'true');
+      // Sanitize email input
+      const sanitizedEmail = sanitizeEmail(email);
+      
+      // Create user with hashed password (multi-user support)
+      const user = await createUser(sanitizedEmail, password);
+      
+      // Set current user session
+      await setCurrentUser(user.email);
+      
+      // Start session
+      await startSession();
+      
+      // Store user data in AsyncStorage for backward compatibility (without password)
+      await AsyncStorage.setItem('user', JSON.stringify({
+        email: user.email,
+        id: user.id,
+        createdAt: user.createdAt,
+      }));
 
       // Navigate to profile creation
       router.replace('/profile/create');
     } catch (error) {
-      Alert.alert('Error', 'Failed to create account. Please try again.');
-      console.error('Signup error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create account. Please try again.';
+      ErrorHandler.handleError(error, errorMessage.includes('already exists') ? errorMessage : 'Failed to create account. Please try again.', { email });
     } finally {
       setLoading(false);
     }
@@ -92,6 +115,8 @@ export default function SignupScreen() {
               keyboardType="email-address"
               autoCapitalize="none"
               autoComplete="email"
+              accessibilityLabel="Email input"
+              accessibilityHint="Enter your email address to create an account"
             />
           </View>
 
@@ -104,6 +129,8 @@ export default function SignupScreen() {
               onChangeText={setPassword}
               secureTextEntry
               autoCapitalize="none"
+              accessibilityLabel="Password input"
+              accessibilityHint="Enter your password, must be at least 6 characters"
             />
           </View>
 
@@ -116,6 +143,8 @@ export default function SignupScreen() {
               onChangeText={setConfirmPassword}
               secureTextEntry
               autoCapitalize="none"
+              accessibilityLabel="Confirm password input"
+              accessibilityHint="Re-enter your password to confirm"
             />
           </View>
 
@@ -123,6 +152,9 @@ export default function SignupScreen() {
             style={[styles.button, loading && styles.buttonDisabled]}
             onPress={handleSignup}
             disabled={loading}
+            accessibilityLabel="Sign up button"
+            accessibilityHint="Tap to create your account"
+            accessibilityState={{ disabled: loading }}
           >
             <Text style={styles.buttonText}>
               {loading ? 'Creating Account...' : 'Sign Up'}
@@ -132,6 +164,8 @@ export default function SignupScreen() {
           <TouchableOpacity
             style={styles.linkButton}
             onPress={() => router.push('/login')}
+            accessibilityLabel="Log in link"
+            accessibilityHint="Tap to navigate to log in page"
           >
             <Text style={styles.linkText}>
               Already have an account? Log In

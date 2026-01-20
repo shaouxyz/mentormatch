@@ -3,7 +3,7 @@ import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import HomeScreen from '../(tabs)/home';
 import * as expoRouter from 'expo-router';
-import { initializeTestAccounts, TEST_ACCOUNTS } from '../../utils/testAccounts';
+import { initializeTestAccounts } from '../../utils/testAccounts';
 
 // Get mock router from expo-router mock
 const mockRouter = expoRouter.useRouter();
@@ -29,7 +29,7 @@ describe('HomeScreen (Discover)', () => {
   it('should show empty state when user has no profile', async () => {
     await AsyncStorage.setItem('user', JSON.stringify({ email: 'test@example.com' }));
 
-    const { getByText, queryByText } = render(<HomeScreen />);
+    const { getByText } = render(<HomeScreen />);
 
     await waitFor(() => {
       expect(getByText('Complete your profile first')).toBeTruthy();
@@ -232,7 +232,7 @@ describe('HomeScreen (Discover)', () => {
     await AsyncStorage.setItem('user', JSON.stringify({ email: 'current@example.com' }));
     await AsyncStorage.setItem('profile', JSON.stringify(userProfile));
 
-    const { getByPlaceholderText, getByTestId, queryByTestId } = render(<HomeScreen />);
+    const { getByPlaceholderText } = render(<HomeScreen />);
 
     await waitFor(() => {
       const searchInput = getByPlaceholderText('Search by name, expertise, interest, email, phone...');
@@ -240,8 +240,6 @@ describe('HomeScreen (Discover)', () => {
     });
 
     await waitFor(() => {
-      // Clear button should appear (Ionicons close-circle)
-      const clearButton = queryByTestId('clear-button');
       // Since we can't easily test Ionicons, we'll check that search results text appears
       expect(getByPlaceholderText('Search by name, expertise, interest, email, phone...').props.value).toBe('test');
     });

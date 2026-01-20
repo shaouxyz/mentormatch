@@ -11,6 +11,10 @@ import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
+import { logger } from '@/utils/logger';
+import { ErrorHandler } from '@/utils/errorHandler';
+import { safeParseJSON, validateProfileSchema } from '@/utils/schemaValidation';
+import { endSession } from '@/utils/sessionManager';
 
 interface Profile {
   name: string;
@@ -22,6 +26,18 @@ interface Profile {
   phoneNumber: string;
 }
 
+/**
+ * Profile Tab Component
+ * 
+ * Displays the current user's profile with:
+ * - Profile information display
+ * - Edit profile navigation
+ * - Logout functionality
+ * - Session management integration
+ * 
+ * @component
+ * @returns {JSX.Element} Profile screen with user information and actions
+ */
 export default function ProfileScreen() {
   const router = useRouter();
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -47,17 +63,25 @@ export default function ProfileScreen() {
         if (!isMountedRef.current) return;
         
         if (profileData) {
-          const parsedProfile = JSON.parse(profileData);
-          setProfile(parsedProfile);
+          const parsedProfile = safeParseJSON(
+            profileData,
+            validateProfileSchema,
+            null
+          );
+          if (parsedProfile) {
+            setProfile(parsedProfile);
+          } else {
+            setProfile(null);
+          }
         } else {
           setProfile(null);
         }
-      } catch (error) {
-        console.error('Error loading profile:', error);
-        if (isMountedRef.current) {
-          setProfile(null);
-        }
-      } finally {
+            } catch (error) {
+              logger.error('Error loading profile', error instanceof Error ? error : new Error(String(error)));
+              if (isMountedRef.current) {
+                setProfile(null);
+              }
+            } finally {
         if (isMountedRef.current) {
           setLoading(false);
         }
@@ -90,15 +114,15 @@ export default function ProfileScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              // Clear all user data
-              await AsyncStorage.removeItem('isAuthenticated');
+              // End session
+              await endSession();
+              // Clear user data from AsyncStorage
               await AsyncStorage.removeItem('user');
               await AsyncStorage.removeItem('profile');
               // Navigate to welcome screen
               router.replace('/');
             } catch (error) {
-              console.error('Logout error:', error);
-              Alert.alert('Error', 'Failed to log out. Please try again.');
+              ErrorHandler.handleStorageError(error, 'log out');
             }
           },
         },
@@ -125,6 +149,8 @@ export default function ProfileScreen() {
           <TouchableOpacity
             style={styles.button}
             onPress={handleNavigateToCreate}
+            accessibilityLabel="Create profile button"
+            accessibilityHint="Tap to create your profile"
           >
             <Text style={styles.buttonText}>Create Profile</Text>
           </TouchableOpacity>
@@ -207,6 +233,8 @@ export default function ProfileScreen() {
         <TouchableOpacity
           style={styles.requestsButton}
           onPress={handleNavigateToRequests}
+          accessibilityLabel="View requests button"
+          accessibilityHint="Tap to view your mentorship requests"
         >
           <Ionicons name="mail" size={20} color="#2563eb" />
           <Text style={styles.requestsButtonText}>View Requests</Text>
@@ -215,6 +243,8 @@ export default function ProfileScreen() {
         <TouchableOpacity
           style={styles.editButton}
           onPress={handleNavigateToEdit}
+          accessibilityLabel="Edit profile button"
+          accessibilityHint="Tap to edit your profile information"
         >
           <Ionicons name="pencil" size={20} color="#2563eb" />
           <Text style={styles.editButtonText}>Edit Profile</Text>
@@ -223,6 +253,8 @@ export default function ProfileScreen() {
         <TouchableOpacity
           style={styles.logoutButton}
           onPress={handleLogout}
+          accessibilityLabel="Log out button"
+          accessibilityHint="Tap to log out of your account"
         >
           <Ionicons name="log-out-outline" size={20} color="#ef4444" />
           <Text style={styles.logoutButtonText}>Log Out</Text>

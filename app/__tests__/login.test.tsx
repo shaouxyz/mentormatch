@@ -4,7 +4,7 @@ import { Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import LoginScreen from '../login';
 import * as expoRouter from 'expo-router';
-import { initializeTestAccounts, getTestAccount } from '../../utils/testAccounts';
+import { initializeTestAccounts } from '../../utils/testAccounts';
 
 // Get mock router from expo-router mock
 const mockRouter = expoRouter.useRouter();

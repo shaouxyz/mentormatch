@@ -14,7 +14,20 @@ describe('RequestsScreen', () => {
     id: '123',
   };
 
-  const createRequest = (overrides: any = {}) => ({
+  interface RequestOverrides {
+    id?: string;
+    requesterEmail?: string;
+    requesterName?: string;
+    mentorEmail?: string;
+    mentorName?: string;
+    note?: string;
+    status?: 'pending' | 'accepted' | 'declined';
+    responseNote?: string;
+    createdAt?: string;
+    respondedAt?: string;
+  }
+
+  const createRequest = (overrides: RequestOverrides = {}) => ({
     id: Date.now().toString(),
     requesterEmail: 'requester@example.com',
     requesterName: 'Requester User',
@@ -196,7 +209,7 @@ describe('RequestsScreen', () => {
 
     await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([userRequest, otherRequest]));
 
-    const { getByText, queryByText } = render(<RequestsScreen />);
+    const { getByText } = render(<RequestsScreen />);
 
     await waitFor(() => {
       // Incoming tab should show otherRequest

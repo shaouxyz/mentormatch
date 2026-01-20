@@ -237,7 +237,7 @@ describe('RespondRequestScreen', () => {
   });
 
   it('should navigate back when back button is pressed', async () => {
-    const { getByTestId } = render(<RespondRequestScreen />);
+    render(<RespondRequestScreen />);
 
     await waitFor(() => {
       // Find back button (Ionicons arrow-back)

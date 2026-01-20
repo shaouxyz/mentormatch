@@ -3,29 +3,62 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
-import { initializeTestAccounts } from '../utils/testAccounts';
+import { initializeTestAccounts } from '@/utils/testAccounts';
+import { logger } from '@/utils/logger';
+import { initializeDataMigration } from '@/utils/dataMigration';
+import { refreshSession, isSessionValid } from '@/utils/sessionManager';
 
+/**
+ * Welcome Screen Component
+ * 
+ * The initial screen shown when the app starts. Handles:
+ * - Initial authentication check
+ * - Data migration initialization
+ * - Test account initialization
+ * - Navigation to home if user is already authenticated
+ * 
+ * @component
+ * @returns {JSX.Element} Welcome screen with signup and login options
+ */
 export default function WelcomeScreen() {
   const router = useRouter();
   const hasInitialized = useRef(false);
 
   useEffect(() => {
-    if (!hasInitialized.current) {
-      hasInitialized.current = true;
-      initializeTestAccounts().catch(console.error);
-    }
+        if (!hasInitialized.current) {
+          hasInitialized.current = true;
+          // Initialize data migration first
+          initializeDataMigration().catch((error) => {
+            logger.error('Failed to initialize data migration', error instanceof Error ? error : new Error(String(error)));
+          });
+          // Then initialize test accounts
+          initializeTestAccounts().catch((error) => {
+            logger.error('Failed to initialize test accounts', error instanceof Error ? error : new Error(String(error)));
+          });
+        }
   }, []);
 
   useFocusEffect(
     useCallback(() => {
       const checkAuth = async () => {
         try {
+          // Check if session is still valid
+          const sessionValid = await isSessionValid();
+          if (!sessionValid) {
+            // Session expired, clear auth state
+            await AsyncStorage.removeItem('user');
+            await AsyncStorage.removeItem('isAuthenticated');
+            return;
+          }
+
           const user = await AsyncStorage.getItem('user');
           if (user) {
+            // Refresh session on app focus
+            await refreshSession();
             router.replace('/(tabs)/home');
           }
         } catch (error) {
-          console.error('Error checking auth:', error);
+          logger.error('Error checking auth', error instanceof Error ? error : new Error(String(error)));
         }
       };
       checkAuth();
@@ -43,6 +76,8 @@ export default function WelcomeScreen() {
           <TouchableOpacity
             style={[styles.button, styles.primaryButton]}
             onPress={() => router.push('/signup')}
+            accessibilityLabel="Sign up button"
+            accessibilityHint="Tap to create a new account"
           >
             <Text style={styles.primaryButtonText}>Sign Up</Text>
           </TouchableOpacity>
@@ -50,6 +85,8 @@ export default function WelcomeScreen() {
           <TouchableOpacity
             style={[styles.button, styles.secondaryButton]}
             onPress={() => router.push('/login')}
+            accessibilityLabel="Log in button"
+            accessibilityHint="Tap to log in to your existing account"
           >
             <Text style={styles.secondaryButtonText}>Log In</Text>
           </TouchableOpacity>

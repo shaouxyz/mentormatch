@@ -5,7 +5,6 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Modal,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -14,6 +13,11 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
+import { MAX_NOTE_LENGTH } from '@/utils/constants';
+import { logger } from '@/utils/logger';
+import { ErrorHandler } from '@/utils/errorHandler';
+import { sanitizeString } from '@/utils/security';
+import { safeParseJSON, validateMentorshipRequestSchema } from '@/utils/schemaValidation';
 
 interface MentorshipRequest {
   id: string;
@@ -28,6 +32,19 @@ interface MentorshipRequest {
   respondedAt?: string;
 }
 
+/**
+ * Respond Request Screen Component
+ * 
+ * Allows mentors to accept or decline mentorship requests with:
+ * - Optional response note field
+ * - Real-time character counter
+ * - Input sanitization
+ * - Request status update
+ * - Schema validation
+ * 
+ * @component
+ * @returns {JSX.Element} Request response form
+ */
 export default function RespondRequestScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
@@ -47,7 +64,7 @@ export default function RespondRequestScreen() {
         const parsed = JSON.parse(requestParam);
         setRequest(parsed);
       } catch (error) {
-        console.error('Error parsing request:', error);
+        logger.error('Error parsing request', error instanceof Error ? error : new Error(String(error)));
       }
     }
   }, [requestParam]); // Only depend on the actual request string
@@ -60,21 +77,33 @@ export default function RespondRequestScreen() {
     try {
       const requestsData = await AsyncStorage.getItem('mentorshipRequests');
       if (requestsData) {
-        const requests: MentorshipRequest[] = JSON.parse(requestsData);
+        const requests = safeParseJSON<MentorshipRequest[]>(
+          requestsData,
+          (data): data is MentorshipRequest[] => {
+            if (!Array.isArray(data)) return false;
+            return data.every(req => validateMentorshipRequestSchema(req));
+          },
+          []
+        );
+        
+        if (!requests) {
+          ErrorHandler.handleError(new Error('Invalid requests data'), 'Failed to load requests');
+          return;
+        }
         const requestIndex = requests.findIndex((r) => r.id === request.id);
 
         if (requestIndex !== -1) {
           requests[requestIndex].status = status;
-          requests[requestIndex].responseNote = responseNote.trim();
+          requests[requestIndex].responseNote = sanitizeString(responseNote.trim());
           requests[requestIndex].respondedAt = new Date().toISOString();
 
           await AsyncStorage.setItem('mentorshipRequests', JSON.stringify(requests));
-          router.back();
-        }
-      }
-    } catch (error) {
-      console.error('Error responding to request:', error);
-    } finally {
+                router.back();
+              }
+            }
+          } catch (error) {
+            ErrorHandler.handleStorageError(error, 'respond to request');
+          } finally {
       setLoading(false);
     }
   };
@@ -99,6 +128,8 @@ export default function RespondRequestScreen() {
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => router.back()}
+            accessibilityLabel="Back button"
+            accessibilityHint="Tap to go back to previous screen"
           >
             <Ionicons name="arrow-back" size={24} color="#1e293b" />
           </TouchableOpacity>
@@ -129,22 +160,38 @@ export default function RespondRequestScreen() {
           <Text style={styles.hint}>
             Add a personal note to your response.
           </Text>
-          <TextInput
-            style={styles.textArea}
-            placeholder="Thank you for your interest..."
-            placeholderTextColor="#94a3b8"
-            value={responseNote}
-            onChangeText={setResponseNote}
-            multiline
-            numberOfLines={4}
-            textAlignVertical="top"
-          />
+                  <TextInput
+                    style={styles.textArea}
+                    placeholder="Thank you for your interest..."
+                    placeholderTextColor="#94a3b8"
+                    value={responseNote}
+                    onChangeText={(text) => {
+                      const sanitized = sanitizeString(text);
+                      if (sanitized.length <= MAX_NOTE_LENGTH) {
+                        setResponseNote(sanitized);
+                      }
+                    }}
+                    multiline
+                    numberOfLines={4}
+                    textAlignVertical="top"
+                    maxLength={MAX_NOTE_LENGTH}
+                    accessibilityLabel="Response note input"
+                    accessibilityHint="Enter an optional message to include with your response"
+                  />
+                  {responseNote.length > 0 && (
+                    <Text style={styles.charCount}>
+                      {responseNote.length}/{MAX_NOTE_LENGTH} characters
+                    </Text>
+                  )}
 
           <View style={styles.actions}>
             <TouchableOpacity
               style={[styles.button, styles.acceptButton, loading && styles.buttonDisabled]}
               onPress={() => handleRespond('accepted')}
               disabled={loading}
+              accessibilityLabel="Accept request button"
+              accessibilityHint="Tap to accept this mentorship request"
+              accessibilityState={{ disabled: loading }}
             >
               <Ionicons name="checkmark-circle" size={20} color="#fff" />
               <Text style={styles.buttonText}>Accept</Text>
@@ -153,6 +200,9 @@ export default function RespondRequestScreen() {
               style={[styles.button, styles.declineButton, loading && styles.buttonDisabled]}
               onPress={() => handleRespond('declined')}
               disabled={loading}
+              accessibilityLabel="Decline request button"
+              accessibilityHint="Tap to decline this mentorship request"
+              accessibilityState={{ disabled: loading }}
             >
               <Ionicons name="close-circle" size={20} color="#fff" />
               <Text style={styles.buttonText}>Decline</Text>
@@ -303,5 +353,12 @@ const styles = StyleSheet.create({
     color: '#64748b',
     textAlign: 'center',
     marginTop: 48,
+  },
+  charCount: {
+    fontSize: 12,
+    color: '#94a3b8',
+    textAlign: 'right',
+    marginTop: -20,
+    marginBottom: 8,
   },
 });

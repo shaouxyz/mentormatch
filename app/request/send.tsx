@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,12 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
+import { MAX_NOTE_LENGTH } from '@/utils/constants';
+import { logger } from '@/utils/logger';
+import { ErrorHandler } from '@/utils/errorHandler';
+import { validateMentorshipRequestSchema } from '@/utils/schemaValidation';
+import { sanitizeString } from '@/utils/security';
+import { safeParseJSON } from '@/utils/schemaValidation';
 
 interface Profile {
   name: string;
@@ -24,6 +30,16 @@ interface Profile {
   interestYears: number;
   phoneNumber: string;
 }
+
+interface User {
+  email: string;
+  password?: string;
+  id: string;
+  createdAt?: string;
+  isTestAccount?: boolean;
+}
+
+interface CurrentUser extends User, Profile {}
 
 interface MentorshipRequest {
   id: string;
@@ -38,13 +54,26 @@ interface MentorshipRequest {
   respondedAt?: string;
 }
 
+/**
+ * Send Request Screen Component
+ * 
+ * Allows users to send mentorship requests with:
+ * - Optional note field with character limit
+ * - Real-time character counter
+ * - Input sanitization
+ * - Schema validation
+ * - Duplicate request prevention
+ * 
+ * @component
+ * @returns {JSX.Element} Request sending form
+ */
 export default function SendRequestScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const [note, setNote] = useState('');
   const [loading, setLoading] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const hasLoadedRef = useRef(false);
   const isLoadingRef = useRef(false);
   const lastProfileParamRef = useRef<string | null>(null);
@@ -60,7 +89,7 @@ export default function SendRequestScreen() {
         const parsed = JSON.parse(profileParam);
         setProfile(parsed);
       } catch (error) {
-        console.error('Error parsing profile:', error);
+        logger.error('Error parsing profile', error instanceof Error ? error : new Error(String(error)));
       }
     }
   }, [profileParam]); // Only depend on the actual profile string
@@ -78,12 +107,12 @@ export default function SendRequestScreen() {
         const userData = await AsyncStorage.getItem('user');
         const profileData = await AsyncStorage.getItem('profile');
         if (userData && profileData) {
-          const user = JSON.parse(userData);
-          const profile = JSON.parse(profileData);
+          const user: User = JSON.parse(userData);
+          const profile: Profile = JSON.parse(profileData);
           setCurrentUser({ ...user, ...profile });
         }
       } catch (error) {
-        console.error('Error loading current user:', error);
+        logger.error('Error loading current user', error instanceof Error ? error : new Error(String(error)));
       } finally {
         isLoadingRef.current = false;
       }
@@ -112,11 +141,11 @@ export default function SendRequestScreen() {
         if (existing) {
           Alert.alert('Request Already Sent', 'You have already sent a request to this person.');
           return;
+          }
         }
+      } catch (error) {
+        logger.warn('Error checking existing requests', { error: error instanceof Error ? error.message : String(error) });
       }
-    } catch (error) {
-      console.error('Error checking existing requests:', error);
-    }
 
     setLoading(true);
 
@@ -127,29 +156,41 @@ export default function SendRequestScreen() {
         requesterName: currentUser.name,
         mentorEmail: profile.email,
         mentorName: profile.name,
-        note: note.trim(),
+        note: sanitizeString(note.trim()),
         status: 'pending',
         createdAt: new Date().toISOString(),
       };
 
       const existingRequests = await AsyncStorage.getItem('mentorshipRequests');
       const requests: MentorshipRequest[] = existingRequests
-        ? JSON.parse(existingRequests)
+        ? safeParseJSON<MentorshipRequest[]>(
+            existingRequests,
+            (data): data is MentorshipRequest[] => {
+              if (!Array.isArray(data)) return false;
+              return data.every(req => validateMentorshipRequestSchema(req));
+            },
+            []
+          ) || []
         : [];
 
-      requests.push(request);
-      await AsyncStorage.setItem('mentorshipRequests', JSON.stringify(requests));
+            // Validate before storing
+            if (!validateMentorshipRequestSchema(request)) {
+              ErrorHandler.handleError(new Error('Invalid request data'), 'Request data validation failed');
+              return;
+            }
 
-      Alert.alert('Request Sent', 'Your mentorship request has been sent successfully!', [
-        {
-          text: 'OK',
-          onPress: () => router.back(),
-        },
-      ]);
-    } catch (error) {
-      Alert.alert('Error', 'Failed to send request. Please try again.');
-      console.error('Error sending request:', error);
-    } finally {
+            requests.push(request);
+            await AsyncStorage.setItem('mentorshipRequests', JSON.stringify(requests));
+
+            Alert.alert('Request Sent', 'Your mentorship request has been sent successfully!', [
+              {
+                text: 'OK',
+                onPress: () => router.back(),
+              },
+            ]);
+          } catch (error) {
+            ErrorHandler.handleStorageError(error, 'send request');
+          } finally {
       setLoading(false);
     }
   };
@@ -174,6 +215,8 @@ export default function SendRequestScreen() {
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => router.back()}
+            accessibilityLabel="Back button"
+            accessibilityHint="Tap to go back to previous screen"
           >
             <Ionicons name="arrow-back" size={24} color="#1e293b" />
           </TouchableOpacity>
@@ -197,21 +240,37 @@ export default function SendRequestScreen() {
           <Text style={styles.hint}>
             Add a personal note to introduce yourself and explain why you'd like them as a mentor.
           </Text>
-          <TextInput
-            style={styles.textArea}
-            placeholder="Hi! I'm interested in learning from you because..."
-            placeholderTextColor="#94a3b8"
-            value={note}
-            onChangeText={setNote}
-            multiline
-            numberOfLines={6}
-            textAlignVertical="top"
-          />
+                <TextInput
+                  style={styles.textArea}
+                  placeholder="Hi! I'm interested in learning from you because..."
+                  placeholderTextColor="#94a3b8"
+                  value={note}
+                  onChangeText={(text) => {
+                    const sanitized = sanitizeString(text);
+                    if (sanitized.length <= MAX_NOTE_LENGTH) {
+                      setNote(sanitized);
+                    }
+                  }}
+                  multiline
+                  numberOfLines={6}
+                  textAlignVertical="top"
+                  maxLength={MAX_NOTE_LENGTH}
+                  accessibilityLabel="Request message input"
+                  accessibilityHint="Enter an optional message to include with your mentorship request"
+                />
+                {note.length > 0 && (
+                  <Text style={styles.charCount}>
+                    {note.length}/{MAX_NOTE_LENGTH} characters
+                  </Text>
+                )}
 
           <TouchableOpacity
             style={[styles.button, loading && styles.buttonDisabled]}
             onPress={handleSendRequest}
             disabled={loading}
+            accessibilityLabel="Send request button"
+            accessibilityHint="Tap to send the mentorship request"
+            accessibilityState={{ disabled: loading }}
           >
             <Text style={styles.buttonText}>
               {loading ? 'Sending...' : 'Send Request'}
@@ -330,5 +389,12 @@ const styles = StyleSheet.create({
     color: '#64748b',
     textAlign: 'center',
     marginTop: 48,
+  },
+  charCount: {
+    fontSize: 12,
+    color: '#94a3b8',
+    textAlign: 'right',
+    marginTop: -20,
+    marginBottom: 8,
   },
 });

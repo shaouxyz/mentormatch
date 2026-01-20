@@ -11,6 +11,8 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
+import { logger } from '@/utils/logger';
+import { safeParseJSON, validateProfileSchema } from '@/utils/schemaValidation';
 
 interface Profile {
   name: string;
@@ -22,6 +24,18 @@ interface Profile {
   phoneNumber: string;
 }
 
+/**
+ * View Profile Screen Component
+ * 
+ * Displays a user's profile (can be current user or another user) with:
+ * - Profile information display
+ * - Request mentorship button (if viewing another user)
+ * - Navigation to edit (if viewing own profile)
+ * - Optimized loading to prevent re-renders
+ * 
+ * @component
+ * @returns {JSX.Element} Profile view screen
+ */
 export default function ViewProfileScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
@@ -59,14 +73,16 @@ export default function ViewProfileScreen() {
       try {
         // If profile is passed directly
         if (profileValue) {
-          try {
-            const parsed = JSON.parse(profileValue);
+          const parsed = safeParseJSON(
+            profileValue,
+            validateProfileSchema,
+            null
+          );
+          if (parsed) {
             setProfile(parsed);
             setLoading(false);
             isLoadingRef.current = false;
             return;
-          } catch (error) {
-            console.error('Error parsing profile:', error);
           }
         }
 
@@ -77,7 +93,14 @@ export default function ViewProfileScreen() {
           // Try to get from allProfiles
           const allProfilesData = await AsyncStorage.getItem('allProfiles');
           if (allProfilesData) {
-            const allProfiles: Profile[] = JSON.parse(allProfilesData);
+            const allProfiles = safeParseJSON<Profile[]>(
+              allProfilesData,
+              (data): data is Profile[] => {
+                if (!Array.isArray(data)) return false;
+                return data.every(p => validateProfileSchema(p));
+              },
+              []
+            ) || [];
             const foundProfile = allProfiles.find((p) => p.email === email);
             if (foundProfile) {
               setProfile(foundProfile);
@@ -91,22 +114,28 @@ export default function ViewProfileScreen() {
           const testProfileKey = `testProfile_${email}`;
           const testProfileData = await AsyncStorage.getItem(testProfileKey);
           if (testProfileData) {
-            const testProfile = JSON.parse(testProfileData);
-            setProfile(testProfile);
-            setLoading(false);
-            isLoadingRef.current = false;
-            return;
+            const testProfile = safeParseJSON(
+              testProfileData,
+              validateProfileSchema,
+              null
+            );
+            if (testProfile) {
+              setProfile(testProfile);
+              setLoading(false);
+              isLoadingRef.current = false;
+              return;
+            }
           }
         }
 
         // If we get here and haven't loaded anything, set loading to false
-        setProfile(null);
-        setLoading(false);
-      } catch (error) {
-        console.error('Error loading profile:', error);
-        setProfile(null);
-        setLoading(false);
-      } finally {
+              setProfile(null);
+              setLoading(false);
+            } catch (error) {
+              logger.error('Error loading profile', error instanceof Error ? error : new Error(String(error)));
+              setProfile(null);
+              setLoading(false);
+            } finally {
         isLoadingRef.current = false;
       }
     };
@@ -145,6 +174,8 @@ export default function ViewProfileScreen() {
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => router.back()}
+            accessibilityLabel="Go back button"
+            accessibilityHint="Tap to go back to previous screen"
           >
             <Text style={styles.backButtonText}>Go Back</Text>
           </TouchableOpacity>
@@ -161,6 +192,8 @@ export default function ViewProfileScreen() {
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => router.back()}
+            accessibilityLabel="Back button"
+            accessibilityHint="Tap to go back to previous screen"
           >
             <Ionicons name="arrow-back" size={24} color="#1e293b" />
           </TouchableOpacity>
@@ -178,7 +211,12 @@ export default function ViewProfileScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Contact Information</Text>
           
-          <TouchableOpacity style={styles.infoCard} onPress={handleEmail}>
+          <TouchableOpacity 
+            style={styles.infoCard} 
+            onPress={handleEmail}
+            accessibilityLabel={`Email ${profile.email}`}
+            accessibilityHint="Tap to open email app to send email"
+          >
             <View style={styles.infoRow}>
               <Ionicons name="mail" size={24} color="#2563eb" />
               <View style={styles.infoContent}>
@@ -189,7 +227,12 @@ export default function ViewProfileScreen() {
             </View>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.infoCard} onPress={handlePhone}>
+          <TouchableOpacity 
+            style={styles.infoCard} 
+            onPress={handlePhone}
+            accessibilityLabel={`Phone ${profile.phoneNumber}`}
+            accessibilityHint="Tap to open phone app to call"
+          >
             <View style={styles.infoRow}>
               <Ionicons name="call" size={24} color="#2563eb" />
               <View style={styles.infoContent}>
@@ -241,6 +284,8 @@ export default function ViewProfileScreen() {
             pathname: '/request/send',
             params: { profile: JSON.stringify(profile) },
           })}
+          accessibilityLabel="Request as mentor button"
+          accessibilityHint={`Tap to send a mentorship request to ${profile.name}`}
         >
           <Ionicons name="person-add" size={20} color="#fff" />
           <Text style={styles.requestButtonText}>Request as Mentor</Text>
