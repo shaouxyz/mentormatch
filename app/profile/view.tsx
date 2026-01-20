@@ -8,6 +8,7 @@ import {
   Linking,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -25,17 +26,59 @@ export default function ViewProfileScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (params.profile) {
-      try {
-        const parsed = JSON.parse(params.profile as string);
-        setProfile(parsed);
-      } catch (error) {
-        console.error('Error parsing profile:', error);
-      }
-    }
+    loadProfile();
   }, [params]);
+
+  const loadProfile = async () => {
+    try {
+      // If profile is passed directly
+      if (params.profile) {
+        try {
+          const parsed = JSON.parse(params.profile as string);
+          setProfile(parsed);
+          setLoading(false);
+          return;
+        } catch (error) {
+          console.error('Error parsing profile:', error);
+        }
+      }
+
+      // If email is passed, load from storage
+      if (params.email) {
+        const email = params.email as string;
+        
+        // Try to get from allProfiles
+        const allProfilesData = await AsyncStorage.getItem('allProfiles');
+        if (allProfilesData) {
+          const allProfiles: Profile[] = JSON.parse(allProfilesData);
+          const foundProfile = allProfiles.find((p) => p.email === email);
+          if (foundProfile) {
+            setProfile(foundProfile);
+            setLoading(false);
+            return;
+          }
+        }
+
+        // Try to get from test profiles
+        const testProfileKey = `testProfile_${email}`;
+        const testProfileData = await AsyncStorage.getItem(testProfileKey);
+        if (testProfileData) {
+          const testProfile = JSON.parse(testProfileData);
+          setProfile(testProfile);
+          setLoading(false);
+          return;
+        }
+      }
+
+      setLoading(false);
+    } catch (error) {
+      console.error('Error loading profile:', error);
+      setLoading(false);
+    }
+  };
 
   const handleEmail = () => {
     if (profile?.email) {
@@ -49,11 +92,29 @@ export default function ViewProfileScreen() {
     }
   };
 
-  if (!profile) {
+  if (loading) {
     return (
       <View style={styles.container}>
         <StatusBar style="auto" />
         <Text style={styles.loadingText}>Loading...</Text>
+      </View>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <View style={styles.container}>
+        <StatusBar style="auto" />
+        <View style={styles.emptyState}>
+          <Ionicons name="person-outline" size={64} color="#cbd5e1" />
+          <Text style={styles.emptyStateText}>Profile not found</Text>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+          >
+            <Text style={styles.backButtonText}>Go Back</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }
@@ -139,6 +200,17 @@ export default function ViewProfileScreen() {
             </View>
           </View>
         </View>
+
+        <TouchableOpacity
+          style={styles.requestButton}
+          onPress={() => router.push({
+            pathname: '/request/send',
+            params: { profile: JSON.stringify(profile) },
+          })}
+        >
+          <Ionicons name="person-add" size={20} color="#fff" />
+          <Text style={styles.requestButtonText}>Request as Mentor</Text>
+        </TouchableOpacity>
       </View>
     </ScrollView>
   );
@@ -233,5 +305,39 @@ const styles = StyleSheet.create({
     color: '#64748b',
     textAlign: 'center',
     marginTop: 48,
+  },
+  requestButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#2563eb',
+    paddingVertical: 16,
+    borderRadius: 12,
+    marginTop: 24,
+    marginBottom: 32,
+    gap: 8,
+  },
+  requestButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 48,
+  },
+  emptyStateText: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#64748b',
+    marginTop: 16,
+    marginBottom: 24,
+  },
+  backButtonText: {
+    color: '#2563eb',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

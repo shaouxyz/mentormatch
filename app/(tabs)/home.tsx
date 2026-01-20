@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
+import { initializeTestAccounts, TEST_ACCOUNTS } from '../../utils/testAccounts';
 
 interface Profile {
   name: string;
@@ -30,28 +31,40 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const hasLoadedRef = useRef(false);
 
   useEffect(() => {
-    loadProfiles();
+    if (!hasLoadedRef.current) {
+      hasLoadedRef.current = true;
+      loadProfiles();
+    }
   }, []);
 
   const loadProfiles = async () => {
     try {
+      // Initialize test accounts once
+      await initializeTestAccounts();
+      
       const profileData = await AsyncStorage.getItem('profile');
       if (profileData) {
         const profile = JSON.parse(profileData);
         setCurrentProfile(profile);
       }
 
+      // Get current user email to exclude from list
+      const userData = await AsyncStorage.getItem('user');
+      const currentUserEmail = userData ? JSON.parse(userData).email : null;
+
       // In a real app, you would fetch from an API
       // For now, we'll create some mock matches based on the current user's profile
       const allProfiles = await AsyncStorage.getItem('allProfiles');
+      let profilesList: Profile[] = [];
+      
       if (allProfiles) {
-        const parsed = JSON.parse(allProfiles);
-        setProfiles(parsed);
+        profilesList = JSON.parse(allProfiles);
       } else {
         // Create some sample profiles for demonstration
-        const sampleProfiles: Profile[] = [
+        profilesList = [
           {
             name: 'Sarah Johnson',
             expertise: 'Software Development',
@@ -80,9 +93,22 @@ export default function HomeScreen() {
             phoneNumber: '+1234567892',
           },
         ];
-        await AsyncStorage.setItem('allProfiles', JSON.stringify(sampleProfiles));
-        setProfiles(sampleProfiles);
+        await AsyncStorage.setItem('allProfiles', JSON.stringify(profilesList));
       }
+
+      // Add test account profiles (excluding current user)
+      const testProfiles: Profile[] = TEST_ACCOUNTS
+        .filter((account) => account.email !== currentUserEmail && account.profile)
+        .map((account) => account.profile!);
+      
+      // Combine and remove duplicates
+      const allProfilesCombined = [...profilesList, ...testProfiles];
+      const uniqueProfiles = allProfilesCombined.filter(
+        (profile, index, self) =>
+          index === self.findIndex((p) => p.email === profile.email)
+      );
+
+      setProfiles(uniqueProfiles);
     } catch (error) {
       console.error('Error loading profiles:', error);
     } finally {

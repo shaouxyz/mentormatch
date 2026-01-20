@@ -10,6 +10,8 @@ export default function RootLayout() {
       <Stack.Screen name="profile/create" />
       <Stack.Screen name="profile/edit" />
       <Stack.Screen name="profile/view" />
+      <Stack.Screen name="request/send" />
+      <Stack.Screen name="request/respond" />
     </Stack>
   );
 }

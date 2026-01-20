@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,12 +12,18 @@ import {
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
+import { initializeTestAccounts, getTestAccount } from '../utils/testAccounts';
 
 export default function LoginScreen() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    // Initialize test accounts silently in background
+    initializeTestAccounts().catch(console.error);
+  }, []);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -28,6 +34,32 @@ export default function LoginScreen() {
     setLoading(true);
 
     try {
+      // First check test accounts
+      const testAccount = await getTestAccount(email);
+      if (testAccount && testAccount.password === password) {
+        // Login as test account
+        const userData = {
+          email: testAccount.email,
+          password: testAccount.password,
+          id: `test-${testAccount.email}`,
+          createdAt: new Date().toISOString(),
+          isTestAccount: true,
+        };
+        
+        await AsyncStorage.setItem('user', JSON.stringify(userData));
+        await AsyncStorage.setItem('isAuthenticated', 'true');
+        
+        // Set test profile if exists
+        if (testAccount.profile) {
+          await AsyncStorage.setItem('profile', JSON.stringify(testAccount.profile));
+        }
+        
+        router.replace('/(tabs)/home');
+        setLoading(false);
+        return;
+      }
+
+      // Check regular user account
       const userData = await AsyncStorage.getItem('user');
       
       if (!userData) {

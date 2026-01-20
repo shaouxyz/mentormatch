@@ -1,26 +1,36 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
+import { initializeTestAccounts } from '../utils/testAccounts';
 
 export default function WelcomeScreen() {
   const router = useRouter();
+  const hasInitialized = useRef(false);
 
   useEffect(() => {
-    checkAuth();
+    if (!hasInitialized.current) {
+      hasInitialized.current = true;
+      initializeTestAccounts().catch(console.error);
+    }
   }, []);
 
-  const checkAuth = async () => {
-    try {
-      const user = await AsyncStorage.getItem('user');
-      if (user) {
-        router.replace('/(tabs)/home');
-      }
-    } catch (error) {
-      console.error('Error checking auth:', error);
-    }
-  };
+  useFocusEffect(
+    useCallback(() => {
+      const checkAuth = async () => {
+        try {
+          const user = await AsyncStorage.getItem('user');
+          if (user) {
+            router.replace('/(tabs)/home');
+          }
+        } catch (error) {
+          console.error('Error checking auth:', error);
+        }
+      };
+      checkAuth();
+    }, [router])
+  );
 
   return (
     <View style={styles.container}>

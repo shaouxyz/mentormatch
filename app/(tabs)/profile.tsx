@@ -22,6 +22,7 @@ interface Profile {
   phoneNumber: string;
 }
 
+
 export default function ProfileScreen() {
   const router = useRouter();
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -44,6 +45,7 @@ export default function ProfileScreen() {
     }
   };
 
+
   const handleLogout = () => {
     Alert.alert(
       'Log Out',
@@ -55,10 +57,15 @@ export default function ProfileScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
+              // Clear all user data
               await AsyncStorage.removeItem('isAuthenticated');
+              await AsyncStorage.removeItem('user');
+              await AsyncStorage.removeItem('profile');
+              // Navigate to welcome screen
               router.replace('/');
             } catch (error) {
               console.error('Logout error:', error);
+              Alert.alert('Error', 'Failed to log out. Please try again.');
             }
           },
         },
@@ -165,6 +172,14 @@ export default function ProfileScreen() {
         </View>
 
         <TouchableOpacity
+          style={styles.requestsButton}
+          onPress={() => router.push('/(tabs)/requests')}
+        >
+          <Ionicons name="mail" size={20} color="#2563eb" />
+          <Text style={styles.requestsButtonText}>View Requests</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
           style={styles.editButton}
           onPress={() => router.push('/profile/edit')}
         >
@@ -259,7 +274,7 @@ const styles = StyleSheet.create({
     color: '#94a3b8',
     marginTop: 2,
   },
-  editButton: {
+  requestsButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -267,6 +282,21 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 12,
     marginTop: 8,
+    gap: 8,
+  },
+  requestsButtonText: {
+    color: '#2563eb',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  editButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#eff6ff',
+    paddingVertical: 16,
+    borderRadius: 12,
+    marginTop: 12,
     gap: 8,
   },
   editButtonText: {
