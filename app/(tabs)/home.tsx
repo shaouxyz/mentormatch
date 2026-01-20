@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   FlatList,
   TouchableOpacity,
   RefreshControl,
+  TextInput,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -28,6 +29,7 @@ export default function HomeScreen() {
   const [currentProfile, setCurrentProfile] = useState<Profile | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     loadProfiles();
@@ -114,6 +116,27 @@ export default function HomeScreen() {
     return score;
   };
 
+  // Filter profiles based on search query
+  const filteredProfiles = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return profiles;
+    }
+
+    const query = searchQuery.toLowerCase().trim();
+    return profiles.filter((profile) => {
+      // Search across all fields
+      return (
+        profile.name.toLowerCase().includes(query) ||
+        profile.expertise.toLowerCase().includes(query) ||
+        profile.interest.toLowerCase().includes(query) ||
+        profile.email.toLowerCase().includes(query) ||
+        profile.phoneNumber.includes(query) ||
+        profile.expertiseYears.toString().includes(query) ||
+        profile.interestYears.toString().includes(query)
+      );
+    });
+  }, [profiles, searchQuery]);
+
   const renderProfile = ({ item }: { item: Profile }) => {
     const matchScore = getMatchScore(item);
     const isGoodMatch = matchScore >= 50;
@@ -199,10 +222,38 @@ export default function HomeScreen() {
         <Text style={styles.headerSubtitle}>
           Discover people who match your interests
         </Text>
+        
+        {/* Search Bar */}
+        <View style={styles.searchContainer}>
+          <Ionicons name="search" size={20} color="#64748b" style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search by name, expertise, interest, email, phone..."
+            placeholderTextColor="#94a3b8"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity
+              onPress={() => setSearchQuery('')}
+              style={styles.clearButton}
+            >
+              <Ionicons name="close-circle" size={20} color="#64748b" />
+            </TouchableOpacity>
+          )}
+        </View>
+        
+        {searchQuery.length > 0 && (
+          <Text style={styles.searchResultsText}>
+            {filteredProfiles.length} {filteredProfiles.length === 1 ? 'result' : 'results'} found
+          </Text>
+        )}
       </View>
 
       <FlatList
-        data={profiles}
+        data={filteredProfiles}
         renderItem={renderProfile}
         keyExtractor={(item, index) => `${item.email}-${index}`}
         contentContainerStyle={styles.list}
@@ -211,11 +262,27 @@ export default function HomeScreen() {
         }
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Ionicons name="people-outline" size={64} color="#cbd5e1" />
-            <Text style={styles.emptyStateText}>No profiles found</Text>
-            <Text style={styles.emptyStateSubtext}>
-              Check back later for new matches
+            <Ionicons 
+              name={searchQuery ? "search-outline" : "people-outline"} 
+              size={64} 
+              color="#cbd5e1" 
+            />
+            <Text style={styles.emptyStateText}>
+              {searchQuery ? 'No profiles match your search' : 'No profiles found'}
             </Text>
+            <Text style={styles.emptyStateSubtext}>
+              {searchQuery 
+                ? 'Try a different search term' 
+                : 'Check back later for new matches'}
+            </Text>
+            {searchQuery && (
+              <TouchableOpacity
+                style={styles.clearSearchButton}
+                onPress={() => setSearchQuery('')}
+              >
+                <Text style={styles.clearSearchButtonText}>Clear Search</Text>
+              </TouchableOpacity>
+            )}
           </View>
         }
       />
@@ -243,6 +310,35 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     fontSize: 16,
     color: '#64748b',
+    marginBottom: 16,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    paddingHorizontal: 12,
+    marginTop: 8,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#1e293b',
+    paddingVertical: 12,
+  },
+  clearButton: {
+    padding: 4,
+  },
+  searchResultsText: {
+    fontSize: 14,
+    color: '#64748b',
+    marginTop: 8,
+    fontStyle: 'italic',
   },
   list: {
     padding: 16,
@@ -355,6 +451,18 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  clearSearchButton: {
+    backgroundColor: '#e2e8f0',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 12,
+    marginTop: 16,
+  },
+  clearSearchButtonText: {
+    color: '#475569',
     fontSize: 16,
     fontWeight: '600',
   },
