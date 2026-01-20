@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -22,29 +22,62 @@ interface Profile {
   phoneNumber: string;
 }
 
-
 export default function ProfileScreen() {
   const router = useRouter();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const hasLoadedRef = useRef(false);
+  const isMountedRef = useRef(true);
 
   useEffect(() => {
-    loadProfile();
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
   }, []);
 
-  const loadProfile = async () => {
-    try {
-      const profileData = await AsyncStorage.getItem('profile');
-      if (profileData) {
-        setProfile(JSON.parse(profileData));
-      }
-    } catch (error) {
-      console.error('Error loading profile:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    // Only load once on initial mount - no dependencies to prevent re-runs
+    if (hasLoadedRef.current) return;
+    hasLoadedRef.current = true;
 
+    const loadProfile = async () => {
+      try {
+        const profileData = await AsyncStorage.getItem('profile');
+        if (!isMountedRef.current) return;
+        
+        if (profileData) {
+          const parsedProfile = JSON.parse(profileData);
+          setProfile(parsedProfile);
+        } else {
+          setProfile(null);
+        }
+      } catch (error) {
+        console.error('Error loading profile:', error);
+        if (isMountedRef.current) {
+          setProfile(null);
+        }
+      } finally {
+        if (isMountedRef.current) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadProfile();
+  }, []); // Empty dependency array - only run once
+
+  const handleNavigateToRequests = useCallback(() => {
+    router.push('/(tabs)/requests');
+  }, []); // router is stable, no need to include in deps
+
+  const handleNavigateToEdit = useCallback(() => {
+    router.push('/profile/edit');
+  }, []); // router is stable, no need to include in deps
+
+  const handleNavigateToCreate = useCallback(() => {
+    router.push('/profile/create');
+  }, []); // router is stable, no need to include in deps
 
   const handleLogout = () => {
     Alert.alert(
@@ -91,7 +124,7 @@ export default function ProfileScreen() {
           <Text style={styles.emptyStateText}>No profile found</Text>
           <TouchableOpacity
             style={styles.button}
-            onPress={() => router.push('/profile/create')}
+            onPress={handleNavigateToCreate}
           >
             <Text style={styles.buttonText}>Create Profile</Text>
           </TouchableOpacity>
@@ -173,7 +206,7 @@ export default function ProfileScreen() {
 
         <TouchableOpacity
           style={styles.requestsButton}
-          onPress={() => router.push('/(tabs)/requests')}
+          onPress={handleNavigateToRequests}
         >
           <Ionicons name="mail" size={20} color="#2563eb" />
           <Text style={styles.requestsButtonText}>View Requests</Text>
@@ -181,7 +214,7 @@ export default function ProfileScreen() {
 
         <TouchableOpacity
           style={styles.editButton}
-          onPress={() => router.push('/profile/edit')}
+          onPress={handleNavigateToEdit}
         >
           <Ionicons name="pencil" size={20} color="#2563eb" />
           <Text style={styles.editButtonText}>Edit Profile</Text>
