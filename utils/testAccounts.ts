@@ -1,5 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { logger } from './logger';
+import { STORAGE_KEYS } from './constants';
+import { safeParseJSON, validateProfileSchema } from './schemaValidation';
 
 export interface TestUser {
   email: string;
@@ -49,7 +51,7 @@ export const TEST_ACCOUNTS: TestUser[] = [
 
 export async function initializeTestAccounts() {
   try {
-    const initialized = await AsyncStorage.getItem('testAccountsInitialized');
+    const initialized = await AsyncStorage.getItem(STORAGE_KEYS.TEST_ACCOUNTS_INITIALIZED);
     if (initialized === 'true') {
       return; // Already initialized
     }
@@ -60,14 +62,35 @@ export async function initializeTestAccounts() {
     // they are created as regular users with hashed passwords.
 
     // Store test profiles only (no passwords)
+    const allProfilesData = await AsyncStorage.getItem(STORAGE_KEYS.ALL_PROFILES);
+    let allProfiles = allProfilesData
+      ? safeParseJSON(
+          allProfilesData,
+          (data): data is TestUser['profile'][] => {
+            if (!Array.isArray(data)) return false;
+            return data.every((profile) => profile && validateProfileSchema(profile));
+          },
+          []
+        ) || []
+      : [];
+
     for (const account of TEST_ACCOUNTS) {
       if (account.profile) {
         const profileKey = `testProfile_${account.email}`;
         await AsyncStorage.setItem(profileKey, JSON.stringify(account.profile));
+
+        // Ensure test profiles appear in discover/allProfiles
+        if (!allProfiles.find((profile) => profile?.email === account.email)) {
+          allProfiles.push(account.profile);
+        }
       }
     }
 
-    await AsyncStorage.setItem('testAccountsInitialized', 'true');
+    if (allProfiles.length > 0) {
+      await AsyncStorage.setItem(STORAGE_KEYS.ALL_PROFILES, JSON.stringify(allProfiles));
+    }
+
+    await AsyncStorage.setItem(STORAGE_KEYS.TEST_ACCOUNTS_INITIALIZED, 'true');
   } catch (error) {
     logger.error('Error initializing test accounts', error instanceof Error ? error : new Error(String(error)));
   }
