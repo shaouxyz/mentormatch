@@ -77,6 +77,7 @@ export default function SendRequestScreen() {
   const hasLoadedRef = useRef(false);
   const isLoadingRef = useRef(false);
   const lastProfileParamRef = useRef<string | null>(null);
+  const lastCurrentUserKeyRef = useRef<string | null>(null);
 
   // Extract stable value from params
   const profileParam = params.profile ? String(params.profile) : undefined;
@@ -86,8 +87,22 @@ export default function SendRequestScreen() {
     if (profileParam && profileParam !== lastProfileParamRef.current) {
       lastProfileParamRef.current = profileParam;
       try {
-        const parsed = JSON.parse(profileParam);
-        setProfile(parsed);
+        const parsed = JSON.parse(profileParam) as Profile;
+        setProfile((prev) => {
+          if (
+            prev &&
+            prev.email === parsed.email &&
+            prev.name === parsed.name &&
+            prev.expertise === parsed.expertise &&
+            prev.interest === parsed.interest &&
+            prev.expertiseYears === parsed.expertiseYears &&
+            prev.interestYears === parsed.interestYears &&
+            prev.phoneNumber === parsed.phoneNumber
+          ) {
+            return prev; // no-op to avoid unnecessary re-renders
+          }
+          return parsed;
+        });
       } catch (error) {
         logger.error('Error parsing profile', error instanceof Error ? error : new Error(String(error)));
       }
@@ -109,7 +124,23 @@ export default function SendRequestScreen() {
         if (userData && profileData) {
           const user: User = JSON.parse(userData);
           const profile: Profile = JSON.parse(profileData);
-          setCurrentUser({ ...user, ...profile });
+          const nextUser: CurrentUser = { ...user, ...profile };
+          const key = `${nextUser.email}|${nextUser.id}|${nextUser.name}|${nextUser.phoneNumber}`;
+          if (lastCurrentUserKeyRef.current !== key) {
+            lastCurrentUserKeyRef.current = key;
+            setCurrentUser((prev) => {
+              if (
+                prev &&
+                prev.email === nextUser.email &&
+                prev.id === nextUser.id &&
+                prev.name === nextUser.name &&
+                prev.phoneNumber === nextUser.phoneNumber
+              ) {
+                return prev; // no-op to avoid render loops if this effect re-fires unexpectedly
+              }
+              return nextUser;
+            });
+          }
         }
       } catch (error) {
         logger.error('Error loading current user', error instanceof Error ? error : new Error(String(error)));
