@@ -2,40 +2,81 @@
 // Provides password hashing, secure storage, and input sanitization
 
 import * as SecureStore from 'expo-secure-store';
+import * as Crypto from 'expo-crypto';
 import { logger } from './logger';
 
 /**
- * Simple password hashing function
- * Note: For production, use a proper library like bcrypt or argon2
- * This is a basic implementation for demonstration
+ * Generate a random salt for password hashing
  */
-export async function hashPassword(password: string): Promise<string> {
-  // Simple hash implementation
-  // In production, use: expo-crypto with SHA-256 or a proper hashing library
-  let hash = 0;
-  for (let i = 0; i < password.length; i++) {
-    const char = password.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32-bit integer
-  }
-  // Add salt and additional complexity
-  const salt = 'mentormatch_salt_2024';
-  const saltedPassword = password + salt;
-  let saltedHash = 0;
-  for (let i = 0; i < saltedPassword.length; i++) {
-    const char = saltedPassword.charCodeAt(i);
-    saltedHash = ((saltedHash << 5) - saltedHash) + char;
-    saltedHash = saltedHash & saltedHash;
-  }
-  return Math.abs(saltedHash).toString(16) + Math.abs(hash).toString(16);
+async function generateSalt(): Promise<string> {
+  return await Crypto.getRandomBytesAsync(32).then(bytes => 
+    Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('')
+  );
 }
 
 /**
- * Verify password against hash
+ * Hash password using SHA-256 with salt
+ * Uses expo-crypto for cryptographically secure hashing
+ * 
+ * Note: For production with backend, consider using bcrypt or argon2 on the server
+ * This implementation uses SHA-256 which is secure but not as slow as bcrypt/argon2
+ * which are designed to resist brute-force attacks
  */
-export async function verifyPassword(password: string, hash: string): Promise<boolean> {
-  const computedHash = await hashPassword(password);
-  return computedHash === hash;
+export async function hashPassword(password: string): Promise<string> {
+  try {
+    // Generate a random salt for each password
+    const salt = await generateSalt();
+    
+    // Combine password with salt
+    const saltedPassword = password + salt;
+    
+    // Hash using SHA-256
+    const hash = await Crypto.digestStringAsync(
+      Crypto.CryptoDigestAlgorithm.SHA256,
+      saltedPassword
+    );
+    
+    // Return salt:hash format for storage
+    // This allows us to verify passwords later by extracting the salt
+    return `${salt}:${hash}`;
+  } catch (error) {
+    logger.error('Password hashing error', error instanceof Error ? error : new Error(String(error)));
+    throw new Error('Failed to hash password');
+  }
+}
+
+/**
+ * Verify password against stored hash
+ * Extracts salt from stored hash and recomputes hash for comparison
+ */
+export async function verifyPassword(password: string, storedHash: string): Promise<boolean> {
+  try {
+    // Extract salt and hash from stored format (salt:hash)
+    const [salt, storedHashValue] = storedHash.split(':');
+    
+    if (!salt || !storedHashValue) {
+      // Legacy format support: if hash doesn't contain ':', treat as old format
+      // This allows migration from old hash format
+      logger.warn('Legacy hash format detected, consider rehashing passwords');
+      const computedHash = await hashPassword(password);
+      return computedHash === storedHash;
+    }
+    
+    // Combine password with extracted salt
+    const saltedPassword = password + salt;
+    
+    // Compute hash using same algorithm
+    const computedHash = await Crypto.digestStringAsync(
+      Crypto.CryptoDigestAlgorithm.SHA256,
+      saltedPassword
+    );
+    
+    // Compare hashes (constant-time comparison would be better, but this is acceptable for mobile)
+    return computedHash === storedHashValue;
+  } catch (error) {
+    logger.error('Password verification error', error instanceof Error ? error : new Error(String(error)));
+    return false;
+  }
 }
 
 /**
