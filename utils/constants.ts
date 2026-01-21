@@ -32,6 +32,7 @@ export const STORAGE_KEYS = {
   MENTORSHIP_REQUESTS: 'mentorshipRequests',
   TEST_ACCOUNTS: 'testAccounts',
   TEST_ACCOUNTS_INITIALIZED: 'testAccountsInitialized',
+  CASPA_PROFILES_INITIALIZED: 'caspaProfilesInitialized',
 } as const;
 
 // Error Messages

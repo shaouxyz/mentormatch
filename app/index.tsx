@@ -4,6 +4,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
 import { initializeTestAccounts } from '@/utils/testAccounts';
+import { initializeCaspaProfiles } from '@/utils/caspaProfiles';
 import { logger } from '@/utils/logger';
 import { initializeDataMigration } from '@/utils/dataMigration';
 import { refreshSession, isSessionValid } from '@/utils/sessionManager';
@@ -15,6 +16,7 @@ import { refreshSession, isSessionValid } from '@/utils/sessionManager';
  * - Initial authentication check
  * - Data migration initialization
  * - Test account initialization
+ * - CASPA member profiles initialization
  * - Navigation to home if user is already authenticated
  * 
  * @component
@@ -34,6 +36,10 @@ export default function WelcomeScreen() {
           // Then initialize test accounts
           initializeTestAccounts().catch((error) => {
             logger.error('Failed to initialize test accounts', error instanceof Error ? error : new Error(String(error)));
+          });
+          // Initialize CASPA profiles
+          initializeCaspaProfiles().catch((error) => {
+            logger.error('Failed to initialize CASPA profiles', error instanceof Error ? error : new Error(String(error)));
           });
         }
   }, []);
