@@ -213,6 +213,11 @@ export default function SendRequestScreen() {
       return;
     }
 
+    if (currentUser.email === profile.email) {
+      Alert.alert('Invalid Request', 'You cannot send a mentorship request to yourself.');
+      return;
+    }
+
     // Check if request already exists
     try {
       const existingRequests = await AsyncStorage.getItem('mentorshipRequests');
