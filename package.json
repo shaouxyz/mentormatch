@@ -17,7 +17,7 @@
     "analyze:bundle": "npx expo export --dump-sourcemap && npx source-map-explorer .expo/web-build/static/js/*.js --html bundle-report.html"
   },
   "engines": {
-    "node": ">=20 <23",
+    "node": ">=20 <25",
     "npm": ">=10 <12"
   },
   "dependencies": {
