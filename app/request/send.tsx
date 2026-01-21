@@ -17,9 +17,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { MAX_NOTE_LENGTH } from '@/utils/constants';
 import { logger } from '@/utils/logger';
 import { ErrorHandler } from '@/utils/errorHandler';
-import { validateMentorshipRequestSchema } from '@/utils/schemaValidation';
 import { sanitizeString } from '@/utils/security';
-import { safeParseJSON } from '@/utils/schemaValidation';
+import { safeParseJSON, validateMentorshipRequestSchema } from '@/utils/schemaValidation';
 
 interface Profile {
   name: string;
@@ -87,7 +86,28 @@ export default function SendRequestScreen() {
     if (profileParam && profileParam !== lastProfileParamRef.current) {
       lastProfileParamRef.current = profileParam;
       try {
-        const parsed = JSON.parse(profileParam) as Profile;
+        const parsed = safeParseJSON<Profile>(
+          profileParam,
+          (data): data is Profile => {
+            if (typeof data !== 'object' || data === null) return false;
+            const p = data as Record<string, unknown>;
+            return (
+              typeof p.name === 'string' &&
+              typeof p.email === 'string' &&
+              typeof p.expertise === 'string' &&
+              typeof p.interest === 'string' &&
+              typeof p.expertiseYears === 'number' &&
+              typeof p.interestYears === 'number' &&
+              typeof p.phoneNumber === 'string'
+            );
+          },
+          null
+        );
+
+        if (!parsed) {
+          ErrorHandler.handleError(new Error('Invalid profile data'), 'Failed to load mentor profile.');
+          return;
+        }
         setProfile((prev) => {
           if (
             prev &&
@@ -114,6 +134,8 @@ export default function SendRequestScreen() {
     if (hasLoadedRef.current) return;
     hasLoadedRef.current = true;
 
+    let cancelled = false;
+
     const loadCurrentUser = async () => {
       if (isLoadingRef.current) return;
       isLoadingRef.current = true;
@@ -122,12 +144,41 @@ export default function SendRequestScreen() {
         const userData = await AsyncStorage.getItem('user');
         const profileData = await AsyncStorage.getItem('profile');
         if (userData && profileData) {
-          const user: User = JSON.parse(userData);
-          const profile: Profile = JSON.parse(profileData);
+          const user = safeParseJSON<User>(
+            userData,
+            (data): data is User => {
+              if (typeof data !== 'object' || data === null) return false;
+              const u = data as Record<string, unknown>;
+              return typeof u.email === 'string' && typeof u.id === 'string';
+            },
+            null
+          );
+          const profile = safeParseJSON<Profile>(
+            profileData,
+            (data): data is Profile => {
+              if (typeof data !== 'object' || data === null) return false;
+              const p = data as Record<string, unknown>;
+              return (
+                typeof p.name === 'string' &&
+                typeof p.email === 'string' &&
+                typeof p.expertise === 'string' &&
+                typeof p.interest === 'string' &&
+                typeof p.expertiseYears === 'number' &&
+                typeof p.interestYears === 'number' &&
+                typeof p.phoneNumber === 'string'
+              );
+            },
+            null
+          );
+
+          if (!user || !profile) {
+            return;
+          }
           const nextUser: CurrentUser = { ...user, ...profile };
           const key = `${nextUser.email}|${nextUser.id}|${nextUser.name}|${nextUser.phoneNumber}`;
           if (lastCurrentUserKeyRef.current !== key) {
             lastCurrentUserKeyRef.current = key;
+            if (cancelled) return;
             setCurrentUser((prev) => {
               if (
                 prev &&
@@ -150,6 +201,10 @@ export default function SendRequestScreen() {
     };
 
     loadCurrentUser();
+
+    return () => {
+      cancelled = true;
+    };
   }, []); // Empty array - only run once on mount
 
   const handleSendRequest = async () => {
@@ -161,22 +216,32 @@ export default function SendRequestScreen() {
     // Check if request already exists
     try {
       const existingRequests = await AsyncStorage.getItem('mentorshipRequests');
-      if (existingRequests) {
-        const requests: MentorshipRequest[] = JSON.parse(existingRequests);
-        const existing = requests.find(
-          (r) =>
-            r.requesterEmail === currentUser.email &&
-            r.mentorEmail === profile.email &&
-            r.status === 'pending'
-        );
-        if (existing) {
-          Alert.alert('Request Already Sent', 'You have already sent a request to this person.');
-          return;
-          }
-        }
-      } catch (error) {
-        logger.warn('Error checking existing requests', { error: error instanceof Error ? error.message : String(error) });
+      const requests: MentorshipRequest[] = existingRequests
+        ? safeParseJSON<MentorshipRequest[]>(
+            existingRequests,
+            (data): data is MentorshipRequest[] => {
+              if (!Array.isArray(data)) return false;
+              return data.every((req) => validateMentorshipRequestSchema(req));
+            },
+            []
+          ) || []
+        : [];
+
+      const existing = requests.find(
+        (r) =>
+          r.requesterEmail === currentUser.email &&
+          r.mentorEmail === profile.email &&
+          r.status === 'pending'
+      );
+      if (existing) {
+        Alert.alert('Request Already Sent', 'You have already sent a request to this person.');
+        return;
       }
+    } catch (error) {
+      logger.warn('Error checking existing requests', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
 
     setLoading(true);
 
@@ -198,30 +263,30 @@ export default function SendRequestScreen() {
             existingRequests,
             (data): data is MentorshipRequest[] => {
               if (!Array.isArray(data)) return false;
-              return data.every(req => validateMentorshipRequestSchema(req));
+              return data.every((req) => validateMentorshipRequestSchema(req));
             },
             []
           ) || []
         : [];
 
-            // Validate before storing
-            if (!validateMentorshipRequestSchema(request)) {
-              ErrorHandler.handleError(new Error('Invalid request data'), 'Request data validation failed');
-              return;
-            }
+      // Validate before storing
+      if (!validateMentorshipRequestSchema(request)) {
+        ErrorHandler.handleError(new Error('Invalid request data'), 'Request data validation failed');
+        return;
+      }
 
-            requests.push(request);
-            await AsyncStorage.setItem('mentorshipRequests', JSON.stringify(requests));
+      requests.push(request);
+      await AsyncStorage.setItem('mentorshipRequests', JSON.stringify(requests));
 
-            Alert.alert('Request Sent', 'Your mentorship request has been sent successfully!', [
-              {
-                text: 'OK',
-                onPress: () => router.back(),
-              },
-            ]);
-          } catch (error) {
-            ErrorHandler.handleStorageError(error, 'send request');
-          } finally {
+      Alert.alert('Request Sent', 'Your mentorship request has been sent successfully!', [
+        {
+          text: 'OK',
+          onPress: () => router.back(),
+        },
+      ]);
+    } catch (error) {
+      ErrorHandler.handleStorageError(error, 'send request');
+    } finally {
       setLoading(false);
     }
   };

@@ -61,8 +61,30 @@ export default function RespondRequestScreen() {
     if (requestParam && requestParam !== lastRequestParamRef.current) {
       lastRequestParamRef.current = requestParam;
       try {
-        const parsed = JSON.parse(requestParam);
-        setRequest(parsed);
+        const parsed = safeParseJSON<MentorshipRequest>(
+          requestParam,
+          (data): data is MentorshipRequest => validateMentorshipRequestSchema(data),
+          null
+        );
+
+        if (!parsed) {
+          ErrorHandler.handleError(new Error('Invalid request data'), 'Failed to load request.');
+          return;
+        }
+
+        setRequest((prev) => {
+          if (
+            prev &&
+            prev.id === parsed.id &&
+            prev.status === parsed.status &&
+            prev.responseNote === parsed.responseNote &&
+            prev.respondedAt === parsed.respondedAt &&
+            prev.note === parsed.note
+          ) {
+            return prev;
+          }
+          return parsed;
+        });
       } catch (error) {
         logger.error('Error parsing request', error instanceof Error ? error : new Error(String(error)));
       }
@@ -76,34 +98,35 @@ export default function RespondRequestScreen() {
 
     try {
       const requestsData = await AsyncStorage.getItem('mentorshipRequests');
-      if (requestsData) {
-        const requests = safeParseJSON<MentorshipRequest[]>(
-          requestsData,
-          (data): data is MentorshipRequest[] => {
-            if (!Array.isArray(data)) return false;
-            return data.every(req => validateMentorshipRequestSchema(req));
-          },
-          []
-        );
-        
-        if (!requests) {
-          ErrorHandler.handleError(new Error('Invalid requests data'), 'Failed to load requests');
-          return;
-        }
-        const requestIndex = requests.findIndex((r) => r.id === request.id);
+      const requests = requestsData
+        ? safeParseJSON<MentorshipRequest[]>(
+            requestsData,
+            (data): data is MentorshipRequest[] => {
+              if (!Array.isArray(data)) return false;
+              return data.every((req) => validateMentorshipRequestSchema(req));
+            },
+            []
+          ) || []
+        : [];
 
-        if (requestIndex !== -1) {
-          requests[requestIndex].status = status;
-          requests[requestIndex].responseNote = sanitizeString(responseNote.trim());
-          requests[requestIndex].respondedAt = new Date().toISOString();
+      const requestIndex = requests.findIndex((r) => r.id === request.id);
+      if (requestIndex === -1) {
+        ErrorHandler.handleError(new Error('Request not found'), 'Request no longer exists.');
+        return;
+      }
 
-          await AsyncStorage.setItem('mentorshipRequests', JSON.stringify(requests));
-                router.back();
-              }
-            }
-          } catch (error) {
-            ErrorHandler.handleStorageError(error, 'respond to request');
-          } finally {
+      requests[requestIndex] = {
+        ...requests[requestIndex],
+        status,
+        responseNote: sanitizeString(responseNote.trim()),
+        respondedAt: new Date().toISOString(),
+      };
+
+      await AsyncStorage.setItem('mentorshipRequests', JSON.stringify(requests));
+      router.back();
+    } catch (error) {
+      ErrorHandler.handleStorageError(error, 'respond to request');
+    } finally {
       setLoading(false);
     }
   };
