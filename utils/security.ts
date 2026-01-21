@@ -2,16 +2,15 @@
 // Provides password hashing, secure storage, and input sanitization
 
 import * as SecureStore from 'expo-secure-store';
-import * as Crypto from 'expo-crypto';
+import { getRandomBytesAsync, digestStringAsync, CryptoDigestAlgorithm } from 'expo-crypto';
 import { logger } from './logger';
 
 /**
  * Generate a random salt for password hashing
  */
 async function generateSalt(): Promise<string> {
-  return await Crypto.getRandomBytesAsync(32).then(bytes => 
-    Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('')
-  );
+  const bytes = await getRandomBytesAsync(32);
+  return Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
 /**
@@ -31,8 +30,8 @@ export async function hashPassword(password: string): Promise<string> {
     const saltedPassword = password + salt;
     
     // Hash using SHA-256
-    const hash = await Crypto.digestStringAsync(
-      Crypto.CryptoDigestAlgorithm.SHA256,
+    const hash = await digestStringAsync(
+      CryptoDigestAlgorithm.SHA256,
       saltedPassword
     );
     
@@ -66,8 +65,8 @@ export async function verifyPassword(password: string, storedHash: string): Prom
     const saltedPassword = password + salt;
     
     // Compute hash using same algorithm
-    const computedHash = await Crypto.digestStringAsync(
-      Crypto.CryptoDigestAlgorithm.SHA256,
+    const computedHash = await digestStringAsync(
+      CryptoDigestAlgorithm.SHA256,
       saltedPassword
     );
     
