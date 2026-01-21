@@ -19,7 +19,7 @@ A cross-platform mobile application built with React Native and Expo for matchin
 
 ### Prerequisites
 
-- Node.js (v18 or later)
+- Node.js (**Node 20 LTS recommended**; **do not use Node 25.x**)
 - npm or yarn
 - Expo CLI (install globally: `npm install -g expo-cli`)
 - Expo Go app on your mobile device (available on App Store and Google Play)
@@ -34,6 +34,12 @@ npm install
 2. Start the development server:
 ```bash
 npm start
+```
+
+If you see a port conflict on 8081, run:
+
+```bash
+npm run start:clear:8082
 ```
 
 3. Run on your device:

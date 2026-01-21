@@ -5,6 +5,9 @@
   "scripts": {
     "start": "expo start",
     "start:clear": "expo start --clear",
+    "start:8081": "expo start --port 8081",
+    "start:8082": "expo start --port 8082",
+    "start:clear:8082": "expo start --clear --port 8082",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
@@ -12,6 +15,10 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "analyze:bundle": "npx expo export --dump-sourcemap && npx source-map-explorer .expo/web-build/static/js/*.js --html bundle-report.html"
+  },
+  "engines": {
+    "node": ">=20 <23",
+    "npm": ">=10 <12"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
