@@ -96,6 +96,19 @@ export async function authenticateUser(email: string, password: string): Promise
     return null;
   }
 
+  // If the stored hash is legacy format, upgrade it after successful login
+  if (!user.passwordHash.includes(':')) {
+    try {
+      await updateUserPassword(email, password);
+      logger.info('Upgraded legacy password hash', { email });
+    } catch (error) {
+      logger.warn('Failed to upgrade legacy password hash', {
+        email,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
   return user;
 }
 

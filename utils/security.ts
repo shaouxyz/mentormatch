@@ -14,6 +14,33 @@ async function generateSalt(): Promise<string> {
 }
 
 /**
+ * Legacy (v1) password hashing function.
+ * 
+ * This reproduces the pre-`expo-crypto` hash used by the app so older users can still log in.
+ * Format: `<saltedHashHex><hashHex>` (no ":" separator).
+ */
+export async function legacyHashPasswordV1(password: string): Promise<string> {
+  // NOTE: this mirrors the original implementation exactly (including the constant salt).
+  let hash = 0;
+  for (let i = 0; i < password.length; i++) {
+    const char = password.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+
+  const salt = 'mentormatch_salt_2024';
+  const saltedPassword = password + salt;
+  let saltedHash = 0;
+  for (let i = 0; i < saltedPassword.length; i++) {
+    const char = saltedPassword.charCodeAt(i);
+    saltedHash = ((saltedHash << 5) - saltedHash) + char;
+    saltedHash = saltedHash & saltedHash;
+  }
+
+  return Math.abs(saltedHash).toString(16) + Math.abs(hash).toString(16);
+}
+
+/**
  * Hash password using SHA-256 with salt
  * Uses expo-crypto for cryptographically secure hashing
  * 
@@ -54,11 +81,9 @@ export async function verifyPassword(password: string, storedHash: string): Prom
     const [salt, storedHashValue] = storedHash.split(':');
     
     if (!salt || !storedHashValue) {
-      // Legacy format support: if hash doesn't contain ':', treat as old format
-      // This allows migration from old hash format
-      logger.warn('Legacy hash format detected, consider rehashing passwords');
-      const computedHash = await hashPassword(password);
-      return computedHash === storedHash;
+      // Legacy format support (v1): no ":" separator
+      const legacy = await legacyHashPasswordV1(password);
+      return legacy === storedHash;
     }
     
     // Combine password with extracted salt
