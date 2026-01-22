@@ -124,9 +124,14 @@ describe('SignupScreen', () => {
       expect(mockRouter.replace).toHaveBeenCalledWith('/profile/create');
     });
 
-    const userData = await AsyncStorage.getItem('user');
-    expect(userData).toBeTruthy();
-    const user = JSON.parse(userData || '{}');
+    // User is now stored in users array
+    const usersData = await AsyncStorage.getItem('users');
+    expect(usersData).toBeTruthy();
+    const users = JSON.parse(usersData || '[]');
+    expect(users.length).toBeGreaterThan(0);
+    
+    const user = users.find((u: any) => u.email === 'test@example.com');
+    expect(user).toBeDefined();
     expect(user.email).toBe('test@example.com');
     // Password is now hashed, not stored in plain text
     expect(user.passwordHash).toBeDefined();

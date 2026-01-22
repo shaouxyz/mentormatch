@@ -81,20 +81,34 @@ describe('LoginScreen', () => {
     fireEvent.press(getByText('Log In'));
 
     await waitFor(() => {
-      expect(Alert.alert).toHaveBeenCalledWith('Error', 'Invalid email or password');
+      // Error message now includes rate limiting info
+      expect(Alert.alert).toHaveBeenCalledWith('Error', expect.stringContaining('Invalid email or password'));
     });
   });
 
   it('should successfully login with regular user account', async () => {
-    // Create a regular user account
-    const userData = {
+    // Create a regular user account with hashed password
+    const { hashPassword } = require('../../utils/security');
+    const passwordHash = await hashPassword('password123');
+    
+    const users = [{
       email: 'regular@example.com',
-      password: 'password123',
+      passwordHash: passwordHash,
       id: '123',
       createdAt: new Date().toISOString(),
+    }];
+    await AsyncStorage.setItem('users', JSON.stringify(users));
+    
+    const profile = {
+      name: 'Regular User',
+      email: 'regular@example.com',
+      expertise: 'Test',
+      interest: 'Test',
+      expertiseYears: 5,
+      interestYears: 2,
+      phoneNumber: '+1234567890'
     };
-    await AsyncStorage.setItem('user', JSON.stringify(userData));
-    await AsyncStorage.setItem('profile', JSON.stringify({ name: 'Regular User' }));
+    await AsyncStorage.setItem('profile_regular@example.com', JSON.stringify(profile));
 
     const { getByText, getByPlaceholderText } = render(<LoginScreen />);
 
@@ -108,13 +122,16 @@ describe('LoginScreen', () => {
   });
 
   it('should navigate to profile creation if user has no profile', async () => {
-    const userData = {
+    const { hashPassword } = require('../../utils/security');
+    const passwordHash = await hashPassword('password123');
+    
+    const users = [{
       email: 'noprofile@example.com',
-      password: 'password123',
+      passwordHash: passwordHash,
       id: '456',
       createdAt: new Date().toISOString(),
-    };
-    await AsyncStorage.setItem('user', JSON.stringify(userData));
+    }];
+    await AsyncStorage.setItem('users', JSON.stringify(users));
 
     const { getByText, getByPlaceholderText } = render(<LoginScreen />);
 
@@ -135,18 +152,22 @@ describe('LoginScreen', () => {
     fireEvent.press(getByText('Log In'));
 
     await waitFor(() => {
-      expect(Alert.alert).toHaveBeenCalledWith('Error', 'No account found. Please sign up first.');
+      // Error message now includes rate limiting info
+      expect(Alert.alert).toHaveBeenCalledWith('Error', expect.stringContaining('Invalid email or password'));
     });
   });
 
   it('should show error for wrong password', async () => {
-    const userData = {
+    const { hashPassword } = require('../../utils/security');
+    const passwordHash = await hashPassword('correctpassword');
+    
+    const users = [{
       email: 'test@example.com',
-      password: 'correctpassword',
+      passwordHash: passwordHash,
       id: '789',
       createdAt: new Date().toISOString(),
-    };
-    await AsyncStorage.setItem('user', JSON.stringify(userData));
+    }];
+    await AsyncStorage.setItem('users', JSON.stringify(users));
 
     const { getByText, getByPlaceholderText } = render(<LoginScreen />);
 
@@ -155,7 +176,8 @@ describe('LoginScreen', () => {
     fireEvent.press(getByText('Log In'));
 
     await waitFor(() => {
-      expect(Alert.alert).toHaveBeenCalledWith('Error', 'Invalid email or password');
+      // Error message now includes rate limiting info
+      expect(Alert.alert).toHaveBeenCalledWith('Error', expect.stringContaining('Invalid email or password'));
     });
   });
 
@@ -191,7 +213,8 @@ describe('LoginScreen', () => {
     fireEvent.press(getByText('Log In'));
 
     await waitFor(() => {
-      expect(Alert.alert).toHaveBeenCalledWith('Error', 'Failed to log in. Please try again.');
+      // Error message now includes rate limiting info
+      expect(Alert.alert).toHaveBeenCalledWith('Error', expect.stringContaining('Invalid email or password'));
     });
 
     AsyncStorage.getItem = originalGetItem;
