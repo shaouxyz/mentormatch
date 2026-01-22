@@ -17,8 +17,8 @@
     "analyze:bundle": "npx expo export --dump-sourcemap && npx source-map-explorer .expo/web-build/static/js/*.js --html bundle-report.html"
   },
   "engines": {
-    "node": ">=20 <25",
-    "npm": ">=10 <12"
+    "node": ">=20 <=26",
+    "npm": ">=10 <=12"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
