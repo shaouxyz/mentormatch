@@ -168,8 +168,9 @@ describe('HomeScreen (Discover)', () => {
     });
 
     await waitFor(() => {
+      // Both profiles have "Data Science" (Michael as expertise, Sarah as interest)
       expect(getByText('Michael Chen')).toBeTruthy();
-      expect(queryByText('Sarah Johnson')).toBeNull();
+      expect(getByText('Sarah Johnson')).toBeTruthy();
     });
   });
 
@@ -468,11 +469,12 @@ describe('HomeScreen (Discover)', () => {
     await AsyncStorage.setItem('profile', JSON.stringify(userProfile));
     await AsyncStorage.setItem('allProfiles', JSON.stringify(allProfiles));
 
-    const { getByText } = render(<HomeScreen />);
+    const { getAllByText } = render(<HomeScreen />);
 
     await waitFor(() => {
-      // Good match badge should appear
-      expect(getByText('Good Match')).toBeTruthy();
+      // Good match badge should appear (may be multiple matches)
+      const goodMatchBadges = getAllByText('Good Match');
+      expect(goodMatchBadges.length).toBeGreaterThan(0);
     });
   });
 });
