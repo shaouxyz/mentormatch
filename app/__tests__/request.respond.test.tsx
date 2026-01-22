@@ -2,13 +2,16 @@ import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import RespondRequestScreen from '../request/respond';
-import { useRouter } from 'expo-router';
+import * as expoRouter from 'expo-router';
 
 // Mock useLocalSearchParams
 const mockParams = { request: '' };
 
+// Mock useLocalSearchParams to return our mockParams
+jest.spyOn(expoRouter, 'useLocalSearchParams').mockImplementation(() => mockParams);
+
 // Get mock router (from global mock in jest.setup.js)
-const mockRouter = useRouter();
+const mockRouter = expoRouter.useRouter();
 
 describe('RespondRequestScreen', () => {
   const mockRequest = {
@@ -20,6 +23,13 @@ describe('RespondRequestScreen', () => {
     note: 'I would like to learn from you',
     status: 'pending' as const,
     createdAt: new Date().toISOString(),
+  };
+
+  // Helper to wait for screen to be fully loaded
+  const waitForScreenReady = async (getByText: any) => {
+    await waitFor(() => {
+      expect(getByText('Respond to Request')).toBeTruthy();
+    }, { timeout: 3000 });
   };
 
   beforeEach(async () => {
