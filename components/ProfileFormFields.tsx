@@ -82,7 +82,7 @@ export const ProfileFormFields: React.FC<ProfileFormFieldsProps> = React.memo(({
         <Text style={styles.label}>Years of Experience in Expertise *</Text>
         <TextInput
           style={styles.input}
-          placeholder="Enter number of years"
+          placeholder="Enter years of expertise experience"
           value={profile.expertiseYears}
           onChangeText={(text) => {
             const sanitized = sanitizeNumber(text);
@@ -119,7 +119,7 @@ export const ProfileFormFields: React.FC<ProfileFormFieldsProps> = React.memo(({
         <Text style={styles.label}>Years of Experience in Interest *</Text>
         <TextInput
           style={styles.input}
-          placeholder="Enter number of years"
+          placeholder="Enter years of interest experience"
           value={profile.interestYears}
           onChangeText={(text) => {
             const sanitized = sanitizeNumber(text);

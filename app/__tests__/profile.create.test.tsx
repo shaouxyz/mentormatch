@@ -25,8 +25,9 @@ describe('CreateProfileScreen', () => {
     expect(getByText('Tell us about yourself')).toBeTruthy();
     expect(getByPlaceholderText('Enter your full name')).toBeTruthy();
     expect(getByPlaceholderText('e.g., Software Development, Marketing, Design')).toBeTruthy();
-    expect(getByPlaceholderText('Enter number of years')).toBeTruthy();
+    expect(getByPlaceholderText('Enter years of expertise experience')).toBeTruthy();
     expect(getByPlaceholderText('e.g., Data Science, Business Strategy, Photography')).toBeTruthy();
+    expect(getByPlaceholderText('Enter years of interest experience')).toBeTruthy();
     expect(getByPlaceholderText('Enter your email')).toBeTruthy();
     expect(getByPlaceholderText('Enter your phone number')).toBeTruthy();
     expect(getByText('Save Profile')).toBeTruthy();
@@ -37,10 +38,9 @@ describe('CreateProfileScreen', () => {
 
     // Fill all fields except name
     fireEvent.changeText(getByPlaceholderText('e.g., Software Development, Marketing, Design'), 'Software Development');
-    const yearsInputs = getAllByPlaceholderText('Enter number of years');
-    fireEvent.changeText(yearsInputs[0], '5');
+    fireEvent.changeText(getByPlaceholderText('Enter years of expertise experience'), '5');
     fireEvent.changeText(getByPlaceholderText('e.g., Data Science, Business Strategy, Photography'), 'Data Science');
-    fireEvent.changeText(yearsInputs[1], '2');
+    fireEvent.changeText(getByPlaceholderText('Enter years of interest experience'), '2');
     fireEvent.changeText(getByPlaceholderText('Enter your email'), 'test@example.com');
     fireEvent.changeText(getByPlaceholderText('Enter your phone number'), '+1234567890');
     fireEvent.press(getByText('Save Profile'));
@@ -55,10 +55,9 @@ describe('CreateProfileScreen', () => {
 
     fireEvent.changeText(getByPlaceholderText('Enter your full name'), 'John Doe');
     // Skip expertise
-    const yearsInputs = getAllByPlaceholderText('Enter number of years');
-    fireEvent.changeText(yearsInputs[0], '5');
+    fireEvent.changeText(getByPlaceholderText('Enter years of expertise experience'), '5');
     fireEvent.changeText(getByPlaceholderText('e.g., Data Science, Business Strategy, Photography'), 'Data Science');
-    fireEvent.changeText(yearsInputs[1], '2');
+    fireEvent.changeText(getByPlaceholderText('Enter years of interest experience'), '2');
     fireEvent.changeText(getByPlaceholderText('Enter your email'), 'test@example.com');
     fireEvent.changeText(getByPlaceholderText('Enter your phone number'), '+1234567890');
     fireEvent.press(getByText('Save Profile'));
@@ -91,8 +90,7 @@ describe('CreateProfileScreen', () => {
 
     fireEvent.changeText(getByPlaceholderText('Enter your full name'), 'John Doe');
     fireEvent.changeText(getByPlaceholderText('e.g., Software Development, Marketing, Design'), 'Software Development');
-    const yearsInputs = getAllByPlaceholderText('Enter number of years');
-    fireEvent.changeText(yearsInputs[0], 'abc'); // Invalid
+    fireEvent.changeText(getByPlaceholderText('Enter years of expertise experience'), 'abc'); // Invalid
     fireEvent.changeText(getByPlaceholderText('e.g., Data Science, Business Strategy, Photography'), 'Data Science');
     fireEvent.changeText(yearsInputs[1], '2');
     fireEvent.changeText(getByPlaceholderText('Enter your email'), 'test@example.com');
@@ -104,15 +102,14 @@ describe('CreateProfileScreen', () => {
     });
   });
 
-  it('should show error when expertise years is negative', async () => {
-    const { getByText, getByPlaceholderText, getAllByPlaceholderText } = render(<CreateProfileScreen />);
+  it('should show error when expertise years is empty', async () => {
+    const { getByText, getByPlaceholderText } = render(<CreateProfileScreen />);
 
     fireEvent.changeText(getByPlaceholderText('Enter your full name'), 'John Doe');
     fireEvent.changeText(getByPlaceholderText('e.g., Software Development, Marketing, Design'), 'Software Development');
-    const yearsInputs = getAllByPlaceholderText('Enter number of years');
-    fireEvent.changeText(yearsInputs[0], '-1'); // Negative
+    fireEvent.changeText(getByPlaceholderText('Enter years of expertise experience'), ''); // Empty
     fireEvent.changeText(getByPlaceholderText('e.g., Data Science, Business Strategy, Photography'), 'Data Science');
-    fireEvent.changeText(yearsInputs[1], '2');
+    fireEvent.changeText(getByPlaceholderText('Enter years of interest experience'), '2');
     fireEvent.changeText(getByPlaceholderText('Enter your email'), 'test@example.com');
     fireEvent.changeText(getByPlaceholderText('Enter your phone number'), '+1234567890');
     fireEvent.press(getByText('Save Profile'));
@@ -145,10 +142,9 @@ describe('CreateProfileScreen', () => {
 
     fireEvent.changeText(getByPlaceholderText('Enter your full name'), 'John Doe');
     fireEvent.changeText(getByPlaceholderText('e.g., Software Development, Marketing, Design'), 'Software Development');
-    const yearsInputs = getAllByPlaceholderText('Enter number of years');
-    fireEvent.changeText(yearsInputs[0], '5');
+    fireEvent.changeText(getByPlaceholderText('Enter years of expertise experience'), '5');
     fireEvent.changeText(getByPlaceholderText('e.g., Data Science, Business Strategy, Photography'), 'Data Science');
-    fireEvent.changeText(yearsInputs[1], '2');
+    fireEvent.changeText(getByPlaceholderText('Enter years of interest experience'), '2');
     // Skip email
     fireEvent.changeText(getByPlaceholderText('Enter your phone number'), '+1234567890');
     fireEvent.press(getByText('Save Profile'));
@@ -163,10 +159,9 @@ describe('CreateProfileScreen', () => {
 
     fireEvent.changeText(getByPlaceholderText('Enter your full name'), 'John Doe');
     fireEvent.changeText(getByPlaceholderText('e.g., Software Development, Marketing, Design'), 'Software Development');
-    const yearsInputs = getAllByPlaceholderText('Enter number of years');
-    fireEvent.changeText(yearsInputs[0], '5');
+    fireEvent.changeText(getByPlaceholderText('Enter years of expertise experience'), '5');
     fireEvent.changeText(getByPlaceholderText('e.g., Data Science, Business Strategy, Photography'), 'Data Science');
-    fireEvent.changeText(yearsInputs[1], '2');
+    fireEvent.changeText(getByPlaceholderText('Enter years of interest experience'), '2');
     fireEvent.changeText(getByPlaceholderText('Enter your email'), 'test@example.com');
     // Skip phone
     fireEvent.press(getByText('Save Profile'));
@@ -177,16 +172,15 @@ describe('CreateProfileScreen', () => {
   });
 
   it('should show error when phone number format is invalid', async () => {
-    const { getByText, getByPlaceholderText, getAllByPlaceholderText } = render(<CreateProfileScreen />);
+    const { getByText, getByPlaceholderText } = render(<CreateProfileScreen />);
 
     fireEvent.changeText(getByPlaceholderText('Enter your full name'), 'John Doe');
     fireEvent.changeText(getByPlaceholderText('e.g., Software Development, Marketing, Design'), 'Software Development');
-    const yearsInputs = getAllByPlaceholderText('Enter number of years');
-    fireEvent.changeText(yearsInputs[0], '5');
+    fireEvent.changeText(getByPlaceholderText('Enter years of expertise experience'), '5');
     fireEvent.changeText(getByPlaceholderText('e.g., Data Science, Business Strategy, Photography'), 'Data Science');
-    fireEvent.changeText(yearsInputs[1], '2');
+    fireEvent.changeText(getByPlaceholderText('Enter years of interest experience'), '2');
     fireEvent.changeText(getByPlaceholderText('Enter your email'), 'test@example.com');
-    fireEvent.changeText(getByPlaceholderText('Enter your phone number'), 'abc123!@#'); // Invalid format
+    fireEvent.changeText(getByPlaceholderText('Enter your phone number'), '123'); // Too short
     fireEvent.press(getByText('Save Profile'));
 
     await waitFor(() => {
@@ -242,10 +236,9 @@ describe('CreateProfileScreen', () => {
 
     fireEvent.changeText(getByPlaceholderText('Enter your full name'), 'New User');
     fireEvent.changeText(getByPlaceholderText('e.g., Software Development, Marketing, Design'), 'New Field');
-    const yearsInputs = getAllByPlaceholderText('Enter number of years');
-    fireEvent.changeText(yearsInputs[0], '0');
+    fireEvent.changeText(getByPlaceholderText('Enter years of expertise experience'), '0');
     fireEvent.changeText(getByPlaceholderText('e.g., Data Science, Business Strategy, Photography'), 'Learning');
-    fireEvent.changeText(yearsInputs[1], '0');
+    fireEvent.changeText(getByPlaceholderText('Enter years of interest experience'), '0');
     fireEvent.changeText(getByPlaceholderText('Enter your email'), 'new@example.com');
     fireEvent.changeText(getByPlaceholderText('Enter your phone number'), '+1234567890');
     fireEvent.press(getByText('Save Profile'));
@@ -261,14 +254,13 @@ describe('CreateProfileScreen', () => {
   });
 
   it('should handle special characters in name', async () => {
-    const { getByText, getByPlaceholderText, getAllByPlaceholderText } = render(<CreateProfileScreen />);
+    const { getByText, getByPlaceholderText } = render(<CreateProfileScreen />);
 
     fireEvent.changeText(getByPlaceholderText('Enter your full name'), "John O'Brien-Smith");
     fireEvent.changeText(getByPlaceholderText('e.g., Software Development, Marketing, Design'), 'Software Development');
-    const yearsInputs = getAllByPlaceholderText('Enter number of years');
-    fireEvent.changeText(yearsInputs[0], '5');
+    fireEvent.changeText(getByPlaceholderText('Enter years of expertise experience'), '5');
     fireEvent.changeText(getByPlaceholderText('e.g., Data Science, Business Strategy, Photography'), 'Data Science');
-    fireEvent.changeText(yearsInputs[1], '2');
+    fireEvent.changeText(getByPlaceholderText('Enter years of interest experience'), '2');
     fireEvent.changeText(getByPlaceholderText('Enter your email'), 'john@example.com');
     fireEvent.changeText(getByPlaceholderText('Enter your phone number'), '+1234567890');
     fireEvent.press(getByText('Save Profile'));
@@ -288,10 +280,9 @@ describe('CreateProfileScreen', () => {
 
     fireEvent.changeText(getByPlaceholderText('Enter your full name'), 'John Doe');
     fireEvent.changeText(getByPlaceholderText('e.g., Software Development, Marketing, Design'), longText);
-    const yearsInputs = getAllByPlaceholderText('Enter number of years');
-    fireEvent.changeText(yearsInputs[0], '5');
+    fireEvent.changeText(getByPlaceholderText('Enter years of expertise experience'), '5');
     fireEvent.changeText(getByPlaceholderText('e.g., Data Science, Business Strategy, Photography'), 'Data Science');
-    fireEvent.changeText(yearsInputs[1], '2');
+    fireEvent.changeText(getByPlaceholderText('Enter years of interest experience'), '2');
     fireEvent.changeText(getByPlaceholderText('Enter your email'), 'john@example.com');
     fireEvent.changeText(getByPlaceholderText('Enter your phone number'), '+1234567890');
     fireEvent.press(getByText('Save Profile'));
@@ -313,10 +304,9 @@ describe('CreateProfileScreen', () => {
 
     fireEvent.changeText(getByPlaceholderText('Enter your full name'), 'John Doe');
     fireEvent.changeText(getByPlaceholderText('e.g., Software Development, Marketing, Design'), 'Software Development');
-    const yearsInputs = getAllByPlaceholderText('Enter number of years');
-    fireEvent.changeText(yearsInputs[0], '5');
+    fireEvent.changeText(getByPlaceholderText('Enter years of expertise experience'), '5');
     fireEvent.changeText(getByPlaceholderText('e.g., Data Science, Business Strategy, Photography'), 'Data Science');
-    fireEvent.changeText(yearsInputs[1], '2');
+    fireEvent.changeText(getByPlaceholderText('Enter years of interest experience'), '2');
     fireEvent.changeText(getByPlaceholderText('Enter your email'), 'john@example.com');
     fireEvent.changeText(getByPlaceholderText('Enter your phone number'), '+1234567890');
     fireEvent.press(getByText('Save Profile'));
