@@ -1,6 +1,6 @@
 # Privacy Policy for MentorMatch
 
-**Last Updated**: [DATE]
+**Last Updated**: [01/21/2026]
 
 ## Introduction
 
@@ -106,12 +106,12 @@ You can access and update your profile information at any time through the app's
 
 ### Delete Your Account
 To delete your account and all associated data:
-1. Contact us at [YOUR_EMAIL]
+1. Contact us at shaouxyz@gmail.com
 2. We will delete your account within 30 days
 3. Some information may be retained for legal compliance
 
 ### Data Portability
-You can request a copy of your data by contacting us at [YOUR_EMAIL].
+You can request a copy of your data by contacting us at shaouxyz@hotmail.com.
 
 ### Opt-Out
 You can opt out of:
@@ -169,9 +169,9 @@ Your continued use of the app after changes constitutes acceptance of the update
 
 If you have questions or concerns about this privacy policy, please contact us:
 
-**Email**: [YOUR_EMAIL]
-**Address**: [YOUR_ADDRESS]
-**Phone**: [YOUR_PHONE]
+**Email**: shaouxyz@hotmail.com
+**Address**: 6405 myrtlewood dr, cupertino, CA 95014, USA
+**Phone**: +1 669 238 1016
 
 ---
 
@@ -190,7 +190,7 @@ If you are a California resident, you have additional rights under the Californi
 - **Right to Opt-Out**: Opt out of the sale of personal information (we do not sell your information)
 - **Right to Non-Discrimination**: We will not discriminate against you for exercising your rights
 
-To exercise these rights, contact us at [YOUR_EMAIL].
+To exercise these rights, contact us at shaouxyz@gmail.com.
 
 ---
 
@@ -206,7 +206,7 @@ If you are in the European Union, you have additional rights under the General D
 - **Right to Object**: Object to processing of your personal data
 - **Right to Withdraw Consent**: Withdraw consent at any time
 
-To exercise these rights, contact us at [YOUR_EMAIL].
+To exercise these rights, contact us at shaouxyz@gmail.com.
 
 **Legal Basis for Processing**:
 - **Consent**: You have given consent for specific purposes
@@ -214,7 +214,7 @@ To exercise these rights, contact us at [YOUR_EMAIL].
 - **Legal Obligation**: Processing is required by law
 - **Legitimate Interests**: Processing is necessary for our legitimate interests
 
-**Data Protection Officer**: [DPO_EMAIL] (if applicable)
+**Data Protection Officer**: shaouxyz@gmail.com (if applicable)
 
 ---
 
@@ -225,34 +225,3 @@ MentorMatch does not use cookies in the mobile app. However, if we add a web ver
 ---
 
 **END OF PRIVACY POLICY**
-
----
-
-## Instructions for Using This Template
-
-1. **Replace Placeholders**:
-   - `[DATE]`: Today's date
-   - `[YOUR_EMAIL]`: Your support email (e.g., support@mentormatch.com)
-   - `[YOUR_ADDRESS]`: Your business address
-   - `[YOUR_PHONE]`: Your contact phone number
-   - `[DPO_EMAIL]`: Data Protection Officer email (if you have one)
-
-2. **Review and Customize**:
-   - Add any additional data collection specific to your implementation
-   - Update third-party services if you add more integrations
-   - Adjust retention periods based on your legal requirements
-
-3. **Legal Review** (Recommended):
-   - Have a lawyer review this policy
-   - Ensure compliance with local laws
-   - Update regularly as laws change
-
-4. **Publish**:
-   - Host on a website (required for app stores)
-   - Link from app settings
-   - Include in app store listings
-
-5. **Keep Updated**:
-   - Review annually
-   - Update when adding new features
-   - Notify users of material changes
