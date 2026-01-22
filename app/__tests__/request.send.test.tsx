@@ -3,15 +3,18 @@ import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import SendRequestScreen from '../request/send';
-import { useRouter } from 'expo-router';
+import * as expoRouter from 'expo-router';
 
 // Mock useLocalSearchParams
 const mockParams = { profile: '' };
 
 jest.spyOn(Alert, 'alert');
 
+// Mock useLocalSearchParams to return our mockParams
+jest.spyOn(expoRouter, 'useLocalSearchParams').mockImplementation(() => mockParams);
+
 // Get mock router (from global mock in jest.setup.js)
-const mockRouter = useRouter();
+const mockRouter = expoRouter.useRouter();
 
 describe('SendRequestScreen', () => {
   const mockProfile = {
