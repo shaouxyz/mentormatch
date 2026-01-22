@@ -322,7 +322,12 @@ describe('CreateProfileScreen', () => {
     fireEvent.press(getByText('Save Profile'));
 
     await waitFor(() => {
-      expect(Alert.alert).toHaveBeenCalledWith('Error', 'Failed to save profile. Please try again.');
+      // Alert.alert is called with title, message, and options (buttons)
+      expect(Alert.alert).toHaveBeenCalledWith(
+        expect.stringMatching(/Error|Storage Error/),
+        'Failed to save profile. Please try again.',
+        expect.any(Array)
+      );
     });
 
     AsyncStorage.setItem = originalSetItem;

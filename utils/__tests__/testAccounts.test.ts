@@ -21,9 +21,9 @@ describe('testAccounts', () => {
     });
 
     it('should have t0 account with correct structure', () => {
-      const t0 = TEST_ACCOUNTS.find((acc) => acc.email === 't0');
+      const t0 = TEST_ACCOUNTS.find((acc) => acc.email === 't0@example.com');
       expect(t0).toBeDefined();
-      expect(t0?.email).toBe('t0');
+      expect(t0?.email).toBe('t0@example.com');
       expect(t0?.password).toBe('123');
       expect(t0?.name).toBe('Test User 0');
       expect(t0?.profile).toBeDefined();
@@ -34,9 +34,9 @@ describe('testAccounts', () => {
     });
 
     it('should have t1 account with correct structure', () => {
-      const t1 = TEST_ACCOUNTS.find((acc) => acc.email === 't1');
+      const t1 = TEST_ACCOUNTS.find((acc) => acc.email === 't1@example.com');
       expect(t1).toBeDefined();
-      expect(t1?.email).toBe('t1');
+      expect(t1?.email).toBe('t1@example.com');
       expect(t1?.password).toBe('123');
       expect(t1?.name).toBe('Test User 1');
       expect(t1?.profile).toBeDefined();
@@ -54,25 +54,30 @@ describe('testAccounts', () => {
       const initialized = await AsyncStorage.getItem('testAccountsInitialized');
       expect(initialized).toBe('true');
 
-      const testAccountsData = await AsyncStorage.getItem('testAccounts');
-      expect(testAccountsData).toBeTruthy();
+      // Test profiles should be stored in allProfiles
+      const allProfilesData = await AsyncStorage.getItem('allProfiles');
+      expect(allProfilesData).toBeTruthy();
 
-      const accounts = JSON.parse(testAccountsData || '[]');
-      expect(accounts).toHaveLength(2);
-      expect(accounts[0].email).toBe('t0');
-      expect(accounts[1].email).toBe('t1');
+      const profiles = JSON.parse(allProfilesData || '[]');
+      // Should have at least the 2 test profiles
+      expect(profiles.length).toBeGreaterThanOrEqual(2);
+      
+      const t0Profile = profiles.find((p: any) => p.email === 't0@example.com');
+      const t1Profile = profiles.find((p: any) => p.email === 't1@example.com');
+      expect(t0Profile).toBeDefined();
+      expect(t1Profile).toBeDefined();
     });
 
     it('should store test profiles correctly', async () => {
       await initializeTestAccounts();
 
-      const t0Profile = await AsyncStorage.getItem('testProfile_t0');
+      const t0Profile = await AsyncStorage.getItem('testProfile_t0@example.com');
       expect(t0Profile).toBeTruthy();
       const parsedT0 = JSON.parse(t0Profile || '{}');
       expect(parsedT0.name).toBe('Test User 0');
       expect(parsedT0.expertise).toBe('Software Development');
 
-      const t1Profile = await AsyncStorage.getItem('testProfile_t1');
+      const t1Profile = await AsyncStorage.getItem('testProfile_t1@example.com');
       expect(t1Profile).toBeTruthy();
       const parsedT1 = JSON.parse(t1Profile || '{}');
       expect(parsedT1.name).toBe('Test User 1');
@@ -81,14 +86,24 @@ describe('testAccounts', () => {
 
     it('should not re-initialize if already initialized', async () => {
       await AsyncStorage.setItem('testAccountsInitialized', 'true');
-      await AsyncStorage.setItem('testAccounts', JSON.stringify([{ email: 'existing' }]));
+      const existingProfiles = [{ 
+        email: 'existing@example.com', 
+        name: 'Existing User',
+        expertise: 'Test',
+        interest: 'Test',
+        expertiseYears: 1,
+        interestYears: 1,
+        phoneNumber: '+1234567890'
+      }];
+      await AsyncStorage.setItem('allProfiles', JSON.stringify(existingProfiles));
 
       await initializeTestAccounts();
 
-      const accounts = await AsyncStorage.getItem('testAccounts');
-      const parsed = JSON.parse(accounts || '[]');
-      // Should not have overwritten
-      expect(parsed[0].email).toBe('existing');
+      const profiles = await AsyncStorage.getItem('allProfiles');
+      const parsed = JSON.parse(profiles || '[]');
+      // Should still have the existing profile
+      const existingProfile = parsed.find((p: any) => p.email === 'existing@example.com');
+      expect(existingProfile).toBeDefined();
     });
 
     it('should handle errors gracefully', async () => {
@@ -103,19 +118,26 @@ describe('testAccounts', () => {
       AsyncStorage.getItem = originalGetItem;
     });
 
-    it('should create test account data with correct structure', async () => {
+    it('should create test profile data with correct structure', async () => {
       await initializeTestAccounts();
 
-      const testAccountsData = await AsyncStorage.getItem('testAccounts');
-      const accounts = JSON.parse(testAccountsData || '[]');
+      const allProfilesData = await AsyncStorage.getItem('allProfiles');
+      const profiles = JSON.parse(allProfilesData || '[]');
 
-      accounts.forEach((account: any) => {
-        expect(account).toHaveProperty('email');
-        expect(account).toHaveProperty('password');
-        expect(account).toHaveProperty('id');
-        expect(account).toHaveProperty('createdAt');
-        expect(account).toHaveProperty('isTestAccount', true);
-        expect(account.id).toMatch(/^test-/);
+      const testProfiles = profiles.filter((p: any) => 
+        p.email === 't0@example.com' || p.email === 't1@example.com'
+      );
+
+      expect(testProfiles.length).toBeGreaterThanOrEqual(2);
+
+      testProfiles.forEach((profile: any) => {
+        expect(profile).toHaveProperty('email');
+        expect(profile).toHaveProperty('name');
+        expect(profile).toHaveProperty('expertise');
+        expect(profile).toHaveProperty('interest');
+        expect(profile).toHaveProperty('expertiseYears');
+        expect(profile).toHaveProperty('interestYears');
+        expect(profile).toHaveProperty('phoneNumber');
       });
     });
   });
@@ -128,7 +150,7 @@ describe('testAccounts', () => {
     it('should return test account for t0', async () => {
       const account = await getTestAccount('t0');
       expect(account).toBeDefined();
-      expect(account?.email).toBe('t0');
+      expect(account?.email).toBe('t0@example.com');
       expect(account?.password).toBe('123');
       expect(account?.profile).toBeDefined();
     });
@@ -136,7 +158,7 @@ describe('testAccounts', () => {
     it('should return test account for t1', async () => {
       const account = await getTestAccount('t1');
       expect(account).toBeDefined();
-      expect(account?.email).toBe('t1');
+      expect(account?.email).toBe('t1@example.com');
       expect(account?.password).toBe('123');
     });
 
@@ -145,40 +167,48 @@ describe('testAccounts', () => {
       expect(account).toBeNull();
     });
 
-    it('should return null if testAccounts not initialized', async () => {
-      await AsyncStorage.removeItem('testAccounts');
+    it('should return test account even without AsyncStorage (in-memory)', async () => {
+      // Test accounts are now in-memory, so they should always be available
+      await AsyncStorage.clear();
       const account = await getTestAccount('t0');
-      expect(account).toBeNull();
+      expect(account).toBeDefined();
+      expect(account?.email).toBe('t0@example.com');
     });
 
     it('should handle errors gracefully', async () => {
+      // Since test accounts are now in-memory, they should still be available
+      // even if AsyncStorage fails
       const originalGetItem = AsyncStorage.getItem;
       AsyncStorage.getItem = jest.fn(() => {
         throw new Error('Storage error');
       });
 
       const account = await getTestAccount('t0');
-      expect(account).toBeNull();
+      // Should still return the in-memory test account
+      expect(account).toBeDefined();
+      expect(account?.email).toBe('t0@example.com');
 
       AsyncStorage.getItem = originalGetItem;
     });
 
-    it('should return null if account not in testAccounts but exists in TEST_ACCOUNTS', async () => {
-      // Set testAccounts with different account to test lookup
-      await AsyncStorage.setItem('testAccounts', JSON.stringify([{ email: 'other@test.com' }]));
+    it('should support both short form (t0) and full email (t0@example.com)', async () => {
+      // Test with short form
+      const accountShort = await getTestAccount('t0');
+      expect(accountShort).toBeDefined();
+      expect(accountShort?.email).toBe('t0@example.com');
       
-      // Even though t0 exists in TEST_ACCOUNTS, it's not in AsyncStorage testAccounts
-      const account = await getTestAccount('t0');
-      expect(account).toBeNull();
+      // Test with full email
+      const accountFull = await getTestAccount('t0@example.com');
+      expect(accountFull).toBeDefined();
+      expect(accountFull?.email).toBe('t0@example.com');
     });
 
-    it('should return full account data when found in both AsyncStorage and TEST_ACCOUNTS', async () => {
-      // Ensure testAccounts has t0
+    it('should return full account data with profile', async () => {
       await initializeTestAccounts();
       
       const account = await getTestAccount('t0');
       expect(account).toBeDefined();
-      expect(account?.email).toBe('t0');
+      expect(account?.email).toBe('t0@example.com');
       expect(account?.password).toBe('123');
       expect(account?.name).toBe('Test User 0');
       expect(account?.profile).toBeDefined();

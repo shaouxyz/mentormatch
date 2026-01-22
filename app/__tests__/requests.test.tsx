@@ -2,10 +2,10 @@ import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import RequestsScreen from '../(tabs)/requests';
-import * as expoRouter from 'expo-router';
+import { useRouter } from 'expo-router';
 
-// Get mock router from expo-router mock
-const mockRouter = expoRouter.useRouter();
+// Get mock router (from global mock in jest.setup.js)
+const mockRouter = useRouter();
 
 describe('RequestsScreen', () => {
   const mockUser = {

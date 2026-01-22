@@ -2,17 +2,11 @@ import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import HomeScreen from '../(tabs)/home';
-import * as expoRouter from 'expo-router';
+import { useRouter } from 'expo-router';
 import { initializeTestAccounts } from '../../utils/testAccounts';
 
-// Get mock router from expo-router mock
-const mockRouter = expoRouter.useRouter();
-
-// Mock useLocalSearchParams
-jest.mock('expo-router', () => ({
-  ...jest.requireActual('expo-router'),
-  useLocalSearchParams: jest.fn(() => ({})),
-}));
+// Get mock router (from global mock in jest.setup.js)
+const mockRouter = useRouter();
 
 describe('HomeScreen (Discover)', () => {
   beforeEach(async () => {

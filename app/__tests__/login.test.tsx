@@ -53,7 +53,8 @@ describe('LoginScreen', () => {
     const userData = await AsyncStorage.getItem('user');
     expect(userData).toBeTruthy();
     const user = JSON.parse(userData || '{}');
-    expect(user.email).toBe('t0');
+    // Email is normalized to t0@example.com
+    expect(user.email).toBe('t0@example.com');
     expect(user.isTestAccount).toBe(true);
 
     const profile = await AsyncStorage.getItem('profile');

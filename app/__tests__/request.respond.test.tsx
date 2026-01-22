@@ -2,17 +2,13 @@ import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import RespondRequestScreen from '../request/respond';
-import * as expoRouter from 'expo-router';
-
-// Get mock router from expo-router mock
-const mockRouter = expoRouter.useRouter();
+import { useRouter } from 'expo-router';
 
 // Mock useLocalSearchParams
 const mockParams = { request: '' };
-jest.mock('expo-router', () => ({
-  ...jest.requireActual('expo-router'),
-  useLocalSearchParams: jest.fn(() => mockParams),
-}));
+
+// Get mock router (from global mock in jest.setup.js)
+const mockRouter = useRouter();
 
 describe('RespondRequestScreen', () => {
   const mockRequest = {

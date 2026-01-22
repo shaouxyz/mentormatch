@@ -128,7 +128,9 @@ describe('SignupScreen', () => {
     expect(userData).toBeTruthy();
     const user = JSON.parse(userData || '{}');
     expect(user.email).toBe('test@example.com');
-    expect(user.password).toBe('password123');
+    // Password is now hashed, not stored in plain text
+    expect(user.passwordHash).toBeDefined();
+    expect(user.passwordHash).not.toBe('password123');
 
     const isAuthenticated = await AsyncStorage.getItem('isAuthenticated');
     expect(isAuthenticated).toBe('true');
@@ -161,7 +163,12 @@ describe('SignupScreen', () => {
     fireEvent.press(getByText('Sign Up'));
 
     await waitFor(() => {
-      expect(Alert.alert).toHaveBeenCalledWith('Error', 'Failed to create account. Please try again.');
+      // Alert.alert is called with title, message, and options (buttons)
+      expect(Alert.alert).toHaveBeenCalledWith(
+        'Error',
+        'Failed to create account. Please try again.',
+        expect.any(Array)
+      );
     });
 
     AsyncStorage.setItem = originalSetItem;
