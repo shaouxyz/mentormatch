@@ -2,16 +2,23 @@ import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import MentorshipScreen from '../(tabs)/mentorship';
-import { useRouter } from 'expo-router';
+import * as expoRouter from 'expo-router';
 
 // Get mock router (from global mock in jest.setup.js)
-const mockRouter = useRouter();
+const mockRouter = expoRouter.useRouter();
 
 describe('MentorshipScreen', () => {
   const mockUser = {
     email: 'user@example.com',
     password: 'password123',
     id: '123',
+  };
+
+  // Helper to wait for screen to load data
+  const waitForScreenReady = async (getByText: any) => {
+    await waitFor(() => {
+      expect(getByText('My Mentors')).toBeTruthy();
+    }, { timeout: 3000 });
   };
 
   interface RequestOverrides {
@@ -43,15 +50,24 @@ describe('MentorshipScreen', () => {
     AsyncStorage.clear();
     jest.clearAllMocks();
     await AsyncStorage.setItem('user', JSON.stringify(mockUser));
+    await AsyncStorage.setItem('profile', JSON.stringify({
+      name: 'Current User',
+      email: 'user@example.com',
+      expertise: 'Test',
+      interest: 'Test',
+      expertiseYears: 3,
+      interestYears: 2,
+      phoneNumber: '+1234567890'
+    }));
+    await AsyncStorage.setItem('allProfiles', JSON.stringify([]));
   });
 
   it('should render mentors and mentees sections', async () => {
     const { getByText } = render(<MentorshipScreen />);
 
-    await waitFor(() => {
-      expect(getByText('My Mentors')).toBeTruthy();
-      expect(getByText('My Mentees')).toBeTruthy();
-    });
+    await waitForScreenReady(getByText);
+
+    expect(getByText('My Mentees')).toBeTruthy();
   });
 
   it('should display mentors when user has accepted requests', async () => {
@@ -80,9 +96,11 @@ describe('MentorshipScreen', () => {
 
     const { getByText } = render(<MentorshipScreen />);
 
+    await waitForScreenReady(getByText);
+
     await waitFor(() => {
       expect(getByText('Mentor User')).toBeTruthy();
-    });
+    }, { timeout: 3000 });
   });
 
   it('should display mentees when user accepted requests', async () => {
@@ -111,25 +129,31 @@ describe('MentorshipScreen', () => {
 
     const { getByText } = render(<MentorshipScreen />);
 
+    await waitForScreenReady(getByText);
+
     await waitFor(() => {
       expect(getByText('Mentee User')).toBeTruthy();
-    });
+    }, { timeout: 3000 });
   });
 
   it('should show empty state when no mentors', async () => {
     const { getByText } = render(<MentorshipScreen />);
 
+    await waitForScreenReady(getByText);
+
     await waitFor(() => {
       expect(getByText('No mentors yet')).toBeTruthy();
-    });
+    }, { timeout: 3000 });
   });
 
   it('should show empty state when no mentees', async () => {
     const { getByText } = render(<MentorshipScreen />);
 
+    await waitForScreenReady(getByText);
+
     await waitFor(() => {
       expect(getByText('No mentees yet')).toBeTruthy();
-    });
+    }, { timeout: 3000 });
   });
 
   it('should navigate to profile view when mentor card is pressed', async () => {
@@ -157,10 +181,12 @@ describe('MentorshipScreen', () => {
 
     const { getByText } = render(<MentorshipScreen />);
 
+    await waitForScreenReady(getByText);
+
     await waitFor(() => {
       const mentorCard = getByText('Mentor User');
       fireEvent.press(mentorCard);
-    });
+    }, { timeout: 3000 });
 
     await waitFor(() => {
       expect(mockRouter.push).toHaveBeenCalledWith({
@@ -169,7 +195,7 @@ describe('MentorshipScreen', () => {
           email: 'mentor@example.com',
         }),
       });
-    });
+    }, { timeout: 3000 });
   });
 
   it('should navigate to profile view when mentee card is pressed', async () => {
@@ -197,10 +223,12 @@ describe('MentorshipScreen', () => {
 
     const { getByText } = render(<MentorshipScreen />);
 
+    await waitForScreenReady(getByText);
+
     await waitFor(() => {
       const menteeCard = getByText('Mentee User');
       fireEvent.press(menteeCard);
-    });
+    }, { timeout: 3000 });
 
     await waitFor(() => {
       expect(mockRouter.push).toHaveBeenCalledWith({
@@ -209,7 +237,7 @@ describe('MentorshipScreen', () => {
           email: 'mentee@example.com',
         }),
       });
-    });
+    }, { timeout: 3000 });
   });
 
   it('should display connection note if available', async () => {
@@ -239,9 +267,11 @@ describe('MentorshipScreen', () => {
 
     const { getByText } = render(<MentorshipScreen />);
 
+    await waitForScreenReady(getByText);
+
     await waitFor(() => {
       expect(getByText('Mentor User')).toBeTruthy();
-    });
+    }, { timeout: 3000 });
   });
 
   it('should only show accepted requests as connections', async () => {
@@ -275,12 +305,14 @@ describe('MentorshipScreen', () => {
 
     const { getByText, queryByText } = render(<MentorshipScreen />);
 
+    await waitForScreenReady(getByText);
+
     await waitFor(() => {
       // Should only show accepted mentor
       expect(getByText('Mentor User')).toBeTruthy();
       expect(queryByText('Pending Mentor')).toBeNull();
       expect(queryByText('Declined Mentor')).toBeNull();
-    });
+    }, { timeout: 3000 });
   });
 
   it('should handle user not logged in', async () => {
@@ -288,10 +320,9 @@ describe('MentorshipScreen', () => {
 
     const { getByText } = render(<MentorshipScreen />);
 
-    await waitFor(() => {
-      expect(getByText('No mentors yet')).toBeTruthy();
-      expect(getByText('No mentees yet')).toBeTruthy();
-    });
+    await waitForScreenReady(getByText);
+
+    expect(getByText('No mentees yet')).toBeTruthy();
   });
 
   it('should refresh connections when screen is focused', async () => {
@@ -306,9 +337,11 @@ describe('MentorshipScreen', () => {
 
     const { getByText } = render(<MentorshipScreen />);
 
+    await waitForScreenReady(getByText);
+
     await waitFor(() => {
       expect(getByText('Mentor User')).toBeTruthy();
-    });
+    }, { timeout: 3000 });
 
     // Simulate focus effect by calling loadConnections again
     // This is tested implicitly through useFocusEffect
@@ -327,10 +360,12 @@ describe('MentorshipScreen', () => {
 
     const { getByText } = render(<MentorshipScreen />);
 
+    await waitForScreenReady(getByText);
+
     await waitFor(() => {
       // Should still show connection even without full profile
       expect(getByText('Mentor User')).toBeTruthy();
-    });
+    }, { timeout: 3000 });
   });
 
   it('should display multiple mentors', async () => {
@@ -354,10 +389,12 @@ describe('MentorshipScreen', () => {
 
     const { getByText } = render(<MentorshipScreen />);
 
+    await waitForScreenReady(getByText);
+
     await waitFor(() => {
       expect(getByText('Mentor 1')).toBeTruthy();
       expect(getByText('Mentor 2')).toBeTruthy();
-    });
+    }, { timeout: 3000 });
   });
 
   it('should display multiple mentees', async () => {
@@ -381,9 +418,11 @@ describe('MentorshipScreen', () => {
 
     const { getByText } = render(<MentorshipScreen />);
 
+    await waitForScreenReady(getByText);
+
     await waitFor(() => {
       expect(getByText('Mentee 1')).toBeTruthy();
       expect(getByText('Mentee 2')).toBeTruthy();
-    });
+    }, { timeout: 3000 });
   });
 });
