@@ -1,0 +1,2299 @@
+﻿
+> cmn@0.1.0 test
+> jest
+
+node.exe : PASS utils/__tests__/testAccounts.test.ts
+所在位置 C:\Users\Chunlin Wang\Miniconda3\npm.ps1:16 字符: 5
++     & "$basedir/node$exe"  "$basedir/node_modules/npm/bin/npm-cli.js" ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (PASS utils/__te...ccounts.test.ts:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+FAIL app/__tests__/mentorship.test.tsx
+  鈼?MentorshipScreen 鈥?should render mentors and mentees sections
+
+    TypeError: loadConnections is not a function
+
+      59 |   useFocusEffect(
+      60 |     useCallback(() => {
+    > 61 |       loadConnections();
+         |       ^
+      62 |     }, [])
+      63 |   );
+      64 |
+
+      at loadConnections (C:\Proj\cmn\app\(tabs)../../mentorship.tsx:61:7)
+      at callback (jest.setup.js:19:9)
+      at MentorshipScreen (C:\Proj\cmn\app\(tabs)../../mentorship.tsx:59:17)
+      at Object.react_stack_bottom_frame 
+(node_modules/react-test-renderer/cjs/react-test-renderer.development.js:15670:20)
+      at renderWithHooks (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:4863:22)
+      at updateFunctionComponent (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:7018:19)
+      at beginWork (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:8499:18)
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2315:13)
+      at performUnitOfWork (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13224:22)
+      at workLoopSync (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13068:41)
+      at renderRootSync (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13049:11)
+      at performWorkOnRoot (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:12253:39)
+      at performWorkOnRootViaSchedulerTask 
+(node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2908:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:566:34)
+      at Object.<anonymous>.process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:859:10)
+      at actImplementation (node_modules/@testing-library/react-native/src/act.ts:30:25)
+      at renderWithAct (node_modules/@testing-library/react-native/src/render-act.ts:12:11)
+      at renderInternal (node_modules/@testing-library/react-native/src/render.tsx:81:33)
+      at renderInternal (node_modules/@testing-library/react-native/src/render.tsx:44:10)
+      at Object.<anonymous> (app/__tests__/mentorship.test.tsx:49:33)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at Object.<anonymous> (node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+
+  鈼?MentorshipScreen 鈥?should display mentors when user has accepted requests
+
+    TypeError: loadConnections is not a function
+
+      59 |   useFocusEffect(
+      60 |     useCallback(() => {
+    > 61 |       loadConnections();
+         |       ^
+      62 |     }, [])
+      63 |   );
+      64 |
+
+      at loadConnections (C:\Proj\cmn\app\(tabs)../../mentorship.tsx:61:7)
+      at callback (jest.setup.js:19:9)
+      at MentorshipScreen (C:\Proj\cmn\app\(tabs)../../mentorship.tsx:59:17)
+      at Object.react_stack_bottom_frame 
+(node_modules/react-test-renderer/cjs/react-test-renderer.development.js:15670:20)
+      at renderWithHooks (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:4863:22)
+      at updateFunctionComponent (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:7018:19)
+      at beginWork (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:8499:18)
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2315:13)
+      at performUnitOfWork (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13224:22)
+      at workLoopSync (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13068:41)
+      at renderRootSync (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13049:11)
+      at performWorkOnRoot (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:12253:39)
+      at performWorkOnRootViaSchedulerTask 
+(node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2908:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:566:34)
+      at Object.<anonymous>.process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:859:10)
+      at actImplementation (node_modules/@testing-library/react-native/src/act.ts:30:25)
+      at renderWithAct (node_modules/@testing-library/react-native/src/render-act.ts:12:11)
+      at renderInternal (node_modules/@testing-library/react-native/src/render.tsx:81:33)
+      at renderInternal (node_modules/@testing-library/react-native/src/render.tsx:44:10)
+      at Object.<anonymous> (app/__tests__/mentorship.test.tsx:81:33)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  鈼?MentorshipScreen 鈥?should display mentees when user accepted requests
+
+    TypeError: loadConnections is not a function
+
+      59 |   useFocusEffect(
+      60 |     useCallback(() => {
+    > 61 |       loadConnections();
+         |       ^
+      62 |     }, [])
+      63 |   );
+      64 |
+
+      at loadConnections (C:\Proj\cmn\app\(tabs)../../mentorship.tsx:61:7)
+      at callback (jest.setup.js:19:9)
+      at MentorshipScreen (C:\Proj\cmn\app\(tabs)../../mentorship.tsx:59:17)
+      at Object.react_stack_bottom_frame 
+(node_modules/react-test-renderer/cjs/react-test-renderer.development.js:15670:20)
+      at renderWithHooks (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:4863:22)
+      at updateFunctionComponent (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:7018:19)
+      at beginWork (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:8499:18)
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2315:13)
+      at performUnitOfWork (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13224:22)
+      at workLoopSync (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13068:41)
+      at renderRootSync (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13049:11)
+      at performWorkOnRoot (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:12253:39)
+      at performWorkOnRootViaSchedulerTask 
+(node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2908:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:566:34)
+      at Object.<anonymous>.process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:859:10)
+      at actImplementation (node_modules/@testing-library/react-native/src/act.ts:30:25)
+      at renderWithAct (node_modules/@testing-library/react-native/src/render-act.ts:12:11)
+      at renderInternal (node_modules/@testing-library/react-native/src/render.tsx:81:33)
+      at renderInternal (node_modules/@testing-library/react-native/src/render.tsx:44:10)
+      at Object.<anonymous> (app/__tests__/mentorship.test.tsx:112:33)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  鈼?MentorshipScreen 鈥?should show empty state when no mentors
+
+    TypeError: loadConnections is not a function
+
+      59 |   useFocusEffect(
+      60 |     useCallback(() => {
+    > 61 |       loadConnections();
+         |       ^
+      62 |     }, [])
+      63 |   );
+      64 |
+
+      at loadConnections (C:\Proj\cmn\app\(tabs)../../mentorship.tsx:61:7)
+      at callback (jest.setup.js:19:9)
+      at MentorshipScreen (C:\Proj\cmn\app\(tabs)../../mentorship.tsx:59:17)
+      at Object.react_stack_bottom_frame 
+(node_modules/react-test-renderer/cjs/react-test-renderer.development.js:15670:20)
+      at renderWithHooks (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:4863:22)
+      at updateFunctionComponent (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:7018:19)
+      at beginWork (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:8499:18)
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2315:13)
+      at performUnitOfWork (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13224:22)
+      at workLoopSync (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13068:41)
+      at renderRootSync (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13049:11)
+      at performWorkOnRoot (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:12253:39)
+      at performWorkOnRootViaSchedulerTask 
+(node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2908:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:566:34)
+      at Object.<anonymous>.process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:859:10)
+      at actImplementation (node_modules/@testing-library/react-native/src/act.ts:30:25)
+      at renderWithAct (node_modules/@testing-library/react-native/src/render-act.ts:12:11)
+      at renderInternal (node_modules/@testing-library/react-native/src/render.tsx:81:33)
+      at renderInternal (node_modules/@testing-library/react-native/src/render.tsx:44:10)
+      at Object.<anonymous> (app/__tests__/mentorship.test.tsx:120:33)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at Object.<anonymous> (node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+
+  鈼?MentorshipScreen 鈥?should show empty state when no mentees
+
+    TypeError: loadConnections is not a function
+
+      59 |   useFocusEffect(
+      60 |     useCallback(() => {
+    > 61 |       loadConnections();
+         |       ^
+      62 |     }, [])
+      63 |   );
+      64 |
+
+      at loadConnections (C:\Proj\cmn\app\(tabs)../../mentorship.tsx:61:7)
+      at callback (jest.setup.js:19:9)
+      at MentorshipScreen (C:\Proj\cmn\app\(tabs)../../mentorship.tsx:59:17)
+      at Object.react_stack_bottom_frame 
+(node_modules/react-test-renderer/cjs/react-test-renderer.development.js:15670:20)
+      at renderWithHooks (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:4863:22)
+      at updateFunctionComponent (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:7018:19)
+      at beginWork (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:8499:18)
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2315:13)
+      at performUnitOfWork (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13224:22)
+      at workLoopSync (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13068:41)
+      at renderRootSync (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13049:11)
+      at performWorkOnRoot (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:12253:39)
+      at performWorkOnRootViaSchedulerTask 
+(node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2908:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:566:34)
+      at Object.<anonymous>.process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:859:10)
+      at actImplementation (node_modules/@testing-library/react-native/src/act.ts:30:25)
+      at renderWithAct (node_modules/@testing-library/react-native/src/render-act.ts:12:11)
+      at renderInternal (node_modules/@testing-library/react-native/src/render.tsx:81:33)
+      at renderInternal (node_modules/@testing-library/react-native/src/render.tsx:44:10)
+      at Object.<anonymous> (app/__tests__/mentorship.test.tsx:128:33)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at Object.<anonymous> (node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+
+  鈼?MentorshipScreen 鈥?should navigate to profile view when mentor card is pressed
+
+    TypeError: loadConnections is not a function
+
+      59 |   useFocusEffect(
+      60 |     useCallback(() => {
+    > 61 |       loadConnections();
+         |       ^
+      62 |     }, [])
+      63 |   );
+      64 |
+
+      at loadConnections (C:\Proj\cmn\app\(tabs)../../mentorship.tsx:61:7)
+      at callback (jest.setup.js:19:9)
+      at MentorshipScreen (C:\Proj\cmn\app\(tabs)../../mentorship.tsx:59:17)
+      at Object.react_stack_bottom_frame 
+(node_modules/react-test-renderer/cjs/react-test-renderer.development.js:15670:20)
+      at renderWithHooks (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:4863:22)
+      at updateFunctionComponent (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:7018:19)
+      at beginWork (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:8499:18)
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2315:13)
+      at performUnitOfWork (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13224:22)
+      at workLoopSync (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13068:41)
+      at renderRootSync (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13049:11)
+      at performWorkOnRoot (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:12253:39)
+      at performWorkOnRootViaSchedulerTask 
+(node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2908:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:566:34)
+      at Object.<anonymous>.process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:859:10)
+      at actImplementation (node_modules/@testing-library/react-native/src/act.ts:30:25)
+      at renderWithAct (node_modules/@testing-library/react-native/src/render-act.ts:12:11)
+      at renderInternal (node_modules/@testing-library/react-native/src/render.tsx:81:33)
+      at renderInternal (node_modules/@testing-library/react-native/src/render.tsx:44:10)
+      at Object.<anonymous> (app/__tests__/mentorship.test.tsx:158:33)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  鈼?MentorshipScreen 鈥?should navigate to profile view when mentee card is pressed
+
+    TypeError: loadConnections is not a function
+
+      59 |   useFocusEffect(
+      60 |     useCallback(() => {
+    > 61 |       loadConnections();
+         |       ^
+      62 |     }, [])
+      63 |   );
+      64 |
+
+      at loadConnections (C:\Proj\cmn\app\(tabs)../../mentorship.tsx:61:7)
+      at callback (jest.setup.js:19:9)
+      at MentorshipScreen (C:\Proj\cmn\app\(tabs)../../mentorship.tsx:59:17)
+      at Object.react_stack_bottom_frame 
+(node_modules/react-test-renderer/cjs/react-test-renderer.development.js:15670:20)
+      at renderWithHooks (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:4863:22)
+      at updateFunctionComponent (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:7018:19)
+      at beginWork (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:8499:18)
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2315:13)
+      at performUnitOfWork (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13224:22)
+      at workLoopSync (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13068:41)
+      at renderRootSync (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13049:11)
+      at performWorkOnRoot (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:12253:39)
+      at performWorkOnRootViaSchedulerTask 
+(node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2908:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:566:34)
+      at Object.<anonymous>.process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:859:10)
+      at actImplementation (node_modules/@testing-library/react-native/src/act.ts:30:25)
+      at renderWithAct (node_modules/@testing-library/react-native/src/render-act.ts:12:11)
+      at renderInternal (node_modules/@testing-library/react-native/src/render.tsx:81:33)
+      at renderInternal (node_modules/@testing-library/react-native/src/render.tsx:44:10)
+      at Object.<anonymous> (app/__tests__/mentorship.test.tsx:198:33)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  鈼?MentorshipScreen 鈥?should display connection note if available
+
+    TypeError: loadConnections is not a function
+
+      59 |   useFocusEffect(
+      60 |     useCallback(() => {
+    > 61 |       loadConnections();
+         |       ^
+      62 |     }, [])
+      63 |   );
+      64 |
+
+      at loadConnections (C:\Proj\cmn\app\(tabs)../../mentorship.tsx:61:7)
+      at callback (jest.setup.js:19:9)
+      at MentorshipScreen (C:\Proj\cmn\app\(tabs)../../mentorship.tsx:59:17)
+      at Object.react_stack_bottom_frame 
+(node_modules/react-test-renderer/cjs/react-test-renderer.development.js:15670:20)
+      at renderWithHooks (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:4863:22)
+      at updateFunctionComponent (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:7018:19)
+      at beginWork (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:8499:18)
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2315:13)
+      at performUnitOfWork (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13224:22)
+      at workLoopSync (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13068:41)
+      at renderRootSync (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13049:11)
+      at performWorkOnRoot (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:12253:39)
+      at performWorkOnRootViaSchedulerTask 
+(node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2908:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:566:34)
+      at Object.<anonymous>.process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:859:10)
+      at actImplementation (node_modules/@testing-library/react-native/src/act.ts:30:25)
+      at renderWithAct (node_modules/@testing-library/react-native/src/render-act.ts:12:11)
+      at renderInternal (node_modules/@testing-library/react-native/src/render.tsx:81:33)
+      at renderInternal (node_modules/@testing-library/react-native/src/render.tsx:44:10)
+      at Object.<anonymous> (app/__tests__/mentorship.test.tsx:240:33)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  鈼?MentorshipScreen 鈥?should only show accepted requests as connections
+
+    TypeError: loadConnections is not a function
+
+      59 |   useFocusEffect(
+      60 |     useCallback(() => {
+    > 61 |       loadConnections();
+         |       ^
+      62 |     }, [])
+      63 |   );
+      64 |
+
+      at loadConnections (C:\Proj\cmn\app\(tabs)../../mentorship.tsx:61:7)
+      at callback (jest.setup.js:19:9)
+      at MentorshipScreen (C:\Proj\cmn\app\(tabs)../../mentorship.tsx:59:17)
+      at Object.react_stack_bottom_frame 
+(node_modules/react-test-renderer/cjs/react-test-renderer.development.js:15670:20)
+      at renderWithHooks (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:4863:22)
+      at updateFunctionComponent (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:7018:19)
+      at beginWork (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:8499:18)
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2315:13)
+      at performUnitOfWork (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13224:22)
+      at workLoopSync (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13068:41)
+      at renderRootSync (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13049:11)
+      at performWorkOnRoot (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:12253:39)
+      at performWorkOnRootViaSchedulerTask 
+(node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2908:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:566:34)
+      at Object.<anonymous>.process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:859:10)
+      at actImplementation (node_modules/@testing-library/react-native/src/act.ts:30:25)
+      at renderWithAct (node_modules/@testing-library/react-native/src/render-act.ts:12:11)
+      at renderInternal (node_modules/@testing-library/react-native/src/render.tsx:81:33)
+      at renderInternal (node_modules/@testing-library/react-native/src/render.tsx:44:10)
+      at Object.<anonymous> (app/__tests__/mentorship.test.tsx:276:46)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  鈼?MentorshipScreen 鈥?should handle user not logged in
+
+    TypeError: loadConnections is not a function
+
+      59 |   useFocusEffect(
+      60 |     useCallback(() => {
+    > 61 |       loadConnections();
+         |       ^
+      62 |     }, [])
+      63 |   );
+      64 |
+
+      at loadConnections (C:\Proj\cmn\app\(tabs)../../mentorship.tsx:61:7)
+      at callback (jest.setup.js:19:9)
+      at MentorshipScreen (C:\Proj\cmn\app\(tabs)../../mentorship.tsx:59:17)
+      at Object.react_stack_bottom_frame 
+(node_modules/react-test-renderer/cjs/react-test-renderer.development.js:15670:20)
+      at renderWithHooks (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:4863:22)
+      at updateFunctionComponent (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:7018:19)
+      at beginWork (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:8499:18)
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2315:13)
+      at performUnitOfWork (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13224:22)
+      at workLoopSync (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13068:41)
+      at renderRootSync (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13049:11)
+      at performWorkOnRoot (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:12253:39)
+      at performWorkOnRootViaSchedulerTask 
+(node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2908:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:566:34)
+      at Object.<anonymous>.process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:859:10)
+      at actImplementation (node_modules/@testing-library/react-native/src/act.ts:30:25)
+      at renderWithAct (node_modules/@testing-library/react-native/src/render-act.ts:12:11)
+      at renderInternal (node_modules/@testing-library/react-native/src/render.tsx:81:33)
+      at renderInternal (node_modules/@testing-library/react-native/src/render.tsx:44:10)
+      at Object.<anonymous> (app/__tests__/mentorship.test.tsx:289:33)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  鈼?MentorshipScreen 鈥?should refresh connections when screen is focused
+
+    TypeError: loadConnections is not a function
+
+      59 |   useFocusEffect(
+      60 |     useCallback(() => {
+    > 61 |       loadConnections();
+         |       ^
+      62 |     }, [])
+      63 |   );
+      64 |
+
+      at loadConnections (C:\Proj\cmn\app\(tabs)../../mentorship.tsx:61:7)
+      at callback (jest.setup.js:19:9)
+      at MentorshipScreen (C:\Proj\cmn\app\(tabs)../../mentorship.tsx:59:17)
+      at Object.react_stack_bottom_frame 
+(node_modules/react-test-renderer/cjs/react-test-renderer.development.js:15670:20)
+      at renderWithHooks (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:4863:22)
+      at updateFunctionComponent (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:7018:19)
+      at beginWork (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:8499:18)
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2315:13)
+      at performUnitOfWork (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13224:22)
+      at workLoopSync (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13068:41)
+      at renderRootSync (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13049:11)
+      at performWorkOnRoot (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:12253:39)
+      at performWorkOnRootViaSchedulerTask 
+(node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2908:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:566:34)
+      at Object.<anonymous>.process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:859:10)
+      at actImplementation (node_modules/@testing-library/react-native/src/act.ts:30:25)
+      at renderWithAct (node_modules/@testing-library/react-native/src/render-act.ts:12:11)
+      at renderInternal (node_modules/@testing-library/react-native/src/render.tsx:81:33)
+      at renderInternal (node_modules/@testing-library/react-native/src/render.tsx:44:10)
+      at Object.<anonymous> (app/__tests__/mentorship.test.tsx:307:33)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  鈼?MentorshipScreen 鈥?should handle missing profile data gracefully
+
+    TypeError: loadConnections is not a function
+
+      59 |   useFocusEffect(
+      60 |     useCallback(() => {
+    > 61 |       loadConnections();
+         |       ^
+      62 |     }, [])
+      63 |   );
+      64 |
+
+      at loadConnections (C:\Proj\cmn\app\(tabs)../../mentorship.tsx:61:7)
+      at callback (jest.setup.js:19:9)
+      at MentorshipScreen (C:\Proj\cmn\app\(tabs)../../mentorship.tsx:59:17)
+      at Object.react_stack_bottom_frame 
+(node_modules/react-test-renderer/cjs/react-test-renderer.development.js:15670:20)
+      at renderWithHooks (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:4863:22)
+      at updateFunctionComponent (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:7018:19)
+      at beginWork (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:8499:18)
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2315:13)
+      at performUnitOfWork (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13224:22)
+      at workLoopSync (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13068:41)
+      at renderRootSync (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13049:11)
+      at performWorkOnRoot (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:12253:39)
+      at performWorkOnRootViaSchedulerTask 
+(node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2908:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:566:34)
+      at Object.<anonymous>.process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:859:10)
+      at actImplementation (node_modules/@testing-library/react-native/src/act.ts:30:25)
+      at renderWithAct (node_modules/@testing-library/react-native/src/render-act.ts:12:11)
+      at renderInternal (node_modules/@testing-library/react-native/src/render.tsx:81:33)
+      at renderInternal (node_modules/@testing-library/react-native/src/render.tsx:44:10)
+      at Object.<anonymous> (app/__tests__/mentorship.test.tsx:328:33)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  鈼?MentorshipScreen 鈥?should display multiple mentors
+
+    TypeError: loadConnections is not a function
+
+      59 |   useFocusEffect(
+      60 |     useCallback(() => {
+    > 61 |       loadConnections();
+         |       ^
+      62 |     }, [])
+      63 |   );
+      64 |
+
+      at loadConnections (C:\Proj\cmn\app\(tabs)../../mentorship.tsx:61:7)
+      at callback (jest.setup.js:19:9)
+      at MentorshipScreen (C:\Proj\cmn\app\(tabs)../../mentorship.tsx:59:17)
+      at Object.react_stack_bottom_frame 
+(node_modules/react-test-renderer/cjs/react-test-renderer.development.js:15670:20)
+      at renderWithHooks (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:4863:22)
+      at updateFunctionComponent (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:7018:19)
+      at beginWork (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:8499:18)
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2315:13)
+      at performUnitOfWork (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13224:22)
+      at workLoopSync (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13068:41)
+      at renderRootSync (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13049:11)
+      at performWorkOnRoot (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:12253:39)
+      at performWorkOnRootViaSchedulerTask 
+(node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2908:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:566:34)
+      at Object.<anonymous>.process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:859:10)
+      at actImplementation (node_modules/@testing-library/react-native/src/act.ts:30:25)
+      at renderWithAct (node_modules/@testing-library/react-native/src/render-act.ts:12:11)
+      at renderInternal (node_modules/@testing-library/react-native/src/render.tsx:81:33)
+      at renderInternal (node_modules/@testing-library/react-native/src/render.tsx:44:10)
+      at Object.<anonymous> (app/__tests__/mentorship.test.tsx:355:33)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  鈼?MentorshipScreen 鈥?should display multiple mentees
+
+    TypeError: loadConnections is not a function
+
+      59 |   useFocusEffect(
+      60 |     useCallback(() => {
+    > 61 |       loadConnections();
+         |       ^
+      62 |     }, [])
+      63 |   );
+      64 |
+
+      at loadConnections (C:\Proj\cmn\app\(tabs)../../mentorship.tsx:61:7)
+      at callback (jest.setup.js:19:9)
+      at MentorshipScreen (C:\Proj\cmn\app\(tabs)../../mentorship.tsx:59:17)
+      at Object.react_stack_bottom_frame 
+(node_modules/react-test-renderer/cjs/react-test-renderer.development.js:15670:20)
+      at renderWithHooks (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:4863:22)
+      at updateFunctionComponent (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:7018:19)
+      at beginWork (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:8499:18)
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2315:13)
+      at performUnitOfWork (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13224:22)
+      at workLoopSync (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13068:41)
+      at renderRootSync (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13049:11)
+      at performWorkOnRoot (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:12253:39)
+      at performWorkOnRootViaSchedulerTask 
+(node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2908:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:566:34)
+      at Object.<anonymous>.process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:859:10)
+      at actImplementation (node_modules/@testing-library/react-native/src/act.ts:30:25)
+      at renderWithAct (node_modules/@testing-library/react-native/src/render-act.ts:12:11)
+      at renderInternal (node_modules/@testing-library/react-native/src/render.tsx:81:33)
+      at renderInternal (node_modules/@testing-library/react-native/src/render.tsx:44:10)
+      at Object.<anonymous> (app/__tests__/mentorship.test.tsx:382:33)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+PASS app/__tests__/signup.test.tsx
+  鈼?Console
+
+    console.log
+      [INFO] User created {
+        email: 'user@example.com',
+        id: '1769061307663',
+        timestamp: '2026-01-22T05:55:07.663Z'
+      }
+
+      at Logger.logMethod [as log] (utils/logger.ts:82:7)
+
+    console.log
+      [INFO] Session started { timestamp: '2026-01-22T05:55:07.669Z' }
+
+      at Logger.logMethod [as log] (utils/logger.ts:82:7)
+
+    console.log
+      [INFO] User created {
+        email: 'user.name@example.com',
+        id: '1769061307735',
+        timestamp: '2026-01-22T05:55:07.735Z'
+      }
+
+      at Logger.logMethod [as log] (utils/logger.ts:82:7)
+
+    console.log
+      [INFO] Session started { timestamp: '2026-01-22T05:55:07.736Z' }
+
+      at Logger.logMethod [as log] (utils/logger.ts:82:7)
+
+    console.log
+      [INFO] User created {
+        email: 'user+tag@example.co.uk',
+        id: '1769061307795',
+        timestamp: '2026-01-22T05:55:07.795Z'
+      }
+
+      at Logger.logMethod [as log] (utils/logger.ts:82:7)
+
+    console.log
+      [INFO] Session started { timestamp: '2026-01-22T05:55:07.795Z' }
+
+      at Logger.logMethod [as log] (utils/logger.ts:82:7)
+
+    console.log
+      [INFO] User created {
+        email: 'user_name@example-domain.com',
+        id: '1769061307857',
+        timestamp: '2026-01-22T05:55:07.857Z'
+      }
+
+      at Logger.logMethod [as log] (utils/logger.ts:82:7)
+
+    console.log
+      [INFO] Session started { timestamp: '2026-01-22T05:55:07.857Z' }
+
+      at Logger.logMethod [as log] (utils/logger.ts:82:7)
+
+    console.log
+      [INFO] User created {
+        email: 'test@example.com',
+        id: '1769061307919',
+        timestamp: '2026-01-22T05:55:07.919Z'
+      }
+
+      at Logger.logMethod [as log] (utils/logger.ts:82:7)
+
+    console.log
+      [INFO] Session started { timestamp: '2026-01-22T05:55:07.920Z' }
+
+      at Logger.logMethod [as log] (utils/logger.ts:82:7)
+
+    console.log
+      [INFO] User created {
+        email: 'test@example.com',
+        id: '1769061307980',
+        timestamp: '2026-01-22T05:55:07.980Z'
+      }
+
+      at Logger.logMethod [as log] (utils/logger.ts:82:7)
+
+    console.log
+      [INFO] Session started { timestamp: '2026-01-22T05:55:07.981Z' }
+
+      at Logger.logMethod [as log] (utils/logger.ts:82:7)
+
+PASS app/__tests__/home.test.tsx
+FAIL app/__tests__/profile.create.test.tsx
+  鈼?CreateProfileScreen 鈥?should render all form fields
+
+    Found multiple elements with placeholder: Enter number of years
+
+      26 |     expect(getByPlaceholderText('Enter your full name')).toBeTruthy();
+      27 |     expect(getByPlaceholderText('e.g., Software Development, Marketing, Design')).toBeTruthy();
+    > 28 |     expect(getByPlaceholderText('Enter number of years')).toBeTruthy();
+         |            ^
+      29 |     expect(getByPlaceholderText('e.g., Data Science, Business Strategy, Photography')).toBeTruthy();
+      30 |     expect(getByPlaceholderText('Enter your email')).toBeTruthy();
+      31 |     expect(getByPlaceholderText('Enter your phone number')).toBeTruthy();
+
+      at Object.getByPlaceholderText (app/__tests__/profile.create.test.tsx:28:12)
+
+  鈼?CreateProfileScreen 鈥?should show error when expertise years is negative
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: "Error", "Please enter a valid number of years for expertise"
+    Received: "Success", "Profile created successfully!", [{"onPress": [Function onPress], "text": "OK"}]
+
+    Number of calls: 1
+
+      118 |     fireEvent.press(getByText('Save Profile'));
+      119 |
+    > 120 |     await waitFor(() => {
+          |                  ^
+      121 |       expect(Alert.alert).toHaveBeenCalledWith('Error', 'Please enter a valid number of years for 
+expertise');
+      122 |     });
+      123 |   });
+
+      at Object.<anonymous> (app/__tests__/profile.create.test.tsx:120:18)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at Object.<anonymous> (node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+
+  鈼?CreateProfileScreen 鈥?should show error when phone number format is invalid
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: "Error", "Please enter a valid phone number"
+    Received: "Success", "Profile created successfully!", [{"onPress": [Function onPress], "text": "OK"}]
+
+    Number of calls: 1
+
+      190 |     fireEvent.press(getByText('Save Profile'));
+      191 |
+    > 192 |     await waitFor(() => {
+          |                  ^
+      193 |       expect(Alert.alert).toHaveBeenCalledWith('Error', 'Please enter a valid phone number');
+      194 |     });
+      195 |   });
+
+      at Object.<anonymous> (app/__tests__/profile.create.test.tsx:192:18)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at Object.<anonymous> (node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+
+  鈼?CreateProfileScreen 鈥?should handle special characters in name
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: "John O'Brien-Smith"
+    Received: "John OBrien-Smith"
+
+      280 |     const profile = await AsyncStorage.getItem('profile');
+      281 |     const parsed = JSON.parse(profile || '{}');
+    > 282 |     expect(parsed.name).toBe("John O'Brien-Smith");
+          |                         ^
+      283 |   });
+      284 |
+      285 |   it('should handle long text inputs', async () => {
+
+      at Object.toBe (app/__tests__/profile.create.test.tsx:282:25)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+FAIL app/__tests__/login.test.tsx (5.626 s)
+  鈼?Console
+
+    console.log
+      [INFO] User created {
+        email: 't0@example.com',
+        id: '1769061307630',
+        timestamp: '2026-01-22T05:55:07.630Z'
+      }
+
+      at Logger.logMethod [as log] (utils/logger.ts:82:7)
+
+    console.log
+      [INFO] Rate limit reset { key: 't0', timestamp: '2026-01-22T05:55:07.635Z' }
+
+      at Logger.logMethod [as log] (utils/logger.ts:82:7)
+
+    console.log
+      [INFO] Session started { timestamp: '2026-01-22T05:55:07.636Z' }
+
+      at Logger.logMethod [as log] (utils/logger.ts:82:7)
+
+    console.log
+      [INFO] User created {
+        email: 't1@example.com',
+        id: '1769061307692',
+        timestamp: '2026-01-22T05:55:07.692Z'
+      }
+
+      at Logger.logMethod [as log] (utils/logger.ts:82:7)
+
+    console.log
+      [INFO] Rate limit reset { key: 't1', timestamp: '2026-01-22T05:55:07.692Z' }
+
+      at Logger.logMethod [as log] (utils/logger.ts:82:7)
+
+    console.log
+      [INFO] Session started { timestamp: '2026-01-22T05:55:07.692Z' }
+
+      at Logger.logMethod [as log] (utils/logger.ts:82:7)
+
+    console.log
+      [INFO] User created {
+        email: 't0@example.com',
+        id: '1769061311987',
+        timestamp: '2026-01-22T05:55:11.987Z'
+      }
+
+      at Logger.logMethod [as log] (utils/logger.ts:82:7)
+
+    console.log
+      [INFO] Rate limit reset { key: 't0', timestamp: '2026-01-22T05:55:11.988Z' }
+
+      at Logger.logMethod [as log] (utils/logger.ts:82:7)
+
+    console.log
+      [INFO] Session started { timestamp: '2026-01-22T05:55:11.988Z' }
+
+      at Logger.logMethod [as log] (utils/logger.ts:82:7)
+
+  鈼?LoginScreen 鈥?should successfully login with regular user account
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: "/(tabs)/home"
+
+    Number of calls: 0
+
+      118 |     fireEvent.press(getByText('Log In'));
+      119 |
+    > 120 |     await waitFor(() => {
+          |                  ^
+      121 |       expect(mockRouter.replace).toHaveBeenCalledWith('/(tabs)/home');
+      122 |     }, { timeout: 3000 });
+      123 |   });
+
+      at Object.<anonymous> (app/__tests__/login.test.tsx:120:18)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  鈼?LoginScreen 鈥?should navigate to profile creation if user has no profile
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: "/profile/create"
+
+    Number of calls: 0
+
+      141 |     fireEvent.press(getByText('Log In'));
+      142 |
+    > 143 |     await waitFor(() => {
+          |                  ^
+      144 |       expect(mockRouter.replace).toHaveBeenCalledWith('/profile/create');
+      145 |     });
+      146 |   });
+
+      at Object.<anonymous> (app/__tests__/login.test.tsx:143:18)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+FAIL app/__tests__/requests.test.tsx (10.725 s)
+  鈼?RequestsScreen 鈥?should render tabs correctly
+
+    Unable to find an element with text: Incoming
+
+    [36m<View>[39m
+      [36m<StatusBar />[39m
+      [36m<View>[39m
+        [36m<View[39m
+          [33maccessibilityHint[39m=[32m"Tap to view incoming requests. 0 requests"[39m
+          [33maccessibilityLabel[39m=[32m"Incoming requests tab"[39m
+          [33maccessibilityState[39m=[32m{
+            {
+              "selected": true,
+            }
+          }[39m
+          [33maccessible[39m=[32m{true}[39m
+        [36m>[39m
+          [36m<Text>[39m
+            [0m飷?[0m
+          [36m</Text>[39m
+          [36m<Text>[39m
+            [0mIncoming ([0m
+            [0m0[0m
+            [0m)[0m
+          [36m</Text>[39m
+        [36m</View>[39m
+        [36m<View[39m
+          [33maccessibilityHint[39m=[32m"Tap to view sent requests. 0 requests"[39m
+          [33maccessibilityLabel[39m=[32m"Sent requests tab"[39m
+          [33maccessibilityState[39m=[32m{
+            {
+              "selected": false,
+            }
+          }[39m
+          [33maccessible[39m=[32m{true}[39m
+        [36m>[39m
+          [36m<Text>[39m
+            [0m飼?[0m
+          [36m</Text>[39m
+          [36m<Text>[39m
+            [0mSent ([0m
+            [0m0[0m
+            [0m)[0m
+          [36m</Text>[39m
+        [36m</View>[39m
+        [36m<View[39m
+          [33maccessibilityHint[39m=[32m"Tap to view processed requests. 0 requests"[39m
+          [33maccessibilityLabel[39m=[32m"Processed requests tab"[39m
+          [33maccessibilityState[39m=[32m{
+            {
+              "selected": false,
+            }
+          }[39m
+          [33maccessible[39m=[32m{true}[39m
+        [36m>[39m
+          [36m<Text>[39m
+            [0m飫?[0m
+          [36m</Text>[39m
+          [36m<Text>[39m
+            [0mProcessed ([0m
+            [0m0[0m
+            [0m)[0m
+          [36m</Text>[39m
+        [36m</View>[39m
+      [36m</View>[39m
+      [36m<RCTScrollView>[39m
+        [36m<RCTRefreshControl />[39m
+        [36m<View>[39m
+          [36m<View>[39m
+            [36m<Text>[39m
+              [0m飷?[0m
+            [36m</Text>[39m
+            [36m<Text>[39m
+              [0mNo incoming requests[0m
+            [36m</Text>[39m
+            [36m<Text>[39m
+              [0mRequests from others will appear here[0m
+            [36m</Text>[39m
+          [36m</View>[39m
+        [36m</View>[39m
+      [36m</RCTScrollView>[39m
+    [36m</View>[39m
+
+      49 |     const { getByText } = render(<RequestsScreen />);
+      50 |
+    > 51 |     await waitFor(() => {
+         |                  ^
+      52 |       expect(getByText('Incoming')).toBeTruthy();
+      53 |       expect(getByText('Sent')).toBeTruthy();
+      54 |       expect(getByText('Processed')).toBeTruthy();
+
+      at Object.<anonymous> (app/__tests__/requests.test.tsx:51:18)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at Object.<anonymous> (node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+
+  鈼?RequestsScreen 鈥?should display sent requests
+
+    Unable to find an element with text: Sent
+
+    [36m<View>[39m
+      [36m<StatusBar />[39m
+      [36m<View>[39m
+        [36m<View[39m
+          [33maccessibilityHint[39m=[32m"Tap to view incoming requests. 0 requests"[39m
+          [33maccessibilityLabel[39m=[32m"Incoming requests tab"[39m
+          [33maccessibilityState[39m=[32m{
+            {
+              "selected": true,
+            }
+          }[39m
+          [33maccessible[39m=[32m{true}[39m
+        [36m>[39m
+          [36m<Text>[39m
+            [0m飷?[0m
+          [36m</Text>[39m
+          [36m<Text>[39m
+            [0mIncoming ([0m
+            [0m0[0m
+            [0m)[0m
+          [36m</Text>[39m
+        [36m</View>[39m
+        [36m<View[39m
+          [33maccessibilityHint[39m=[32m"Tap to view sent requests. 1 requests"[39m
+          [33maccessibilityLabel[39m=[32m"Sent requests tab"[39m
+          [33maccessibilityState[39m=[32m{
+            {
+              "selected": false,
+            }
+          }[39m
+          [33maccessible[39m=[32m{true}[39m
+        [36m>[39m
+          [36m<Text>[39m
+            [0m飼?[0m
+          [36m</Text>[39m
+          [36m<Text>[39m
+            [0mSent ([0m
+            [0m1[0m
+            [0m)[0m
+          [36m</Text>[39m
+        [36m</View>[39m
+        [36m<View[39m
+          [33maccessibilityHint[39m=[32m"Tap to view processed requests. 0 requests"[39m
+          [33maccessibilityLabel[39m=[32m"Processed requests tab"[39m
+          [33maccessibilityState[39m=[32m{
+            {
+              "selected": false,
+            }
+          }[39m
+          [33maccessible[39m=[32m{true}[39m
+        [36m>[39m
+          [36m<Text>[39m
+            [0m飫?[0m
+          [36m</Text>[39m
+          [36m<Text>[39m
+            [0mProcessed ([0m
+            [0m0[0m
+            [0m)[0m
+          [36m</Text>[39m
+        [36m</View>[39m
+      [36m</View>[39m
+      [36m<RCTScrollView>[39m
+        [36m<RCTRefreshControl />[39m
+        [36m<View>[39m
+          [36m<View>[39m
+            [36m<Text>[39m
+              [0m飷?[0m
+            [36m</Text>[39m
+            [36m<Text>[39m
+              [0mNo incoming requests[0m
+            [36m</Text>[39m
+            [36m<Text>[39m
+              [0mRequests from others will appear here[0m
+            [36m</Text>[39m
+          [36m</View>[39m
+        [36m</View>[39m
+      [36m</RCTScrollView>[39m
+    [36m</View>[39m
+
+      82 |     const { getByText } = render(<RequestsScreen />);
+      83 |
+    > 84 |     await waitFor(() => {
+         |                  ^
+      85 |       // Switch to Sent tab
+      86 |       fireEvent.press(getByText('Sent'));
+      87 |     });
+
+      at Object.<anonymous> (app/__tests__/requests.test.tsx:84:18)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  鈼?RequestsScreen 鈥?should display processed requests
+
+    Unable to find an element with text: Processed
+
+    [36m<View>[39m
+      [36m<StatusBar />[39m
+      [36m<View>[39m
+        [36m<View[39m
+          [33maccessibilityHint[39m=[32m"Tap to view incoming requests. 0 requests"[39m
+          [33maccessibilityLabel[39m=[32m"Incoming requests tab"[39m
+          [33maccessibilityState[39m=[32m{
+            {
+              "selected": true,
+            }
+          }[39m
+          [33maccessible[39m=[32m{true}[39m
+        [36m>[39m
+          [36m<Text>[39m
+            [0m飷?[0m
+          [36m</Text>[39m
+          [36m<Text>[39m
+            [0mIncoming ([0m
+            [0m0[0m
+            [0m)[0m
+          [36m</Text>[39m
+        [36m</View>[39m
+        [36m<View[39m
+          [33maccessibilityHint[39m=[32m"Tap to view sent requests. 0 requests"[39m
+          [33maccessibilityLabel[39m=[32m"Sent requests tab"[39m
+          [33maccessibilityState[39m=[32m{
+            {
+              "selected": false,
+            }
+          }[39m
+          [33maccessible[39m=[32m{true}[39m
+        [36m>[39m
+          [36m<Text>[39m
+            [0m飼?[0m
+          [36m</Text>[39m
+          [36m<Text>[39m
+            [0mSent ([0m
+            [0m0[0m
+            [0m)[0m
+          [36m</Text>[39m
+        [36m</View>[39m
+        [36m<View[39m
+          [33maccessibilityHint[39m=[32m"Tap to view processed requests. 1 requests"[39m
+          [33maccessibilityLabel[39m=[32m"Processed requests tab"[39m
+          [33maccessibilityState[39m=[32m{
+            {
+              "selected": false,
+            }
+          }[39m
+          [33maccessible[39m=[32m{true}[39m
+        [36m>[39m
+          [36m<Text>[39m
+            [0m飫?[0m
+          [36m</Text>[39m
+          [36m<Text>[39m
+            [0mProcessed ([0m
+            [0m1[0m
+            [0m)[0m
+          [36m</Text>[39m
+        [36m</View>[39m
+      [36m</View>[39m
+      [36m<RCTScrollView>[39m
+        [36m<RCTRefreshControl />[39m
+        [36m<View>[39m
+          [36m<View>[39m
+            [36m<Text>[39m
+              [0m飷?[0m
+            [36m</Text>[39m
+            [36m<Text>[39m
+              [0mNo incoming requests[0m
+            [36m</Text>[39m
+            [36m<Text>[39m
+              [0mRequests from others will appear here[0m
+            [36m</Text>[39m
+          [36m</View>[39m
+        [36m</View>[39m
+      [36m</RCTScrollView>[39m
+    [36m</View>[39m
+
+      105 |     const { getByText } = render(<RequestsScreen />);
+      106 |
+    > 107 |     await waitFor(() => {
+          |                  ^
+      108 |       // Switch to Processed tab
+      109 |       fireEvent.press(getByText('Processed'));
+      110 |     });
+
+      at Object.<anonymous> (app/__tests__/requests.test.tsx:107:18)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  鈼?RequestsScreen 鈥?should show empty state when no sent requests
+
+    Unable to find an element with text: Sent
+
+    [36m<View>[39m
+      [36m<StatusBar />[39m
+      [36m<View>[39m
+        [36m<View[39m
+          [33maccessibilityHint[39m=[32m"Tap to view incoming requests. 0 requests"[39m
+          [33maccessibilityLabel[39m=[32m"Incoming requests tab"[39m
+          [33maccessibilityState[39m=[32m{
+            {
+              "selected": true,
+            }
+          }[39m
+          [33maccessible[39m=[32m{true}[39m
+        [36m>[39m
+          [36m<Text>[39m
+            [0m飷?[0m
+          [36m</Text>[39m
+          [36m<Text>[39m
+            [0mIncoming ([0m
+            [0m0[0m
+            [0m)[0m
+          [36m</Text>[39m
+        [36m</View>[39m
+        [36m<View[39m
+          [33maccessibilityHint[39m=[32m"Tap to view sent requests. 0 requests"[39m
+          [33maccessibilityLabel[39m=[32m"Sent requests tab"[39m
+          [33maccessibilityState[39m=[32m{
+            {
+              "selected": false,
+            }
+          }[39m
+          [33maccessible[39m=[32m{true}[39m
+        [36m>[39m
+          [36m<Text>[39m
+            [0m飼?[0m
+          [36m</Text>[39m
+          [36m<Text>[39m
+            [0mSent ([0m
+            [0m0[0m
+            [0m)[0m
+          [36m</Text>[39m
+        [36m</View>[39m
+        [36m<View[39m
+          [33maccessibilityHint[39m=[32m"Tap to view processed requests. 0 requests"[39m
+          [33maccessibilityLabel[39m=[32m"Processed requests tab"[39m
+          [33maccessibilityState[39m=[32m{
+            {
+              "selected": false,
+            }
+          }[39m
+          [33maccessible[39m=[32m{true}[39m
+        [36m>[39m
+          [36m<Text>[39m
+            [0m飫?[0m
+          [36m</Text>[39m
+          [36m<Text>[39m
+            [0mProcessed ([0m
+            [0m0[0m
+            [0m)[0m
+          [36m</Text>[39m
+        [36m</View>[39m
+      [36m</View>[39m
+      [36m<RCTScrollView>[39m
+        [36m<RCTRefreshControl />[39m
+        [36m<View>[39m
+          [36m<View>[39m
+            [36m<Text>[39m
+              [0m飷?[0m
+            [36m</Text>[39m
+            [36m<Text>[39m
+              [0mNo incoming requests[0m
+            [36m</Text>[39m
+            [36m<Text>[39m
+              [0mRequests from others will appear here[0m
+            [36m</Text>[39m
+          [36m</View>[39m
+        [36m</View>[39m
+      [36m</RCTScrollView>[39m
+    [36m</View>[39m
+
+      128 |     const { getByText } = render(<RequestsScreen />);
+      129 |
+    > 130 |     await waitFor(() => {
+          |                  ^
+      131 |       fireEvent.press(getByText('Sent'));
+      132 |     });
+      133 |
+
+      at Object.<anonymous> (app/__tests__/requests.test.tsx:130:18)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at Object.<anonymous> (node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+
+  鈼?RequestsScreen 鈥?should show empty state when no processed requests
+
+    Unable to find an element with text: Processed
+
+    [36m<View>[39m
+      [36m<StatusBar />[39m
+      [36m<View>[39m
+        [36m<View[39m
+          [33maccessibilityHint[39m=[32m"Tap to view incoming requests. 0 requests"[39m
+          [33maccessibilityLabel[39m=[32m"Incoming requests tab"[39m
+          [33maccessibilityState[39m=[32m{
+            {
+              "selected": true,
+            }
+          }[39m
+          [33maccessible[39m=[32m{true}[39m
+        [36m>[39m
+          [36m<Text>[39m
+            [0m飷?[0m
+          [36m</Text>[39m
+          [36m<Text>[39m
+            [0mIncoming ([0m
+            [0m0[0m
+            [0m)[0m
+          [36m</Text>[39m
+        [36m</View>[39m
+        [36m<View[39m
+          [33maccessibilityHint[39m=[32m"Tap to view sent requests. 0 requests"[39m
+          [33maccessibilityLabel[39m=[32m"Sent requests tab"[39m
+          [33maccessibilityState[39m=[32m{
+            {
+              "selected": false,
+            }
+          }[39m
+          [33maccessible[39m=[32m{true}[39m
+        [36m>[39m
+          [36m<Text>[39m
+            [0m飼?[0m
+          [36m</Text>[39m
+          [36m<Text>[39m
+            [0mSent ([0m
+            [0m0[0m
+            [0m)[0m
+          [36m</Text>[39m
+        [36m</View>[39m
+        [36m<View[39m
+          [33maccessibilityHint[39m=[32m"Tap to view processed requests. 0 requests"[39m
+          [33maccessibilityLabel[39m=[32m"Processed requests tab"[39m
+          [33maccessibilityState[39m=[32m{
+            {
+              "selected": false,
+            }
+          }[39m
+          [33maccessible[39m=[32m{true}[39m
+        [36m>[39m
+          [36m<Text>[39m
+            [0m飫?[0m
+          [36m</Text>[39m
+          [36m<Text>[39m
+            [0mProcessed ([0m
+            [0m0[0m
+            [0m)[0m
+          [36m</Text>[39m
+        [36m</View>[39m
+      [36m</View>[39m
+      [36m<RCTScrollView>[39m
+        [36m<RCTRefreshControl />[39m
+        [36m<View>[39m
+          [36m<View>[39m
+            [36m<Text>[39m
+              [0m飷?[0m
+            [36m</Text>[39m
+            [36m<Text>[39m
+              [0mNo incoming requests[0m
+            [36m</Text>[39m
+            [36m<Text>[39m
+              [0mRequests from others will appear here[0m
+            [36m</Text>[39m
+          [36m</View>[39m
+        [36m</View>[39m
+      [36m</RCTScrollView>[39m
+    [36m</View>[39m
+
+      140 |     const { getByText } = render(<RequestsScreen />);
+      141 |
+    > 142 |     await waitFor(() => {
+          |                  ^
+      143 |       fireEvent.press(getByText('Processed'));
+      144 |     });
+      145 |
+
+      at Object.<anonymous> (app/__tests__/requests.test.tsx:142:18)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at Object.<anonymous> (node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+
+  鈼?RequestsScreen 鈥?should filter requests correctly by user email
+
+    Unable to find an element with text: Other User
+
+    [36m<View>[39m
+      [36m<StatusBar />[39m
+      [36m<View>[39m
+        [36m<View[39m
+          [33maccessibilityHint[39m=[32m"Tap to view incoming requests. 1 requests"[39m
+          [33maccessibilityLabel[39m=[32m"Incoming requests tab"[39m
+          [33maccessibilityState[39m=[32m{
+            {
+              "selected": true,
+            }
+          }[39m
+          [33maccessible[39m=[32m{true}[39m
+        [36m>[39m
+          [36m<Text>[39m
+            [0m飷?[0m
+          [36m</Text>[39m
+          [36m<Text>[39m
+            [0mIncoming ([0m
+            [0m1[0m
+            [0m)[0m
+          [36m</Text>[39m
+        [36m</View>[39m
+        [36m<View[39m
+          [33maccessibilityHint[39m=[32m"Tap to view sent requests. 1 requests"[39m
+          [33maccessibilityLabel[39m=[32m"Sent requests tab"[39m
+          [33maccessibilityState[39m=[32m{
+            {
+              "selected": false,
+            }
+          }[39m
+          [33maccessible[39m=[32m{true}[39m
+        [36m>[39m
+          [36m<Text>[39m
+            [0m飼?[0m
+          [36m</Text>[39m
+          [36m<Text>[39m
+            [0mSent ([0m
+            [0m1[0m
+            [0m)[0m
+          [36m</Text>[39m
+        [36m</View>[39m
+        [36m<View[39m
+          [33maccessibilityHint[39m=[32m"Tap to view processed requests. 0 requests"[39m
+          [33maccessibilityLabel[39m=[32m"Processed requests tab"[39m
+          [33maccessibilityState[39m=[32m{
+            {
+              "selected": false,
+            }
+          }[39m
+          [33maccessible[39m=[32m{true}[39m
+        [36m>[39m
+          [36m<Text>[39m
+            [0m飫?[0m
+          [36m</Text>[39m
+          [36m<Text>[39m
+            [0mProcessed ([0m
+            [0m0[0m
+            [0m)[0m
+          [36m</Text>[39m
+        [36m</View>[39m
+      [36m</View>[39m
+      [36m<RCTScrollView>[39m
+        [36m<RCTRefreshControl />[39m
+        [36m<View>[39m
+          [36m<View>[39m
+            [36m<View>[39m
+              [36m<View>[39m
+                [36m<View>[39m
+                  [36m<Text>[39m
+                    [0mR[0m
+                  [36m</Text>[39m
+                [36m</View>[39m
+                [36m<View>[39m
+                  [36m<Text>[39m
+                    [0mRequester User[0m
+                  [36m</Text>[39m
+                  [36m<Text>[39m
+                    [0mother@example.com[0m
+                  [36m</Text>[39m
+                  [36m<Text>[39m
+                    [0m1/21/2026[0m
+                  [36m</Text>[39m
+                [36m</View>[39m
+              [36m</View>[39m
+              [36m<View>[39m
+                [36m<Text>[39m
+                  [0mMessage:[0m
+                [36m</Text>[39m
+                [36m<Text>[39m
+                  [0mRequest note[0m
+                [36m</Text>[39m
+              [36m</View>[39m
+              [36m<View>[39m
+                [36m<View[39m
+                  [33maccessibilityHint[39m=[32m"Tap to accept this mentorship request"[39m
+                  [33maccessibilityLabel[39m=[32m"Accept request from Requester User"[39m
+                  [33maccessible[39m=[32m{true}[39m
+                [36m>[39m
+                  [36m<Text>[39m
+                    [0m飯?[0m
+                  [36m</Text>[39m
+                  [36m<Text>[39m
+                    [0mAccept[0m
+                  [36m</Text>[39m
+                [36m</View>[39m
+                [36m<View[39m
+                  [33maccessibilityHint[39m=[32m"Tap to decline this mentorship request"[39m
+                  [33maccessibilityLabel[39m=[32m"Decline request from Requester User"[39m
+                  [33maccessible[39m=[32m{true}[39m
+                [36m>[39m
+                  [36m<Text>[39m
+                    [0m飰?[0m
+                  [36m</Text>[39m
+                  [36m<Text>[39m
+                    [0mDecline[0m
+                  [36m</Text>[39m
+                [36m</View>[39m
+              [36m</View>[39m
+            [36m</View>[39m
+          [36m</View>[39m
+        [36m</View>[39m
+      [36m</RCTScrollView>[39m
+    [36m</View>[39m
+
+      212 |     const { getByText } = render(<RequestsScreen />);
+      213 |
+    > 214 |     await waitFor(() => {
+          |                  ^
+      215 |       // Incoming tab should show otherRequest
+      216 |       expect(getByText('Other User')).toBeTruthy();
+      217 |     });
+
+      at Object.<anonymous> (app/__tests__/requests.test.tsx:214:18)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  鈼?RequestsScreen 鈥?should sort processed requests by respondedAt
+
+    Unable to find an element with text: Processed
+
+    [36m<View>[39m
+      [36m<StatusBar />[39m
+      [36m<View>[39m
+        [36m<View[39m
+          [33maccessibilityHint[39m=[32m"Tap to view incoming requests. 0 requests"[39m
+          [33maccessibilityLabel[39m=[32m"Incoming requests tab"[39m
+          [33maccessibilityState[39m=[32m{
+            {
+              "selected": true,
+            }
+          }[39m
+          [33maccessible[39m=[32m{true}[39m
+        [36m>[39m
+          [36m<Text>[39m
+            [0m飷?[0m
+          [36m</Text>[39m
+          [36m<Text>[39m
+            [0mIncoming ([0m
+            [0m0[0m
+            [0m)[0m
+          [36m</Text>[39m
+        [36m</View>[39m
+        [36m<View[39m
+          [33maccessibilityHint[39m=[32m"Tap to view sent requests. 0 requests"[39m
+          [33maccessibilityLabel[39m=[32m"Sent requests tab"[39m
+          [33maccessibilityState[39m=[32m{
+            {
+              "selected": false,
+            }
+          }[39m
+          [33maccessible[39m=[32m{true}[39m
+        [36m>[39m
+          [36m<Text>[39m
+            [0m飼?[0m
+          [36m</Text>[39m
+          [36m<Text>[39m
+            [0mSent ([0m
+            [0m0[0m
+            [0m)[0m
+          [36m</Text>[39m
+        [36m</View>[39m
+        [36m<View[39m
+          [33maccessibilityHint[39m=[32m"Tap to view processed requests. 2 requests"[39m
+          [33maccessibilityLabel[39m=[32m"Processed requests tab"[39m
+          [33maccessibilityState[39m=[32m{
+            {
+              "selected": false,
+            }
+          }[39m
+          [33maccessible[39m=[32m{true}[39m
+        [36m>[39m
+          [36m<Text>[39m
+            [0m飫?[0m
+          [36m</Text>[39m
+          [36m<Text>[39m
+            [0mProcessed ([0m
+            [0m2[0m
+            [0m)[0m
+          [36m</Text>[39m
+        [36m</View>[39m
+      [36m</View>[39m
+      [36m<RCTScrollView>[39m
+        [36m<RCTRefreshControl />[39m
+        [36m<View>[39m
+          [36m<View>[39m
+            [36m<Text>[39m
+              [0m飷?[0m
+            [36m</Text>[39m
+            [36m<Text>[39m
+              [0mNo incoming requests[0m
+            [36m</Text>[39m
+            [36m<Text>[39m
+              [0mRequests from others will appear here[0m
+            [36m</Text>[39m
+          [36m</View>[39m
+        [36m</View>[39m
+      [36m</RCTScrollView>[39m
+    [36m</View>[39m
+
+      245 |     const { getByText, getAllByText } = render(<RequestsScreen />);
+      246 |
+    > 247 |     await waitFor(() => {
+          |                  ^
+      248 |       fireEvent.press(getByText('Processed'));
+      249 |     });
+      250 |
+
+      at Object.<anonymous> (app/__tests__/requests.test.tsx:247:18)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  鈼?RequestsScreen 鈥?should handle refresh pull-to-refresh
+
+    Unable to find an element with text: Incoming
+
+    [36m<View>[39m
+      [36m<StatusBar />[39m
+      [36m<View>[39m
+        [36m<View[39m
+          [33maccessibilityHint[39m=[32m"Tap to view incoming requests. 0 requests"[39m
+          [33maccessibilityLabel[39m=[32m"Incoming requests tab"[39m
+          [33maccessibilityState[39m=[32m{
+            {
+              "selected": true,
+            }
+          }[39m
+          [33maccessible[39m=[32m{true}[39m
+        [36m>[39m
+          [36m<Text>[39m
+            [0m飷?[0m
+          [36m</Text>[39m
+          [36m<Text>[39m
+            [0mIncoming ([0m
+            [0m0[0m
+            [0m)[0m
+          [36m</Text>[39m
+        [36m</View>[39m
+        [36m<View[39m
+          [33maccessibilityHint[39m=[32m"Tap to view sent requests. 0 requests"[39m
+          [33maccessibilityLabel[39m=[32m"Sent requests tab"[39m
+          [33maccessibilityState[39m=[32m{
+            {
+              "selected": false,
+            }
+          }[39m
+          [33maccessible[39m=[32m{true}[39m
+        [36m>[39m
+          [36m<Text>[39m
+            [0m飼?[0m
+          [36m</Text>[39m
+          [36m<Text>[39m
+            [0mSent ([0m
+            [0m0[0m
+            [0m)[0m
+          [36m</Text>[39m
+        [36m</View>[39m
+        [36m<View[39m
+          [33maccessibilityHint[39m=[32m"Tap to view processed requests. 0 requests"[39m
+          [33maccessibilityLabel[39m=[32m"Processed requests tab"[39m
+          [33maccessibilityState[39m=[32m{
+            {
+              "selected": false,
+            }
+          }[39m
+          [33maccessible[39m=[32m{true}[39m
+        [36m>[39m
+          [36m<Text>[39m
+            [0m飫?[0m
+          [36m</Text>[39m
+          [36m<Text>[39m
+            [0mProcessed ([0m
+            [0m0[0m
+            [0m)[0m
+          [36m</Text>[39m
+        [36m</View>[39m
+      [36m</View>[39m
+      [36m<RCTScrollView>[39m
+        [36m<RCTRefreshControl />[39m
+        [36m<View>[39m
+          [36m<View>[39m
+            [36m<Text>[39m
+              [0m飷?[0m
+            [36m</Text>[39m
+            [36m<Text>[39m
+              [0mNo incoming requests[0m
+            [36m</Text>[39m
+            [36m<Text>[39m
+              [0mRequests from others will appear here[0m
+            [36m</Text>[39m
+          [36m</View>[39m
+        [36m</View>[39m
+      [36m</RCTScrollView>[39m
+    [36m</View>[39m
+
+      259 |     const { getByText } = render(<RequestsScreen />);
+      260 |
+    > 261 |     await waitFor(() => {
+          |                  ^
+      262 |       // Verify component renders with RefreshControl
+      263 |       // RefreshControl is tested implicitly through FlatList
+      264 |       expect(getByText('Incoming')).toBeTruthy();
+
+      at Object.<anonymous> (app/__tests__/requests.test.tsx:261:18)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at Object.<anonymous> (node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+
+  鈼?RequestsScreen 鈥?should show status badge for processed requests
+
+    Unable to find an element with text: Processed
+
+    [36m<View>[39m
+      [36m<StatusBar />[39m
+      [36m<View>[39m
+        [36m<View[39m
+          [33maccessibilityHint[39m=[32m"Tap to view incoming requests. 0 requests"[39m
+          [33maccessibilityLabel[39m=[32m"Incoming requests tab"[39m
+          [33maccessibilityState[39m=[32m{
+            {
+              "selected": true,
+            }
+          }[39m
+          [33maccessible[39m=[32m{true}[39m
+        [36m>[39m
+          [36m<Text>[39m
+            [0m飷?[0m
+          [36m</Text>[39m
+          [36m<Text>[39m
+            [0mIncoming ([0m
+            [0m0[0m
+            [0m)[0m
+          [36m</Text>[39m
+        [36m</View>[39m
+        [36m<View[39m
+          [33maccessibilityHint[39m=[32m"Tap to view sent requests. 0 requests"[39m
+          [33maccessibilityLabel[39m=[32m"Sent requests tab"[39m
+          [33maccessibilityState[39m=[32m{
+            {
+              "selected": false,
+            }
+          }[39m
+          [33maccessible[39m=[32m{true}[39m
+        [36m>[39m
+          [36m<Text>[39m
+            [0m飼?[0m
+          [36m</Text>[39m
+          [36m<Text>[39m
+            [0mSent ([0m
+            [0m0[0m
+            [0m)[0m
+          [36m</Text>[39m
+        [36m</View>[39m
+        [36m<View[39m
+          [33maccessibilityHint[39m=[32m"Tap to view processed requests. 1 requests"[39m
+          [33maccessibilityLabel[39m=[32m"Processed requests tab"[39m
+          [33maccessibilityState[39m=[32m{
+            {
+              "selected": false,
+            }
+          }[39m
+          [33maccessible[39m=[32m{true}[39m
+        [36m>[39m
+          [36m<Text>[39m
+            [0m飫?[0m
+          [36m</Text>[39m
+          [36m<Text>[39m
+            [0mProcessed ([0m
+            [0m1[0m
+            [0m)[0m
+          [36m</Text>[39m
+        [36m</View>[39m
+      [36m</View>[39m
+      [36m<RCTScrollView>[39m
+        [36m<RCTRefreshControl />[39m
+        [36m<View>[39m
+          [36m<View>[39m
+            [36m<Text>[39m
+              [0m飷?[0m
+            [36m</Text>[39m
+            [36m<Text>[39m
+              [0mNo incoming requests[0m
+            [36m</Text>[39m
+            [36m<Text>[39m
+              [0mRequests from others will appear here[0m
+            [36m</Text>[39m
+          [36m</View>[39m
+        [36m</View>[39m
+      [36m</RCTScrollView>[39m
+    [36m</View>[39m
+
+      294 |     const { getByText } = render(<RequestsScreen />);
+      295 |
+    > 296 |     await waitFor(() => {
+          |                  ^
+      297 |       fireEvent.press(getByText('Processed'));
+      298 |     });
+      299 |
+
+      at Object.<anonymous> (app/__tests__/requests.test.tsx:296:18)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+FAIL app/__tests__/request.respond.test.tsx (12.416 s)
+  鈼?RespondRequestScreen 鈥?should render request details correctly
+
+    Unable to find an element with text: Respond to Request
+
+    [36m<View>[39m
+      [36m<StatusBar />[39m
+      [36m<Text>[39m
+        [0mLoading...[0m
+      [36m</Text>[39m
+    [36m</View>[39m
+
+      38 |     const { getByText } = render(<RespondRequestScreen />);
+      39 |
+    > 40 |     await waitFor(() => {
+         |                  ^
+      41 |       expect(getByText('Respond to Request')).toBeTruthy();
+      42 |       expect(getByText('Requester User')).toBeTruthy();
+      43 |       expect(getByText('requester@example.com')).toBeTruthy();
+
+      at Object.<anonymous> (app/__tests__/request.respond.test.tsx:40:18)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at Object.<anonymous> (node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+
+  鈼?RespondRequestScreen 鈥?should display request note if provided
+
+    Unable to find an element with text: Message:
+
+    [36m<View>[39m
+      [36m<StatusBar />[39m
+      [36m<Text>[39m
+        [0mLoading...[0m
+      [36m</Text>[39m
+    [36m</View>[39m
+
+      49 |     const { getByText } = render(<RespondRequestScreen />);
+      50 |
+    > 51 |     await waitFor(() => {
+         |                  ^
+      52 |       expect(getByText('Message:')).toBeTruthy();
+      53 |       expect(getByText('I would like to learn from you')).toBeTruthy();
+      54 |     });
+
+      at Object.<anonymous> (app/__tests__/request.respond.test.tsx:51:18)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at Object.<anonymous> (node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+
+  鈼?RespondRequestScreen 鈥?should allow entering optional response note
+
+    Unable to find an element with placeholder: Thank you for your interest...
+
+    [36m<View>[39m
+      [36m<StatusBar />[39m
+      [36m<Text>[39m
+        [0mLoading...[0m
+      [36m</Text>[39m
+    [36m</View>[39m
+
+      72 |     const { getByPlaceholderText } = render(<RespondRequestScreen />);
+      73 |
+    > 74 |     await waitFor(() => {
+         |                  ^
+      75 |       const responseInput = getByPlaceholderText('Thank you for your interest...');
+      76 |       fireEvent.changeText(responseInput, 'I would be happy to mentor you');
+      77 |       expect(responseInput.props.value).toBe('I would be happy to mentor you');
+
+      at Object.<anonymous> (app/__tests__/request.respond.test.tsx:74:18)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at Object.<anonymous> (node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+
+  鈼?RespondRequestScreen 鈥?should accept request successfully
+
+    Unable to find an element with text: Accept
+
+    [36m<View>[39m
+      [36m<StatusBar />[39m
+      [36m<Text>[39m
+        [0mLoading...[0m
+      [36m</Text>[39m
+    [36m</View>[39m
+
+      84 |     const { getByText } = render(<RespondRequestScreen />);
+      85 |
+    > 86 |     await waitFor(() => {
+         |                  ^
+      87 |       fireEvent.press(getByText('Accept'));
+      88 |     });
+      89 |
+
+      at Object.<anonymous> (app/__tests__/request.respond.test.tsx:86:18)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  鈼?RespondRequestScreen 鈥?should accept request with response note
+
+    Unable to find an element with placeholder: Thank you for your interest...
+
+    [36m<View>[39m
+      [36m<StatusBar />[39m
+      [36m<Text>[39m
+        [0mLoading...[0m
+      [36m</Text>[39m
+    [36m</View>[39m
+
+      103 |     const { getByText, getByPlaceholderText } = render(<RespondRequestScreen />);
+      104 |
+    > 105 |     await waitFor(() => {
+          |                  ^
+      106 |       const responseInput = getByPlaceholderText('Thank you for your interest...');
+      107 |       fireEvent.changeText(responseInput, 'I accept your request');
+      108 |       fireEvent.press(getByText('Accept'));
+
+      at Object.<anonymous> (app/__tests__/request.respond.test.tsx:105:18)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  鈼?RespondRequestScreen 鈥?should decline request successfully
+
+    Unable to find an element with text: Decline
+
+    [36m<View>[39m
+      [36m<StatusBar />[39m
+      [36m<Text>[39m
+        [0mLoading...[0m
+      [36m</Text>[39m
+    [36m</View>[39m
+
+      123 |     const { getByText } = render(<RespondRequestScreen />);
+      124 |
+    > 125 |     await waitFor(() => {
+          |                  ^
+      126 |       fireEvent.press(getByText('Decline'));
+      127 |     });
+      128 |
+
+      at Object.<anonymous> (app/__tests__/request.respond.test.tsx:125:18)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  鈼?RespondRequestScreen 鈥?should decline request with response note
+
+    Unable to find an element with placeholder: Thank you for your interest...
+
+    [36m<View>[39m
+      [36m<StatusBar />[39m
+      [36m<Text>[39m
+        [0mLoading...[0m
+      [36m</Text>[39m
+    [36m</View>[39m
+
+      142 |     const { getByText, getByPlaceholderText } = render(<RespondRequestScreen />);
+      143 |
+    > 144 |     await waitFor(() => {
+          |                  ^
+      145 |       const responseInput = getByPlaceholderText('Thank you for your interest...');
+      146 |       fireEvent.changeText(responseInput, 'Sorry, I cannot accept at this time');
+      147 |       fireEvent.press(getByText('Decline'));
+
+      at Object.<anonymous> (app/__tests__/request.respond.test.tsx:144:18)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  鈼?RespondRequestScreen 鈥?should trim response note whitespace
+
+    Unable to find an element with placeholder: Thank you for your interest...
+
+    [36m<View>[39m
+      [36m<StatusBar />[39m
+      [36m<Text>[39m
+        [0mLoading...[0m
+      [36m</Text>[39m
+    [36m</View>[39m
+
+      162 |     const { getByText, getByPlaceholderText } = render(<RespondRequestScreen />);
+      163 |
+    > 164 |     await waitFor(() => {
+          |                  ^
+      165 |       const responseInput = getByPlaceholderText('Thank you for your interest...');
+      166 |       fireEvent.changeText(responseInput, '  Response with spaces  ');
+      167 |       fireEvent.press(getByText('Accept'));
+
+      at Object.<anonymous> (app/__tests__/request.respond.test.tsx:164:18)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  鈼?RespondRequestScreen 鈥?should show loading state while responding
+
+    Unable to find an element with text: Accept
+
+    [36m<View>[39m
+      [36m<StatusBar />[39m
+      [36m<Text>[39m
+        [0mLoading...[0m
+      [36m</Text>[39m
+    [36m</View>[39m
+
+      180 |     const { getByText } = render(<RespondRequestScreen />);
+      181 |
+    > 182 |     await waitFor(() => {
+          |                  ^
+      183 |       fireEvent.press(getByText('Accept'));
+      184 |     });
+      185 |
+
+      at Object.<anonymous> (app/__tests__/request.respond.test.tsx:182:18)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  鈼?RespondRequestScreen 鈥?should handle missing request gracefully
+
+    Unable to find an element with text: Accept
+
+    [36m<View>[39m
+      [36m<StatusBar />[39m
+      [36m<Text>[39m
+        [0mLoading...[0m
+      [36m</Text>[39m
+    [36m</View>[39m
+
+      196 |     const { getByText } = render(<RespondRequestScreen />);
+      197 |
+    > 198 |     await waitFor(() => {
+          |                  ^
+      199 |       fireEvent.press(getByText('Accept'));
+      200 |     });
+      201 |
+
+      at Object.<anonymous> (app/__tests__/request.respond.test.tsx:198:18)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  鈼?RespondRequestScreen 鈥?should update correct request when multiple exist
+
+    Unable to find an element with text: Accept
+
+    [36m<View>[39m
+      [36m<StatusBar />[39m
+      [36m<Text>[39m
+        [0mLoading...[0m
+      [36m</Text>[39m
+    [36m</View>[39m
+
+      221 |     const { getByText } = render(<RespondRequestScreen />);
+      222 |
+    > 223 |     await waitFor(() => {
+          |                  ^
+      224 |       fireEvent.press(getByText('Accept'));
+      225 |     });
+      226 |
+
+      at Object.<anonymous> (app/__tests__/request.respond.test.tsx:223:18)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+FAIL app/__tests__/request.send.test.tsx (14.394 s)
+  鈼?SendRequestScreen 鈥?should render request form correctly
+
+    Unable to find an element with text: Request Mentor
+
+    [36m<View>[39m
+      [36m<StatusBar />[39m
+      [36m<Text>[39m
+        [0mLoading...[0m
+      [36m</Text>[39m
+    [36m</View>[39m
+
+      52 |     const { getByText, getByPlaceholderText } = render(<SendRequestScreen />);
+      53 |
+    > 54 |     await waitFor(() => {
+         |                  ^
+      55 |       expect(getByText('Request Mentor')).toBeTruthy();
+      56 |       expect(getByText('John Mentor')).toBeTruthy();
+      57 |       expect(getByPlaceholderText("Hi! I'm interested in learning from you because...")).toBeTruthy();
+
+      at Object.<anonymous> (app/__tests__/request.send.test.tsx:54:18)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at Object.<anonymous> (node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+
+  鈼?SendRequestScreen 鈥?should display mentor profile information
+
+    Unable to find an element with text: John Mentor
+
+    [36m<View>[39m
+      [36m<StatusBar />[39m
+      [36m<Text>[39m
+        [0mLoading...[0m
+      [36m</Text>[39m
+    [36m</View>[39m
+
+      63 |     const { getByText } = render(<SendRequestScreen />);
+      64 |
+    > 65 |     await waitFor(() => {
+         |                  ^
+      66 |       expect(getByText('John Mentor')).toBeTruthy();
+      67 |       expect(getByText('Software Development')).toBeTruthy();
+      68 |     });
+
+      at Object.<anonymous> (app/__tests__/request.send.test.tsx:65:18)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at Object.<anonymous> (node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+
+  鈼?SendRequestScreen 鈥?should allow entering optional note
+
+    Unable to find an element with placeholder: Hi! I'm interested in learning from you because...
+
+    [36m<View>[39m
+      [36m<StatusBar />[39m
+      [36m<Text>[39m
+        [0mLoading...[0m
+      [36m</Text>[39m
+    [36m</View>[39m
+
+      72 |     const { getByPlaceholderText } = render(<SendRequestScreen />);
+      73 |
+    > 74 |     await waitFor(() => {
+         |                  ^
+      75 |       const noteInput = getByPlaceholderText("Hi! I'm interested in learning from you because...");
+      76 |       fireEvent.changeText(noteInput, 'I would like to learn from you');
+      77 |       expect(noteInput.props.value).toBe('I would like to learn from you');
+
+      at Object.<anonymous> (app/__tests__/request.send.test.tsx:74:18)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at Object.<anonymous> (node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+
+  鈼?SendRequestScreen 鈥?should send request successfully without note
+
+    Unable to find an element with text: Send Request
+
+    [36m<View>[39m
+      [36m<StatusBar />[39m
+      [36m<Text>[39m
+        [0mLoading...[0m
+      [36m</Text>[39m
+    [36m</View>[39m
+
+      82 |     const { getByText } = render(<SendRequestScreen />);
+      83 |
+    > 84 |     await waitFor(() => {
+         |                  ^
+      85 |       fireEvent.press(getByText('Send Request'));
+      86 |     });
+      87 |
+
+      at Object.<anonymous> (app/__tests__/request.send.test.tsx:84:18)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at Object.<anonymous> (node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+
+  鈼?SendRequestScreen 鈥?should send request successfully with note
+
+    Unable to find an element with placeholder: Hi! I'm interested in learning from you because...
+
+    [36m<View>[39m
+      [36m<StatusBar />[39m
+      [36m<Text>[39m
+        [0mLoading...[0m
+      [36m</Text>[39m
+    [36m</View>[39m
+
+      108 |     const { getByText, getByPlaceholderText } = render(<SendRequestScreen />);
+      109 |
+    > 110 |     await waitFor(() => {
+          |                  ^
+      111 |       const noteInput = getByPlaceholderText("Hi! I'm interested in learning from you because...");
+      112 |       fireEvent.changeText(noteInput, 'I am very interested in learning from you');
+      113 |       fireEvent.press(getByText('Send Request'));
+
+      at Object.<anonymous> (app/__tests__/request.send.test.tsx:110:18)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at Object.<anonymous> (node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+
+  鈼?SendRequestScreen 鈥?should prevent duplicate pending requests
+
+    Unable to find an element with text: Send Request
+
+    [36m<View>[39m
+      [36m<StatusBar />[39m
+      [36m<Text>[39m
+        [0mLoading...[0m
+      [36m</Text>[39m
+    [36m</View>[39m
+
+      144 |     const { getByText } = render(<SendRequestScreen />);
+      145 |
+    > 146 |     await waitFor(() => {
+          |                  ^
+      147 |       fireEvent.press(getByText('Send Request'));
+      148 |     });
+      149 |
+
+      at Object.<anonymous> (app/__tests__/request.send.test.tsx:146:18)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  鈼?SendRequestScreen 鈥?should allow sending new request if previous was declined
+
+    Unable to find an element with text: Send Request
+
+    [36m<View>[39m
+      [36m<StatusBar />[39m
+      [36m<Text>[39m
+        [0mLoading...[0m
+      [36m</Text>[39m
+    [36m</View>[39m
+
+      178 |     const { getByText } = render(<SendRequestScreen />);
+      179 |
+    > 180 |     await waitFor(() => {
+          |                  ^
+      181 |       fireEvent.press(getByText('Send Request'));
+      182 |     });
+      183 |
+
+      at Object.<anonymous> (app/__tests__/request.send.test.tsx:180:18)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  鈼?SendRequestScreen 鈥?should show error when profile is missing
+
+    Unable to find an element with text: Send Request
+
+    [36m<View>[39m
+      [36m<StatusBar />[39m
+      [36m<Text>[39m
+        [0mLoading...[0m
+      [36m</Text>[39m
+    [36m</View>[39m
+
+      202 |     const { getByText } = render(<SendRequestScreen />);
+      203 |
+    > 204 |     await waitFor(() => {
+          |                  ^
+      205 |       fireEvent.press(getByText('Send Request'));
+      206 |     });
+      207 |
+
+      at Object.<anonymous> (app/__tests__/request.send.test.tsx:204:18)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at Object.<anonymous> (node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+
+  鈼?SendRequestScreen 鈥?should show error when current user is missing
+
+    Unable to find an element with text: Send Request
+
+    [36m<View>[39m
+      [36m<StatusBar />[39m
+      [36m<Text>[39m
+        [0mLoading...[0m
+      [36m</Text>[39m
+    [36m</View>[39m
+
+      217 |     const { getByText } = render(<SendRequestScreen />);
+      218 |
+    > 219 |     await waitFor(() => {
+          |                  ^
+      220 |       fireEvent.press(getByText('Send Request'));
+      221 |     });
+      222 |
+
+      at Object.<anonymous> (app/__tests__/request.send.test.tsx:219:18)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  鈼?SendRequestScreen 鈥?should show loading state while sending
+
+    Unable to find an element with text: Send Request
+
+    [36m<View>[39m
+      [36m<StatusBar />[39m
+      [36m<Text>[39m
+        [0mLoading...[0m
+      [36m</Text>[39m
+    [36m</View>[39m
+
+      229 |     const { getByText } = render(<SendRequestScreen />);
+      230 |
+    > 231 |     await waitFor(() => {
+          |                  ^
+      232 |       fireEvent.press(getByText('Send Request'));
+      233 |     });
+      234 |
+
+      at Object.<anonymous> (app/__tests__/request.send.test.tsx:231:18)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at Object.<anonymous> (node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+
+  鈼?SendRequestScreen 鈥?should navigate back after successful request
+
+    Unable to find an element with text: Send Request
+
+    [36m<View>[39m
+      [36m<StatusBar />[39m
+      [36m<Text>[39m
+        [0mLoading...[0m
+      [36m</Text>[39m
+    [36m</View>[39m
+
+      241 |     const { getByText } = render(<SendRequestScreen />);
+      242 |
+    > 243 |     await waitFor(() => {
+          |                  ^
+      244 |       fireEvent.press(getByText('Send Request'));
+      245 |     });
+      246 |
+
+      at Object.<anonymous> (app/__tests__/request.send.test.tsx:243:18)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at Object.<anonymous> (node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+
+  鈼?SendRequestScreen 鈥?should trim note whitespace
+
+    Unable to find an element with placeholder: Hi! I'm interested in learning from you because...
+
+    [36m<View>[39m
+      [36m<StatusBar />[39m
+      [36m<Text>[39m
+        [0mLoading...[0m
+      [36m</Text>[39m
+    [36m</View>[39m
+
+      265 |     const { getByText, getByPlaceholderText } = render(<SendRequestScreen />);
+      266 |
+    > 267 |     await waitFor(() => {
+          |                  ^
+      268 |       const noteInput = getByPlaceholderText("Hi! I'm interested in learning from you because...");
+      269 |       fireEvent.changeText(noteInput, '  Note with spaces  ');
+      270 |       fireEvent.press(getByText('Send Request'));
+
+      at Object.<anonymous> (app/__tests__/request.send.test.tsx:267:18)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at Object.<anonymous> (node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+
+  鈼?SendRequestScreen 鈥?should create request with correct structure
+
+    Unable to find an element with text: Send Request
+
+    [36m<View>[39m
+      [36m<StatusBar />[39m
+      [36m<Text>[39m
+        [0mLoading...[0m
+      [36m</Text>[39m
+    [36m</View>[39m
+
+      281 |     const { getByText } = render(<SendRequestScreen />);
+      282 |
+    > 283 |     await waitFor(() => {
+          |                  ^
+      284 |       fireEvent.press(getByText('Send Request'));
+      285 |     });
+      286 |
+
+      at Object.<anonymous> (app/__tests__/request.send.test.tsx:283:18)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at Object.<anonymous> (node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+
+Test Suites: 6 failed, 3 passed, 9 total
+Tests:       53 failed, 74 passed, 127 total
+Snapshots:   0 total
+Time:        14.807 s, estimated 15 s
+Ran all test suites.

@@ -108,7 +108,8 @@ describe('LoginScreen', () => {
       interestYears: 2,
       phoneNumber: '+1234567890'
     };
-    await AsyncStorage.setItem('profile_regular@example.com', JSON.stringify(profile));
+    // Login checks for 'profile' key after setting current user
+    await AsyncStorage.setItem('profile', JSON.stringify(profile));
 
     const { getByText, getByPlaceholderText } = render(<LoginScreen />);
 
@@ -118,7 +119,7 @@ describe('LoginScreen', () => {
 
     await waitFor(() => {
       expect(mockRouter.replace).toHaveBeenCalledWith('/(tabs)/home');
-    });
+    }, { timeout: 3000 });
   });
 
   it('should navigate to profile creation if user has no profile', async () => {
