@@ -52,17 +52,7 @@ export default function MentorshipScreen() {
   const [mentees, setMentees] = useState<MentorshipConnection[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadConnections();
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      loadConnections();
-    }, [])
-  );
-
-  const loadConnections = async () => {
+  const loadConnections = useCallback(async () => {
     try {
       setLoading(true);
       const userData = await AsyncStorage.getItem('user');
@@ -212,7 +202,19 @@ export default function MentorshipScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []); // Empty deps since we use state setters
+
+  useEffect(() => {
+    loadConnections();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadConnections();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
+  );
 
   if (loading) {
     return (

@@ -53,10 +53,8 @@ jest.mock('expo-router', () => {
     useRouter: () => mockRouter,
     useLocalSearchParams: jest.fn(() => ({})),
     useFocusEffect: jest.fn((callback) => {
-      // Call callback immediately for testing
-      if (typeof callback === 'function') {
-        callback();
-      }
+      // Don't call callback automatically - let useEffect handle initial load
+      // Tests can manually trigger focus if needed
     }),
     Stack: {
       Screen: ({ children }: any) => children,

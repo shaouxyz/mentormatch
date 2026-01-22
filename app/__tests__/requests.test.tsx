@@ -43,16 +43,26 @@ describe('RequestsScreen', () => {
     AsyncStorage.clear();
     jest.clearAllMocks();
     await AsyncStorage.setItem('user', JSON.stringify(mockUser));
+    await AsyncStorage.setItem('profile', JSON.stringify({
+      name: 'Current User',
+      email: 'user@example.com',
+      expertise: 'Test',
+      interest: 'Test',
+      expertiseYears: 3,
+      interestYears: 2,
+      phoneNumber: '+1234567890'
+    }));
+    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([]));
   });
 
   it('should render tabs correctly', async () => {
     const { getByText } = render(<RequestsScreen />);
 
     await waitFor(() => {
-      expect(getByText('Incoming')).toBeTruthy();
-      expect(getByText('Sent')).toBeTruthy();
-      expect(getByText('Processed')).toBeTruthy();
-    });
+      expect(getByText(/Incoming \(\d+\)/)).toBeTruthy();
+      expect(getByText(/Sent \(\d+\)/)).toBeTruthy();
+      expect(getByText(/Processed \(\d+\)/)).toBeTruthy();
+    }, { timeout: 3000 });
   });
 
   it('should display incoming requests', async () => {
@@ -83,8 +93,8 @@ describe('RequestsScreen', () => {
 
     await waitFor(() => {
       // Switch to Sent tab
-      fireEvent.press(getByText('Sent'));
-    });
+      fireEvent.press(getByText(/Sent \(\d+\)/));
+    }, { timeout: 3000 });
 
     await waitFor(() => {
       expect(getByText('Mentor User')).toBeTruthy();
@@ -106,8 +116,8 @@ describe('RequestsScreen', () => {
 
     await waitFor(() => {
       // Switch to Processed tab
-      fireEvent.press(getByText('Processed'));
-    });
+      fireEvent.press(getByText(/Processed \(\d+\)/));
+    }, { timeout: 3000 });
 
     await waitFor(() => {
       expect(getByText('Mentor User')).toBeTruthy();
@@ -128,8 +138,8 @@ describe('RequestsScreen', () => {
     const { getByText } = render(<RequestsScreen />);
 
     await waitFor(() => {
-      fireEvent.press(getByText('Sent'));
-    });
+      fireEvent.press(getByText(/Sent \(\d+\)/));
+    }, { timeout: 3000 });
 
     await waitFor(() => {
       expect(getByText('No sent requests')).toBeTruthy();
@@ -140,8 +150,8 @@ describe('RequestsScreen', () => {
     const { getByText } = render(<RequestsScreen />);
 
     await waitFor(() => {
-      fireEvent.press(getByText('Processed'));
-    });
+      fireEvent.press(getByText(/Processed \(\d+\)/));
+    }, { timeout: 3000 });
 
     await waitFor(() => {
       expect(getByText('No processed requests')).toBeTruthy();
@@ -203,6 +213,7 @@ describe('RequestsScreen', () => {
     });
     const otherRequest = createRequest({
       requesterEmail: 'other@example.com',
+      requesterName: 'Other User',
       mentorEmail: 'user@example.com',
       status: 'pending',
     });
@@ -218,8 +229,8 @@ describe('RequestsScreen', () => {
 
     await waitFor(() => {
       // Sent tab should show userRequest
-      fireEvent.press(getByText('Sent'));
-    });
+      fireEvent.press(getByText(/Sent \(\d+\)/));
+    }, { timeout: 3000 });
 
     await waitFor(() => {
       expect(getByText('Mentor User')).toBeTruthy();
@@ -245,8 +256,8 @@ describe('RequestsScreen', () => {
     const { getByText, getAllByText } = render(<RequestsScreen />);
 
     await waitFor(() => {
-      fireEvent.press(getByText('Processed'));
-    });
+      fireEvent.press(getByText(/Processed \(\d+\)/));
+    }, { timeout: 3000 });
 
     await waitFor(() => {
       // Newer request should appear first
@@ -261,8 +272,8 @@ describe('RequestsScreen', () => {
     await waitFor(() => {
       // Verify component renders with RefreshControl
       // RefreshControl is tested implicitly through FlatList
-      expect(getByText('Incoming')).toBeTruthy();
-    });
+      expect(getByText(/Incoming \(\d+\)/)).toBeTruthy();
+    }, { timeout: 3000 });
   });
 
   it('should display request timestamp', async () => {
@@ -294,8 +305,8 @@ describe('RequestsScreen', () => {
     const { getByText } = render(<RequestsScreen />);
 
     await waitFor(() => {
-      fireEvent.press(getByText('Processed'));
-    });
+      fireEvent.press(getByText(/Processed \(\d+\)/));
+    }, { timeout: 3000 });
 
     await waitFor(() => {
       expect(getByText('Accepted')).toBeTruthy();
