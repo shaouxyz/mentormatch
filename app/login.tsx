@@ -20,6 +20,7 @@ import { authenticateUser, setCurrentUser, createUser } from '@/utils/userManage
 import { sanitizeEmail } from '@/utils/security';
 import { isRateLimited, resetRateLimit, getRemainingAttempts } from '@/utils/rateLimiter';
 import { startSession } from '@/utils/sessionManager';
+import { hybridSignIn } from '@/services/hybridAuthService';
 
 /**
  * Login Screen Component
@@ -124,23 +125,9 @@ export default function LoginScreen() {
         return;
       }
 
-      // Authenticate regular user account (with password hashing)
-      const user = await authenticateUser(sanitizedEmail, password);
+      // Authenticate user with hybrid service (local + Firebase if configured)
+      const user = await hybridSignIn(sanitizedEmail, password);
       
-      if (!user) {
-        // Increment rate limit on failed attempt
-        await isRateLimited(sanitizedEmail);
-        const remainingAttempts = await getRemainingAttempts(sanitizedEmail);
-        
-        if (remainingAttempts > 0) {
-          Alert.alert('Error', `${ERROR_MESSAGES.INVALID_PASSWORD}\n${remainingAttempts} attempt${remainingAttempts > 1 ? 's' : ''} remaining.`);
-        } else {
-          Alert.alert('Error', 'Too many failed attempts. Please try again later.');
-        }
-        setLoading(false);
-        return;
-      }
-
       // Reset rate limit on successful login
       await resetRateLimit(sanitizedEmail);
       
@@ -165,7 +152,22 @@ export default function LoginScreen() {
         router.replace('/profile/create');
       }
     } catch (error) {
-      ErrorHandler.handleError(error, 'Failed to log in. Please try again.', { email });
+      // Handle authentication failure
+      const sanitizedEmail = sanitizeEmail(email);
+      
+      // Increment rate limit on failed attempt
+      await isRateLimited(sanitizedEmail);
+      const remainingAttempts = await getRemainingAttempts(sanitizedEmail);
+      
+      if (remainingAttempts > 0) {
+        ErrorHandler.handleError(
+          error, 
+          `${ERROR_MESSAGES.INVALID_PASSWORD}\n${remainingAttempts} attempt${remainingAttempts > 1 ? 's' : ''} remaining.`,
+          { email }
+        );
+      } else {
+        ErrorHandler.handleError(error, 'Too many failed attempts. Please try again later.', { email });
+      }
     } finally {
       setLoading(false);
     }
