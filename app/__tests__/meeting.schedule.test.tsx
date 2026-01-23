@@ -1,0 +1,347 @@
+/**
+ * Meeting Schedule Screen Tests
+ */
+
+import React from 'react';
+import { render, fireEvent, waitFor } from '@testing-library/react-native';
+import { Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import ScheduleMeetingScreen from '../meeting/schedule';
+import { hybridCreateMeeting } from '@/services/hybridMeetingService';
+
+// Mock dependencies
+jest.mock('@/services/hybridMeetingService');
+
+const mockRouterInstance = {
+  back: jest.fn(),
+  replace: jest.fn(),
+  push: jest.fn(),
+};
+
+jest.mock('expo-router', () => ({
+  useLocalSearchParams: jest.fn(() => ({
+    participantEmail: 'mentor@example.com',
+    participantName: 'John Mentor',
+  })),
+  useRouter: jest.fn(() => mockRouterInstance),
+}));
+
+const mockHybridCreateMeeting = hybridCreateMeeting as jest.MockedFunction<typeof hybridCreateMeeting>;
+
+describe('ScheduleMeetingScreen', () => {
+  const mockUser = {
+    email: 'test@example.com',
+  };
+
+  const mockProfile = {
+    name: 'Test User',
+    email: 'test@example.com',
+    expertise: 'Software Engineering',
+    interest: 'Product Management',
+    expertiseYears: 5,
+    interestYears: 2,
+    phoneNumber: '123-456-7890',
+  };
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    mockRouterInstance.back.mockClear();
+    mockRouterInstance.replace.mockClear();
+    mockRouterInstance.push.mockClear();
+    await AsyncStorage.clear();
+    await AsyncStorage.setItem('user', JSON.stringify(mockUser));
+    await AsyncStorage.setItem('profile', JSON.stringify(mockProfile));
+    jest.spyOn(Alert, 'alert');
+    mockHybridCreateMeeting.mockResolvedValue({
+      id: 'meeting123',
+      organizerEmail: 'test@example.com',
+      organizerName: 'Test User',
+      participantEmail: 'mentor@example.com',
+      participantName: 'John Mentor',
+      title: 'Test Meeting',
+      date: new Date().toISOString(),
+      time: new Date().toISOString(),
+      duration: 60,
+      location: '',
+      locationType: 'virtual',
+      meetingLink: 'https://zoom.us/j/123456',
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+  });
+
+  it('should render schedule meeting screen', () => {
+    const { getByText, getByPlaceholderText } = render(<ScheduleMeetingScreen />);
+
+    expect(getByText('Schedule Meeting')).toBeTruthy();
+    expect(getByText('John Mentor')).toBeTruthy();
+    expect(getByText('mentor@example.com')).toBeTruthy();
+    expect(getByPlaceholderText('e.g., Introduction Call')).toBeTruthy();
+  });
+
+  it('should show meeting type selection', () => {
+    const { getByText } = render(<ScheduleMeetingScreen />);
+
+    expect(getByText('Virtual')).toBeTruthy();
+    expect(getByText('In-Person')).toBeTruthy();
+    expect(getByText('Phone')).toBeTruthy();
+  });
+
+  it('should show virtual meeting link input by default', () => {
+    const { getByPlaceholderText } = render(<ScheduleMeetingScreen />);
+
+    expect(getByPlaceholderText('e.g., https://zoom.us/j/...')).toBeTruthy();
+  });
+
+  it('should switch to in-person location input', () => {
+    const { getByText, getByPlaceholderText, getByLabelText } = render(<ScheduleMeetingScreen />);
+
+    const inPersonButton = getByLabelText('In-person meeting');
+    fireEvent.press(inPersonButton);
+
+    expect(getByPlaceholderText('e.g., Coffee Shop, 123 Main St')).toBeTruthy();
+  });
+
+  it('should switch to phone number input', () => {
+    const { getByText, getByPlaceholderText, getByLabelText } = render(<ScheduleMeetingScreen />);
+
+    const phoneButton = getByLabelText('Phone call');
+    fireEvent.press(phoneButton);
+
+    expect(getByPlaceholderText('Optional: Your phone number')).toBeTruthy();
+  });
+
+  it('should show error when title is empty', async () => {
+    const { getByLabelText } = render(<ScheduleMeetingScreen />);
+
+    const sendButton = getByLabelText('Send meeting request');
+    fireEvent.press(sendButton);
+
+    await waitFor(() => {
+      expect(Alert.alert).toHaveBeenCalledWith('Error', 'Please enter a meeting title');
+    });
+  });
+
+  it('should show error when virtual meeting link is empty', async () => {
+    const { getByPlaceholderText, getByLabelText } = render(<ScheduleMeetingScreen />);
+
+    const titleInput = getByPlaceholderText('e.g., Introduction Call');
+    fireEvent.changeText(titleInput, 'Test Meeting');
+
+    const sendButton = getByLabelText('Send meeting request');
+    fireEvent.press(sendButton);
+
+    await waitFor(() => {
+      expect(Alert.alert).toHaveBeenCalledWith('Error', 'Please enter a meeting link for virtual meetings');
+    });
+  });
+
+  it('should show error when in-person location is empty', async () => {
+    const { getByPlaceholderText, getByLabelText } = render(<ScheduleMeetingScreen />);
+
+    const titleInput = getByPlaceholderText('e.g., Introduction Call');
+    fireEvent.changeText(titleInput, 'Test Meeting');
+
+    const inPersonButton = getByLabelText('In-person meeting');
+    fireEvent.press(inPersonButton);
+
+    const sendButton = getByLabelText('Send meeting request');
+    fireEvent.press(sendButton);
+
+    await waitFor(() => {
+      expect(Alert.alert).toHaveBeenCalledWith('Error', 'Please enter a location for in-person meetings');
+    });
+  });
+
+  it('should successfully schedule a virtual meeting', async () => {
+    const { getByPlaceholderText, getByLabelText } = render(<ScheduleMeetingScreen />);
+
+    const titleInput = getByPlaceholderText('e.g., Introduction Call');
+    fireEvent.changeText(titleInput, 'Test Meeting');
+
+    const linkInput = getByPlaceholderText('e.g., https://zoom.us/j/...');
+    fireEvent.changeText(linkInput, 'https://zoom.us/j/123456');
+
+    const sendButton = getByLabelText('Send meeting request');
+    fireEvent.press(sendButton);
+
+    await waitFor(() => {
+      expect(mockHybridCreateMeeting).toHaveBeenCalled();
+      expect(Alert.alert).toHaveBeenCalledWith(
+        'Success',
+        expect.stringContaining('Meeting request sent'),
+        expect.any(Array)
+      );
+    });
+  });
+
+  it('should successfully schedule an in-person meeting', async () => {
+    const { getByPlaceholderText, getByLabelText } = render(<ScheduleMeetingScreen />);
+
+    const titleInput = getByPlaceholderText('e.g., Introduction Call');
+    fireEvent.changeText(titleInput, 'Coffee Chat');
+
+    const inPersonButton = getByLabelText('In-person meeting');
+    fireEvent.press(inPersonButton);
+
+    const locationInput = getByPlaceholderText('e.g., Coffee Shop, 123 Main St');
+    fireEvent.changeText(locationInput, 'Starbucks, 123 Main St');
+
+    const sendButton = getByLabelText('Send meeting request');
+    fireEvent.press(sendButton);
+
+    await waitFor(() => {
+      expect(mockHybridCreateMeeting).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Coffee Chat',
+          locationType: 'in-person',
+          location: 'Starbucks, 123 Main St',
+        })
+      );
+    });
+  });
+
+  it('should successfully schedule a phone meeting', async () => {
+    const { getByPlaceholderText, getByLabelText } = render(<ScheduleMeetingScreen />);
+
+    const titleInput = getByPlaceholderText('e.g., Introduction Call');
+    fireEvent.changeText(titleInput, 'Phone Call');
+
+    const phoneButton = getByLabelText('Phone call');
+    fireEvent.press(phoneButton);
+
+    const phoneInput = getByPlaceholderText('Optional: Your phone number');
+    fireEvent.changeText(phoneInput, '555-1234');
+
+    const sendButton = getByLabelText('Send meeting request');
+    fireEvent.press(sendButton);
+
+    await waitFor(() => {
+      expect(mockHybridCreateMeeting).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Phone Call',
+          locationType: 'phone',
+          location: '555-1234',
+        })
+      );
+    });
+  });
+
+  it('should set duration from input', async () => {
+    const { getByPlaceholderText, getByLabelText } = render(<ScheduleMeetingScreen />);
+
+    const titleInput = getByPlaceholderText('e.g., Introduction Call');
+    fireEvent.changeText(titleInput, 'Test Meeting');
+
+    const linkInput = getByPlaceholderText('e.g., https://zoom.us/j/...');
+    fireEvent.changeText(linkInput, 'https://zoom.us/j/123456');
+
+    const durationInput = getByLabelText('Duration input');
+    fireEvent.changeText(durationInput, '30');
+
+    const sendButton = getByLabelText('Send meeting request');
+    fireEvent.press(sendButton);
+
+    await waitFor(() => {
+      expect(mockHybridCreateMeeting).toHaveBeenCalledWith(
+        expect.objectContaining({
+          duration: 30,
+        })
+      );
+    });
+  });
+
+  it('should include description if provided', async () => {
+    const { getByPlaceholderText, getByLabelText } = render(<ScheduleMeetingScreen />);
+
+    const titleInput = getByPlaceholderText('e.g., Introduction Call');
+    fireEvent.changeText(titleInput, 'Test Meeting');
+
+    const descriptionInput = getByPlaceholderText('Meeting agenda or notes');
+    fireEvent.changeText(descriptionInput, 'Discuss project timeline');
+
+    const linkInput = getByPlaceholderText('e.g., https://zoom.us/j/...');
+    fireEvent.changeText(linkInput, 'https://zoom.us/j/123456');
+
+    const sendButton = getByLabelText('Send meeting request');
+    fireEvent.press(sendButton);
+
+    await waitFor(() => {
+      expect(mockHybridCreateMeeting).toHaveBeenCalledWith(
+        expect.objectContaining({
+          description: 'Discuss project timeline',
+        })
+      );
+    });
+  });
+
+  it('should handle scheduling error gracefully', async () => {
+    mockHybridCreateMeeting.mockRejectedValueOnce(new Error('Network error'));
+
+    const { getByPlaceholderText, getByLabelText } = render(<ScheduleMeetingScreen />);
+
+    const titleInput = getByPlaceholderText('e.g., Introduction Call');
+    fireEvent.changeText(titleInput, 'Test Meeting');
+
+    const linkInput = getByPlaceholderText('e.g., https://zoom.us/j/...');
+    fireEvent.changeText(linkInput, 'https://zoom.us/j/123456');
+
+    const sendButton = getByLabelText('Send meeting request');
+    fireEvent.press(sendButton);
+
+    await waitFor(() => {
+      expect(Alert.alert).toHaveBeenCalledWith('Error', 'Failed to schedule meeting. Please try again.');
+    });
+  });
+
+  it('should redirect to login if not authenticated', async () => {
+    await AsyncStorage.removeItem('user');
+
+    const { getByPlaceholderText, getByLabelText } = render(<ScheduleMeetingScreen />);
+
+    const titleInput = getByPlaceholderText('e.g., Introduction Call');
+    fireEvent.changeText(titleInput, 'Test Meeting');
+
+    const linkInput = getByPlaceholderText('e.g., https://zoom.us/j/...');
+    fireEvent.changeText(linkInput, 'https://zoom.us/j/123456');
+
+    const sendButton = getByLabelText('Send meeting request');
+    fireEvent.press(sendButton);
+
+    await waitFor(() => {
+      expect(Alert.alert).toHaveBeenCalledWith('Error', 'User not authenticated');
+      expect(mockRouterInstance.replace).toHaveBeenCalledWith('/login');
+    });
+  });
+
+  it('should cancel and go back', () => {
+    const { getByLabelText } = render(<ScheduleMeetingScreen />);
+
+    const cancelButton = getByLabelText('Cancel');
+    fireEvent.press(cancelButton);
+
+    expect(mockRouterInstance.back).toHaveBeenCalled();
+  });
+
+  it('should sanitize inputs', async () => {
+    const { getByPlaceholderText, getByLabelText } = render(<ScheduleMeetingScreen />);
+
+    const titleInput = getByPlaceholderText('e.g., Introduction Call');
+    fireEvent.changeText(titleInput, '<script>alert("xss")</script>Meeting');
+
+    const linkInput = getByPlaceholderText('e.g., https://zoom.us/j/...');
+    fireEvent.changeText(linkInput, 'https://zoom.us/j/123456');
+
+    const sendButton = getByLabelText('Send meeting request');
+    fireEvent.press(sendButton);
+
+    await waitFor(() => {
+      expect(mockHybridCreateMeeting).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: expect.not.stringContaining('<script>'),
+        })
+      );
+    });
+  });
+});

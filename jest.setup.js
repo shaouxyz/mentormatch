@@ -168,6 +168,43 @@ jest.mock('expo-linking', () => ({
   openURL: jest.fn(() => Promise.resolve()),
 }));
 
+// Mock expo-calendar
+jest.mock('expo-calendar', () => ({
+  requestCalendarPermissionsAsync: jest.fn(() => Promise.resolve({ status: 'granted' })),
+  getCalendarsAsync: jest.fn(() => Promise.resolve([{ id: 'default', allowsModifications: true }])),
+  createEventAsync: jest.fn(() => Promise.resolve('event-id')),
+  EntityTypes: {
+    EVENT: 'event',
+  },
+}));
+
+// Mock @react-native-community/datetimepicker
+jest.mock('@react-native-community/datetimepicker', () => 'DateTimePicker');
+
+// Mock Firebase Meeting Service
+jest.mock('./services/firebaseMeetingService', () => ({
+  createMeetingRequest: jest.fn(),
+  getMeeting: jest.fn(),
+  updateMeeting: jest.fn(),
+  deleteMeeting: jest.fn(),
+  getUserMeetings: jest.fn(() => Promise.resolve([])),
+  getPendingMeetingRequests: jest.fn(() => Promise.resolve([])),
+  getUpcomingMeetings: jest.fn(() => Promise.resolve([])),
+  subscribeToUserMeetings: jest.fn(() => () => {}),
+}));
+
+// Mock Hybrid Meeting Service
+jest.mock('./services/hybridMeetingService', () => ({
+  hybridCreateMeeting: jest.fn(),
+  hybridGetMeeting: jest.fn(),
+  hybridUpdateMeeting: jest.fn(),
+  hybridDeleteMeeting: jest.fn(),
+  hybridGetUserMeetings: jest.fn(() => Promise.resolve([])),
+  hybridGetPendingMeetings: jest.fn(() => Promise.resolve([])),
+  hybridGetUpcomingMeetings: jest.fn(() => Promise.resolve([])),
+  hybridSubscribeToMeetings: jest.fn(() => () => {}),
+}));
+
 // Suppress console warnings in tests
 global.console = {
   ...console,
