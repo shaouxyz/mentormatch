@@ -1,9 +1,10 @@
 # Firestore Permissions Fix
 
 ## Issue
-When creating a profile, you're seeing this error:
+When creating or updating a profile, you're seeing this error:
 ```
 ERROR [ERROR] Error creating profile in Firestore {"error": "Missing or insufficient permissions."}
+ERROR [ERROR] Error updating profile in Firestore {"error": "Missing or insufficient permissions."}
 ```
 
 This happens because Firestore security rules are blocking write operations.

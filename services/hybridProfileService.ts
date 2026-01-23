@@ -121,15 +121,40 @@ export async function hybridUpdateProfile(email: string, updates: Partial<Profil
     // Try to sync to Firebase if configured
     if (isFirebaseConfigured()) {
       try {
-        await updateFirebaseProfile(email, updates);
-        logger.info('Profile update synced to Firebase', { email });
+        // Check if user is authenticated in Firebase
+        const currentUser = getCurrentFirebaseUser();
+        logger.info('Firebase auth status for update', { 
+          isAuthenticated: !!currentUser,
+          uid: currentUser?.uid,
+          email: currentUser?.email,
+          profileEmail: email
+        });
+        
+        if (!currentUser) {
+          logger.warn('User not authenticated in Firebase, skipping update sync', {
+            email,
+            hint: 'Make sure user is signed in with Firebase Auth before updating profile'
+          });
+        } else if (currentUser.email !== email) {
+          logger.warn('Firebase user email does not match profile email for update', {
+            firebaseEmail: currentUser.email,
+            profileEmail: email,
+            hint: 'Profile can only be updated by the authenticated user'
+          });
+        } else {
+          await updateFirebaseProfile(email, updates);
+          logger.info('Profile update synced to Firebase', { email });
+        }
       } catch (firebaseError) {
         // Log but don't fail - local profile is already updated
         logger.warn('Failed to sync profile update to Firebase, continuing with local only', {
           email,
-          error: firebaseError instanceof Error ? firebaseError.message : String(firebaseError)
+          error: firebaseError instanceof Error ? firebaseError.message : String(firebaseError),
+          errorName: firebaseError instanceof Error ? firebaseError.name : 'Unknown'
         });
       }
+    } else {
+      logger.info('Firebase not configured, profile updated locally only', { email });
     }
   } catch (error) {
     logger.error('Error in hybrid update profile', error instanceof Error ? error : new Error(String(error)));

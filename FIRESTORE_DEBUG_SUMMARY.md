@@ -47,7 +47,7 @@ auth = initializeAuth(app, {
 
 ### 2. Enhanced Debug Logging (`services/hybridProfileService.ts`)
 
-Added detailed authentication status logging:
+Added detailed authentication status logging for both **create** and **update** operations:
 ```typescript
 const currentUser = getCurrentFirebaseUser();
 logger.info('Firebase auth status', { 
@@ -62,6 +62,10 @@ logger.info('Firebase auth status', {
 - User not authenticated in Firebase
 - Firebase user email doesn't match profile email
 - Detailed error information (error name, message)
+
+**Applied to**:
+- `hybridCreateProfile()` - When creating a new profile
+- `hybridUpdateProfile()` - When updating an existing profile
 
 ### 3. Created Documentation
 
