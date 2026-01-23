@@ -2421,7 +2421,194 @@ Notes: [Any issues found]
 
 ---
 
-## 23. SIGN-OFF
+## 23. MESSAGING FEATURE
+
+### 23.1 Messages List Screen (`app/(tabs)/messages.tsx`)
+
+#### Test Case 23.1.1: Display Empty Messages List
+- **Precondition**: User logged in, no conversations
+- **Steps**:
+  1. Navigate to Messages tab
+  2. Observe screen
+- **Expected Results**:
+  - ✅ "Messages" title displayed
+  - ✅ "No conversations yet" message shown
+  - ✅ "Connect with mentors or mentees to start messaging" subtitle shown
+  - ✅ Empty state icon displayed
+
+#### Test Case 23.1.2: Display Conversations List
+- **Precondition**: User has conversations
+- **Steps**:
+  1. Navigate to Messages tab
+  2. View conversations
+- **Expected Results**:
+  - ✅ All conversations listed
+  - ✅ Participant names displayed
+  - ✅ Last message preview shown
+  - ✅ Timestamp displayed (e.g., "5m ago", "2h ago")
+  - ✅ Unread count badge shown if > 0
+  - ✅ Sorted by most recent
+
+#### Test Case 23.1.3: Navigate to Chat
+- **Precondition**: User has conversations
+- **Steps**:
+  1. Navigate to Messages tab
+  2. Tap on a conversation
+- **Expected Results**:
+  - ✅ Navigate to chat screen
+  - ✅ Correct conversation loaded
+  - ✅ Participant info passed correctly
+
+#### Test Case 23.1.4: Pull to Refresh
+- **Precondition**: Messages tab open
+- **Steps**:
+  1. Pull down to refresh
+  2. Release
+- **Expected Results**:
+  - ✅ Refresh indicator shown
+  - ✅ Conversations reloaded
+  - ✅ Updated data displayed
+
+### 23.2 Chat Screen (`app/messages/chat.tsx`)
+
+#### Test Case 23.2.1: Display Empty Chat
+- **Precondition**: New conversation, no messages
+- **Steps**:
+  1. Open chat with a connection
+  2. Observe screen
+- **Expected Results**:
+  - ✅ Participant name in header
+  - ✅ Participant email in header subtitle
+  - ✅ "No messages yet" empty state
+  - ✅ "Start the conversation!" message
+  - ✅ Message input field displayed
+  - ✅ Send button displayed (disabled)
+
+#### Test Case 23.2.2: Send Message
+- **Precondition**: Chat screen open
+- **Steps**:
+  1. Type message in input field
+  2. Tap send button
+- **Expected Results**:
+  - ✅ Message sent
+  - ✅ Message appears in chat
+  - ✅ Displayed in blue bubble (own message)
+  - ✅ Input field cleared
+  - ✅ Timestamp shown
+  - ✅ Scrolls to bottom
+
+#### Test Case 23.2.3: Receive Message (Real-time)
+- **Precondition**: Chat screen open, Firebase configured
+- **Steps**:
+  1. Other user sends message
+  2. Wait for real-time update
+- **Expected Results**:
+  - ✅ Message appears automatically
+  - ✅ Displayed in white bubble (other's message)
+  - ✅ Sender name shown
+  - ✅ Timestamp shown
+  - ✅ Auto-scrolls to bottom
+
+#### Test Case 23.2.4: Message Sanitization
+- **Precondition**: Chat screen open
+- **Steps**:
+  1. Type message with HTML tags: `<script>alert('xss')</script>`
+  2. Send message
+- **Expected Results**:
+  - ✅ HTML tags stripped
+  - ✅ Safe text displayed
+  - ✅ No XSS vulnerability
+
+#### Test Case 23.2.5: Long Message
+- **Precondition**: Chat screen open
+- **Steps**:
+  1. Type very long message (500+ characters)
+  2. Send message
+- **Expected Results**:
+  - ✅ Message sent successfully
+  - ✅ Message bubble expands appropriately
+  - ✅ Text wraps correctly
+
+#### Test Case 23.2.6: Offline Message Sending
+- **Precondition**: Chat open, no internet
+- **Steps**:
+  1. Disconnect internet
+  2. Send message
+  3. Reconnect internet
+- **Expected Results**:
+  - ✅ Message saved locally
+  - ✅ Message displayed in chat
+  - ✅ Syncs to Firebase when online
+  - ✅ No error shown to user
+
+### 23.3 Messaging Integration
+
+#### Test Case 23.3.1: Send Message from Mentorship Screen
+- **Precondition**: User has mentor/mentee connections
+- **Steps**:
+  1. Navigate to Mentorship tab
+  2. Tap "Send Message" button on a connection
+- **Expected Results**:
+  - ✅ Navigate to chat screen
+  - ✅ Correct conversation opened
+  - ✅ Participant info correct
+
+#### Test Case 23.3.2: Unread Badge Updates
+- **Precondition**: User receives new message
+- **Steps**:
+  1. Receive message while on different tab
+  2. Check Messages tab icon
+  3. Open Messages tab
+  4. Open conversation
+- **Expected Results**:
+  - ✅ Unread count increases
+  - ✅ Badge shown in conversation list
+  - ✅ Badge cleared when opening conversation
+
+#### Test Case 23.3.3: Conversation Creation
+- **Precondition**: No existing conversation
+- **Steps**:
+  1. Send first message to a connection
+- **Expected Results**:
+  - ✅ Conversation created
+  - ✅ Message sent
+  - ✅ Appears in both users' conversation lists
+
+### 23.4 Firebase Sync
+
+#### Test Case 23.4.1: Message Sync to Firestore
+- **Precondition**: Firebase configured
+- **Steps**:
+  1. Send message
+  2. Check Firestore console
+- **Expected Results**:
+  - ✅ Message saved to `messages` collection
+  - ✅ Conversation updated in `conversations` collection
+  - ✅ Last message updated
+  - ✅ Unread count updated
+
+#### Test Case 23.4.2: Real-time Subscription
+- **Precondition**: Firebase configured, chat open
+- **Steps**:
+  1. Open chat
+  2. Send message from another device
+- **Expected Results**:
+  - ✅ Message appears in real-time
+  - ✅ No page refresh needed
+  - ✅ Subscription active
+
+#### Test Case 23.4.3: Firestore Permissions
+- **Precondition**: Security rules applied
+- **Steps**:
+  1. Try to access another user's messages
+- **Expected Results**:
+  - ✅ Permission denied
+  - ✅ Only own messages accessible
+  - ✅ Only participating conversations accessible
+
+---
+
+## 24. SIGN-OFF
 
 ### Test Completion Criteria
 
