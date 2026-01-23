@@ -12,6 +12,7 @@ import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { logger } from '@/utils/logger';
 import { safeParseJSON, validateProfileSchema, validateMentorshipRequestSchema } from '@/utils/schemaValidation';
+import { generateConversationId } from '@/services/hybridMessageService';
 
 interface Profile {
   name: string;
@@ -241,40 +242,64 @@ export default function MentorshipScreen() {
             </View>
           ) : (
             mentors.map((mentor, index) => (
-              <TouchableOpacity
-                key={index}
-                style={styles.connectionCard}
-                onPress={() => {
-                  router.push({
-                    pathname: '/profile/view',
-                    params: { email: mentor.email },
-                  });
-                }}
-                accessibilityLabel={`Mentor ${mentor.name}`}
-                accessibilityHint={`Tap to view ${mentor.name}'s profile. Expertise: ${mentor.expertise}`}
-              >
-                <View style={styles.connectionHeader}>
-                  <View style={styles.connectionAvatar}>
-                    <Text style={styles.connectionAvatarText}>
-                      {mentor.name.charAt(0).toUpperCase()}
-                    </Text>
-                  </View>
-                  <View style={styles.connectionInfo}>
-                    <Text style={styles.connectionName}>{mentor.name}</Text>
-                    {mentor.expertise && (
-                      <Text style={styles.connectionDetail}>
-                        <Ionicons name="star" size={14} color="#f59e0b" /> {mentor.expertise}
+              <View key={index} style={styles.connectionCard}>
+                <TouchableOpacity
+                  onPress={() => {
+                    router.push({
+                      pathname: '/profile/view',
+                      params: { email: mentor.email },
+                    });
+                  }}
+                  accessibilityLabel={`Mentor ${mentor.name}`}
+                  accessibilityHint={`Tap to view ${mentor.name}'s profile. Expertise: ${mentor.expertise}`}
+                >
+                  <View style={styles.connectionHeader}>
+                    <View style={styles.connectionAvatar}>
+                      <Text style={styles.connectionAvatarText}>
+                        {mentor.name.charAt(0).toUpperCase()}
                       </Text>
-                    )}
-                    {mentor.responseNote && (
-                      <Text style={styles.connectionNote} numberOfLines={2}>
-                        "{mentor.responseNote}"
-                      </Text>
-                    )}
+                    </View>
+                    <View style={styles.connectionInfo}>
+                      <Text style={styles.connectionName}>{mentor.name}</Text>
+                      {mentor.expertise && (
+                        <Text style={styles.connectionDetail}>
+                          <Ionicons name="star" size={14} color="#f59e0b" /> {mentor.expertise}
+                        </Text>
+                      )}
+                      {mentor.responseNote && (
+                        <Text style={styles.connectionNote} numberOfLines={2}>
+                          "{mentor.responseNote}"
+                        </Text>
+                      )}
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color="#94a3b8" />
                   </View>
-                  <Ionicons name="chevron-forward" size={20} color="#94a3b8" />
-                </View>
-              </TouchableOpacity>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.messageButton}
+                  onPress={async () => {
+                    const userData = await AsyncStorage.getItem('user');
+                    const profileData = await AsyncStorage.getItem('profile');
+                    if (userData && profileData) {
+                      const user = JSON.parse(userData);
+                      const profile = JSON.parse(profileData);
+                      const conversationId = generateConversationId(user.email, mentor.email);
+                      router.push({
+                        pathname: '/messages/chat',
+                        params: {
+                          conversationId,
+                          participantEmail: mentor.email,
+                          participantName: mentor.name,
+                        },
+                      });
+                    }
+                  }}
+                  accessibilityLabel="Send message"
+                >
+                  <Ionicons name="chatbubble" size={18} color="#2563eb" />
+                  <Text style={styles.messageButtonText}>Send Message</Text>
+                </TouchableOpacity>
+              </View>
             ))
           )}
         </View>
@@ -291,40 +316,64 @@ export default function MentorshipScreen() {
             </View>
           ) : (
             mentees.map((mentee, index) => (
-              <TouchableOpacity
-                key={index}
-                style={styles.connectionCard}
-                onPress={() => {
-                  router.push({
-                    pathname: '/profile/view',
-                    params: { email: mentee.email },
-                  });
-                }}
-                accessibilityLabel={`Mentee ${mentee.name}`}
-                accessibilityHint={`Tap to view ${mentee.name}'s profile. Learning: ${mentee.interest}`}
-              >
-                <View style={styles.connectionHeader}>
-                  <View style={styles.connectionAvatar}>
-                    <Text style={styles.connectionAvatarText}>
-                      {mentee.name.charAt(0).toUpperCase()}
-                    </Text>
-                  </View>
-                  <View style={styles.connectionInfo}>
-                    <Text style={styles.connectionName}>{mentee.name}</Text>
-                    {mentee.interest && (
-                      <Text style={styles.connectionDetail}>
-                        <Ionicons name="book" size={14} color="#3b82f6" /> Learning: {mentee.interest}
+              <View key={index} style={styles.connectionCard}>
+                <TouchableOpacity
+                  onPress={() => {
+                    router.push({
+                      pathname: '/profile/view',
+                      params: { email: mentee.email },
+                    });
+                  }}
+                  accessibilityLabel={`Mentee ${mentee.name}`}
+                  accessibilityHint={`Tap to view ${mentee.name}'s profile. Learning: ${mentee.interest}`}
+                >
+                  <View style={styles.connectionHeader}>
+                    <View style={styles.connectionAvatar}>
+                      <Text style={styles.connectionAvatarText}>
+                        {mentee.name.charAt(0).toUpperCase()}
                       </Text>
-                    )}
-                    {mentee.note && (
-                      <Text style={styles.connectionNote} numberOfLines={2}>
-                        "{mentee.note}"
-                      </Text>
-                    )}
+                    </View>
+                    <View style={styles.connectionInfo}>
+                      <Text style={styles.connectionName}>{mentee.name}</Text>
+                      {mentee.interest && (
+                        <Text style={styles.connectionDetail}>
+                          <Ionicons name="book" size={14} color="#3b82f6" /> Learning: {mentee.interest}
+                        </Text>
+                      )}
+                      {mentee.note && (
+                        <Text style={styles.connectionNote} numberOfLines={2}>
+                          "{mentee.note}"
+                        </Text>
+                      )}
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color="#94a3b8" />
                   </View>
-                  <Ionicons name="chevron-forward" size={20} color="#94a3b8" />
-                </View>
-              </TouchableOpacity>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.messageButton}
+                  onPress={async () => {
+                    const userData = await AsyncStorage.getItem('user');
+                    const profileData = await AsyncStorage.getItem('profile');
+                    if (userData && profileData) {
+                      const user = JSON.parse(userData);
+                      const profile = JSON.parse(profileData);
+                      const conversationId = generateConversationId(user.email, mentee.email);
+                      router.push({
+                        pathname: '/messages/chat',
+                        params: {
+                          conversationId,
+                          participantEmail: mentee.email,
+                          participantName: mentee.name,
+                        },
+                      });
+                    }
+                  }}
+                  accessibilityLabel="Send message"
+                >
+                  <Ionicons name="chatbubble" size={18} color="#2563eb" />
+                  <Text style={styles.messageButtonText}>Send Message</Text>
+                </TouchableOpacity>
+              </View>
             ))
           )}
         </View>
@@ -360,6 +409,22 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 2,
+  },
+  messageButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    backgroundColor: '#eff6ff',
+    borderRadius: 8,
+    gap: 8,
+  },
+  messageButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2563eb',
   },
   connectionHeader: {
     flexDirection: 'row',

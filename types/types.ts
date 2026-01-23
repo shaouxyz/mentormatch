@@ -50,3 +50,26 @@ export interface MentorshipConnection {
   responseNote?: string;
   connectedAt: string;
 }
+
+export interface Message {
+  id: string;
+  conversationId: string;
+  senderEmail: string;
+  senderName: string;
+  receiverEmail: string;
+  receiverName: string;
+  text: string;
+  createdAt: string;
+  read: boolean;
+}
+
+export interface Conversation {
+  id: string;
+  participants: string[]; // Array of email addresses
+  participantNames: { [email: string]: string };
+  lastMessage?: string;
+  lastMessageAt?: string;
+  unreadCount: { [email: string]: number };
+  createdAt: string;
+  updatedAt: string;
+}

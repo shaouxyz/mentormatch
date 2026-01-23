@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
  * 
  * Defines the bottom tab navigation structure with:
  * - Discover tab (home)
+ * - Messages tab
  * - Mentorship tab
  * - Requests tab
  * - Profile tab
@@ -35,6 +36,16 @@ export default function TabsLayout() {
           title: 'Discover',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="search" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="messages"
+        options={{
+          title: 'Messages',
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="chatbubbles" size={size} color={color} />
           ),
         }}
       />
