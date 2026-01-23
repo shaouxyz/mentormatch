@@ -112,10 +112,12 @@ export function sanitizeString(input: string): string {
   }
   
   return input
-    // Remove HTML tags
-    .replace(/<[^>]*>/g, '')
-    // Remove script tags and content
+    // Remove script tags and their content first
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    // Remove style tags and their content
+    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+    // Remove all HTML tags
+    .replace(/<[^>]*>/g, '')
     // Remove dangerous characters
     .replace(/[<>\"']/g, '')
     // Remove control characters (but keep newlines and tabs for now)
@@ -134,10 +136,12 @@ export function sanitizeTextField(input: string): string {
   }
   
   return input
-    // Remove HTML tags
-    .replace(/<[^>]*>/g, '')
-    // Remove script tags and content
+    // Remove script tags and their content first
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    // Remove style tags and their content
+    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+    // Remove all HTML tags
+    .replace(/<[^>]*>/g, '')
     // Remove only the most dangerous characters, keep apostrophes for names like "O'Brien"
     .replace(/[<>\"]/g, '')
     // Remove control characters
