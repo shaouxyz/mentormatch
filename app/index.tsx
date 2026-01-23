@@ -4,7 +4,6 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
 import { initializeTestAccounts } from '@/utils/testAccounts';
-import { initializeCaspaProfiles } from '@/utils/caspaProfiles';
 import { logger } from '@/utils/logger';
 import { initializeDataMigration } from '@/utils/dataMigration';
 import { refreshSession, isSessionValid } from '@/utils/sessionManager';
@@ -37,10 +36,8 @@ export default function WelcomeScreen() {
           initializeTestAccounts().catch((error) => {
             logger.error('Failed to initialize test accounts', error instanceof Error ? error : new Error(String(error)));
           });
-          // Initialize CASPA profiles
-          initializeCaspaProfiles().catch((error) => {
-            logger.error('Failed to initialize CASPA profiles', error instanceof Error ? error : new Error(String(error)));
-          });
+          // CASPA profiles initialization is now lazy - call initializeCaspaProfiles() manually when needed
+          // This improves app startup performance
         }
   }, []);
 

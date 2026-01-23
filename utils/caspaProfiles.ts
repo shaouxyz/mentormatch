@@ -13,7 +13,6 @@ import { logger } from '@/utils/logger';
  */
 export const CASPA_PROFILES: Profile[] = [
   {
-    "id": "caspa_1",
     "name": "Danny",
     "expertise": "General",
     "interest": "General",
@@ -23,7 +22,6 @@ export const CASPA_PROFILES: Profile[] = [
     "phoneNumber": "+1000001000"
   },
   {
-    "id": "caspa_2",
     "name": "Arthur",
     "expertise": "General",
     "interest": "General",
@@ -33,7 +31,6 @@ export const CASPA_PROFILES: Profile[] = [
     "phoneNumber": "+1000001001"
   },
   {
-    "id": "caspa_3",
     "name": "Stephanie Teng",
     "expertise": "Sales",
     "interest": "Sales",
@@ -43,7 +40,6 @@ export const CASPA_PROFILES: Profile[] = [
     "phoneNumber": "+1000001002"
   },
   {
-    "id": "caspa_4",
     "name": "Julie",
     "expertise": "Marketing",
     "interest": "Marketing",
@@ -53,7 +49,6 @@ export const CASPA_PROFILES: Profile[] = [
     "phoneNumber": "+1000001003"
   },
   {
-    "id": "caspa_5",
     "name": "Student",
     "expertise": "Engineering",
     "interest": "Engineering",
@@ -63,7 +58,6 @@ export const CASPA_PROFILES: Profile[] = [
     "phoneNumber": "+1000001004"
   },
   {
-    "id": "caspa_6",
     "name": "Chunlin Wang",
     "expertise": "Engineering",
     "interest": "Entrepreneurship",
@@ -73,7 +67,6 @@ export const CASPA_PROFILES: Profile[] = [
     "phoneNumber": "+1000001005"
   },
   {
-    "id": "caspa_7",
     "name": "Avery",
     "expertise": "Entrepreneurship, sales, marketing, everything",
     "interest": "Entrepreneurship, sales, marketing, everything",
@@ -83,7 +76,6 @@ export const CASPA_PROFILES: Profile[] = [
     "phoneNumber": "+1000001006"
   },
   {
-    "id": "caspa_8",
     "name": "Robert Fan",
     "expertise": "Sales & Marketing",
     "interest": "Sales & Marketing",
@@ -93,7 +85,6 @@ export const CASPA_PROFILES: Profile[] = [
     "phoneNumber": "+1000001007"
   },
   {
-    "id": "caspa_9",
     "name": "Justin Strong",
     "expertise": "Public Speaking",
     "interest": "Public Speaking",
@@ -103,7 +94,6 @@ export const CASPA_PROFILES: Profile[] = [
     "phoneNumber": "+1000001008"
   },
   {
-    "id": "caspa_10",
     "name": "Gerry Wang",
     "expertise": "General",
     "interest": "General",
@@ -113,7 +103,6 @@ export const CASPA_PROFILES: Profile[] = [
     "phoneNumber": "+1000001009"
   },
   {
-    "id": "caspa_11",
     "name": "Haohua Zhou",
     "expertise": "Silicon Engineering",
     "interest": "Etiquette",
@@ -123,7 +112,6 @@ export const CASPA_PROFILES: Profile[] = [
     "phoneNumber": "+1000001010"
   },
   {
-    "id": "caspa_12",
     "name": "Annie An",
     "expertise": "General",
     "interest": "General",
@@ -133,7 +121,6 @@ export const CASPA_PROFILES: Profile[] = [
     "phoneNumber": "+1000001011"
   },
   {
-    "id": "caspa_13",
     "name": "Jimmy Cheng",
     "expertise": "Entrepreneurship",
     "interest": "Entrepreneurship",
@@ -143,7 +130,6 @@ export const CASPA_PROFILES: Profile[] = [
     "phoneNumber": "+1000001012"
   },
   {
-    "id": "caspa_14",
     "name": "Ian Wang",
     "expertise": "Engineering",
     "interest": "Engineering",
@@ -153,7 +139,6 @@ export const CASPA_PROFILES: Profile[] = [
     "phoneNumber": "+1000001013"
   },
   {
-    "id": "caspa_15",
     "name": "Gary Wang",
     "expertise": "Engineering",
     "interest": "Management",
@@ -163,7 +148,6 @@ export const CASPA_PROFILES: Profile[] = [
     "phoneNumber": "+1000001014"
   },
   {
-    "id": "caspa_16",
     "name": "Joseph Lin",
     "expertise": "Engineering",
     "interest": "Engineering",
@@ -173,7 +157,6 @@ export const CASPA_PROFILES: Profile[] = [
     "phoneNumber": "+1000001015"
   },
   {
-    "id": "caspa_17",
     "name": "Iris Song",
     "expertise": "Finance",
     "interest": "Sales",
@@ -183,7 +166,6 @@ export const CASPA_PROFILES: Profile[] = [
     "phoneNumber": "+1000001016"
   },
   {
-    "id": "caspa_18",
     "name": "James Lei",
     "expertise": "Marketing, Career",
     "interest": "Business Development",
@@ -193,7 +175,6 @@ export const CASPA_PROFILES: Profile[] = [
     "phoneNumber": "+1000001017"
   },
   {
-    "id": "caspa_19",
     "name": "Freda Li",
     "expertise": "EDA",
     "interest": "EDA",
@@ -203,7 +184,6 @@ export const CASPA_PROFILES: Profile[] = [
     "phoneNumber": "+1000001018"
   },
   {
-    "id": "caspa_20",
     "name": "Stephanie Teng 2",
     "expertise": "Sales",
     "interest": "leadership",
@@ -213,7 +193,6 @@ export const CASPA_PROFILES: Profile[] = [
     "phoneNumber": "+1000001019"
   },
   {
-    "id": "caspa_21",
     "name": "Kathy Tian",
     "expertise": "Sales, Marketing, Product, HR",
     "interest": "HR solution & service",
@@ -223,7 +202,6 @@ export const CASPA_PROFILES: Profile[] = [
     "phoneNumber": "+1000001020"
   },
   {
-    "id": "caspa_22",
     "name": "Julie Zhang",
     "expertise": "corporate finance",
     "interest": "corporate finance",
@@ -233,7 +211,6 @@ export const CASPA_PROFILES: Profile[] = [
     "phoneNumber": "+1000001021"
   },
   {
-    "id": "caspa_23",
     "name": "William Kou",
     "expertise": "Sales, BD, semicon",
     "interest": "Sales, BD, semicon",
@@ -243,7 +220,6 @@ export const CASPA_PROFILES: Profile[] = [
     "phoneNumber": "+1000001022"
   },
   {
-    "id": "caspa_24",
     "name": "Zhibin Xiao",
     "expertise": "AI, startup",
     "interest": "AI, startup",
@@ -253,7 +229,6 @@ export const CASPA_PROFILES: Profile[] = [
     "phoneNumber": "+1000001023"
   },
   {
-    "id": "caspa_25",
     "name": "Avery Lu",
     "expertise": "General",
     "interest": "General",
@@ -263,7 +238,6 @@ export const CASPA_PROFILES: Profile[] = [
     "phoneNumber": "+1000001024"
   },
   {
-    "id": "caspa_26",
     "name": "Rainman Rui",
     "expertise": "Marketing",
     "interest": "Management",
@@ -273,7 +247,6 @@ export const CASPA_PROFILES: Profile[] = [
     "phoneNumber": "+1000001025"
   },
   {
-    "id": "caspa_27",
     "name": "Fangqing Chu",
     "expertise": "Serdes Design",
     "interest": "Invest",
@@ -283,7 +256,6 @@ export const CASPA_PROFILES: Profile[] = [
     "phoneNumber": "+1000001026"
   },
   {
-    "id": "caspa_28",
     "name": "Song Xue",
     "expertise": "Management, Semi Tech",
     "interest": "Management, Semi Tech",
@@ -293,7 +265,6 @@ export const CASPA_PROFILES: Profile[] = [
     "phoneNumber": "+1000001027"
   },
   {
-    "id": "caspa_29",
     "name": "Danny Hua",
     "expertise": "Eco development",
     "interest": "R&D",
@@ -303,7 +274,6 @@ export const CASPA_PROFILES: Profile[] = [
     "phoneNumber": "+1000001028"
   },
   {
-    "id": "caspa_30",
     "name": "Simon Tan",
     "expertise": "Simulation",
     "interest": "Simulation",
@@ -313,7 +283,6 @@ export const CASPA_PROFILES: Profile[] = [
     "phoneNumber": "+1000001029"
   },
   {
-    "id": "caspa_31",
     "name": "Stephanie Qiao",
     "expertise": "Marketing",
     "interest": "Semi Conductor",
@@ -323,7 +292,6 @@ export const CASPA_PROFILES: Profile[] = [
     "phoneNumber": "+1000001030"
   },
   {
-    "id": "caspa_32",
     "name": "Xiangyu Zhang",
     "expertise": "AI architecture",
     "interest": "leadership",
@@ -333,7 +301,6 @@ export const CASPA_PROFILES: Profile[] = [
     "phoneNumber": "+1000001031"
   },
   {
-    "id": "caspa_33",
     "name": "Helen Guan",
     "expertise": "HR",
     "interest": "HR",
@@ -343,7 +310,6 @@ export const CASPA_PROFILES: Profile[] = [
     "phoneNumber": "+1000001032"
   },
   {
-    "id": "caspa_34",
     "name": "Tony Xia",
     "expertise": "Semi Conductor",
     "interest": "Semi Conductor",
@@ -353,7 +319,6 @@ export const CASPA_PROFILES: Profile[] = [
     "phoneNumber": "+1000001033"
   },
   {
-    "id": "caspa_35",
     "name": "Steve Jiang",
     "expertise": "Embedded System, Algorithm",
     "interest": "AI application",
@@ -390,7 +355,7 @@ export async function initializeCaspaProfiles(): Promise<void> {
     }
 
     // Remove any existing CASPA profiles (in case of re-initialization)
-    allProfiles = allProfiles.filter(p => !p.id?.startsWith('caspa_'));
+    allProfiles = allProfiles.filter(p => !p.email.includes('@caspa.example.com'));
 
     // Add CASPA profiles
     allProfiles.push(...CASPA_PROFILES);
@@ -419,7 +384,7 @@ export async function resetCaspaProfiles(): Promise<void> {
     const existingAllProfilesData = await AsyncStorage.getItem(STORAGE_KEYS.ALL_PROFILES);
     if (existingAllProfilesData) {
       let allProfiles: Profile[] = JSON.parse(existingAllProfilesData);
-      allProfiles = allProfiles.filter(p => !p.id?.startsWith('caspa_'));
+      allProfiles = allProfiles.filter(p => !p.email.includes('@caspa.example.com'));
       await AsyncStorage.setItem(STORAGE_KEYS.ALL_PROFILES, JSON.stringify(allProfiles));
     }
 
