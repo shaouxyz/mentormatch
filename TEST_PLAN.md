@@ -1961,7 +1961,258 @@ Notes: [Any issues found]
 
 ---
 
-## 21. SIGN-OFF
+## 21. HYBRID STORAGE (LOCAL + FIREBASE)
+
+### 21.1 Hybrid Authentication Service
+
+#### Test Case 21.1.1: Hybrid Signup - Local Only Mode
+- **Precondition**: Firebase not configured
+- **Steps**:
+  1. Sign up with new email and password
+  2. Check console logs
+  3. Verify user saved to AsyncStorage
+- **Expected Results**:
+  - ✅ User created locally
+  - ✅ Console log: "Firebase not configured, using local storage only"
+  - ✅ User data in AsyncStorage
+  - ✅ No Firebase errors
+
+#### Test Case 21.1.2: Hybrid Signup - Firebase Configured
+- **Precondition**: Firebase configured
+- **Steps**:
+  1. Sign up with new email and password
+  2. Check console logs
+  3. Verify user saved locally and to Firebase
+- **Expected Results**:
+  - ✅ User created locally
+  - ✅ Console log: "User synced to Firebase"
+  - ✅ User data in AsyncStorage
+  - ✅ User data in Firebase Auth
+
+#### Test Case 21.1.3: Hybrid Signup - Firebase Error Handling
+- **Precondition**: Firebase configured but returns error
+- **Steps**:
+  1. Mock Firebase to throw error
+  2. Sign up with new email
+  3. Check console logs
+- **Expected Results**:
+  - ✅ User created locally (doesn't fail)
+  - ✅ Console warning: "Failed to sync user to Firebase"
+  - ✅ User data in AsyncStorage
+  - ✅ App continues to work
+
+#### Test Case 21.1.4: Hybrid Signin - Local Only Mode
+- **Precondition**: Firebase not configured, user exists locally
+- **Steps**:
+  1. Sign in with existing credentials
+  2. Check console logs
+- **Expected Results**:
+  - ✅ User authenticated locally
+  - ✅ Console log: "User authenticated locally"
+  - ✅ No Firebase sync attempted
+
+#### Test Case 21.1.5: Firebase Sync Availability Check
+- **Precondition**: Various Firebase states
+- **Steps**:
+  1. Call isFirebaseSyncAvailable()
+  2. Check return value
+- **Expected Results**:
+  - ✅ Returns true when Firebase configured
+  - ✅ Returns false when not configured
+
+### 21.2 Hybrid Profile Service
+
+#### Test Case 21.2.1: Create Profile - Local Only Mode
+- **Precondition**: Firebase not configured
+- **Steps**:
+  1. Create profile with all fields
+  2. Check console logs
+  3. Verify profile in AsyncStorage
+  4. Verify profile in allProfiles array
+- **Expected Results**:
+  - ✅ Profile saved to AsyncStorage
+  - ✅ Profile added to allProfiles
+  - ✅ Console log: "Firebase not configured, profile saved locally only"
+  - ✅ No Firebase errors
+
+#### Test Case 21.2.2: Create Profile - Firebase Configured
+- **Precondition**: Firebase configured
+- **Steps**:
+  1. Create profile with all fields
+  2. Check console logs
+  3. Verify profile locally and in Firebase
+- **Expected Results**:
+  - ✅ Profile saved locally
+  - ✅ Profile added to allProfiles
+  - ✅ Console log: "Profile synced to Firebase"
+  - ✅ Profile in Firestore
+
+#### Test Case 21.2.3: Create Profile - Firebase Error Handling
+- **Precondition**: Firebase configured but returns error
+- **Steps**:
+  1. Mock Firebase to throw error
+  2. Create profile
+  3. Check console logs
+- **Expected Results**:
+  - ✅ Profile saved locally (doesn't fail)
+  - ✅ Console warning: "Failed to sync profile to Firebase"
+  - ✅ Profile in AsyncStorage
+  - ✅ App continues to work
+
+#### Test Case 21.2.4: Update Profile - Local Only Mode
+- **Precondition**: Firebase not configured, profile exists
+- **Steps**:
+  1. Update profile fields
+  2. Check console logs
+  3. Verify updates in AsyncStorage
+  4. Verify updates in allProfiles array
+- **Expected Results**:
+  - ✅ Profile updated in AsyncStorage
+  - ✅ Profile updated in allProfiles
+  - ✅ updatedAt timestamp set
+  - ✅ No Firebase sync attempted
+
+#### Test Case 21.2.5: Update Profile - Firebase Configured
+- **Precondition**: Firebase configured, profile exists
+- **Steps**:
+  1. Update profile fields
+  2. Check console logs
+  3. Verify updates locally and in Firebase
+- **Expected Results**:
+  - ✅ Profile updated locally
+  - ✅ Profile updated in allProfiles
+  - ✅ Console log: "Profile update synced to Firebase"
+  - ✅ Profile updated in Firestore
+
+#### Test Case 21.2.6: Update Profile - Firebase Error Handling
+- **Precondition**: Firebase configured but returns error
+- **Steps**:
+  1. Mock Firebase to throw error
+  2. Update profile
+  3. Check console logs
+- **Expected Results**:
+  - ✅ Profile updated locally (doesn't fail)
+  - ✅ Console warning: "Failed to sync profile update to Firebase"
+  - ✅ Profile updated in AsyncStorage
+  - ✅ App continues to work
+
+#### Test Case 21.2.7: Get Profile - Firebase Priority
+- **Precondition**: Firebase configured, profile exists in both
+- **Steps**:
+  1. Call hybridGetProfile()
+  2. Check which source is used
+- **Expected Results**:
+  - ✅ Tries Firebase first
+  - ✅ Returns Firebase profile if available
+  - ✅ Falls back to local if Firebase fails
+
+#### Test Case 21.2.8: Get Profile - Local Fallback
+- **Precondition**: Firebase not configured or fails
+- **Steps**:
+  1. Call hybridGetProfile()
+  2. Check console logs
+- **Expected Results**:
+  - ✅ Returns profile from AsyncStorage
+  - ✅ Checks allProfiles array if not in profile key
+  - ✅ Returns null if not found
+
+#### Test Case 21.2.9: Get All Profiles - Merge Sources
+- **Precondition**: Profiles exist in both Firebase and local
+- **Steps**:
+  1. Call hybridGetAllProfiles()
+  2. Check returned profiles
+- **Expected Results**:
+  - ✅ Returns merged list from both sources
+  - ✅ No duplicate profiles (by email)
+  - ✅ Firebase profiles included
+  - ✅ Local profiles included
+
+#### Test Case 21.2.10: Get All Profiles - Local Only
+- **Precondition**: Firebase not configured
+- **Steps**:
+  1. Call hybridGetAllProfiles()
+  2. Check returned profiles
+- **Expected Results**:
+  - ✅ Returns profiles from AsyncStorage only
+  - ✅ No Firebase calls attempted
+  - ✅ All local profiles returned
+
+### 21.3 Integration with App Screens
+
+#### Test Case 21.3.1: Signup Screen Uses Hybrid Service
+- **Precondition**: On signup screen
+- **Steps**:
+  1. Sign up with valid credentials
+  2. Verify hybridSignUp is called
+- **Expected Results**:
+  - ✅ hybridSignUp called with email and password
+  - ✅ User created in local storage
+  - ✅ Firebase sync attempted if configured
+  - ✅ Navigation to profile creation
+
+#### Test Case 21.3.2: Profile Create Screen Uses Hybrid Service
+- **Precondition**: On profile create screen
+- **Steps**:
+  1. Fill in all profile fields
+  2. Save profile
+  3. Verify hybridCreateProfile is called
+- **Expected Results**:
+  - ✅ hybridCreateProfile called with profile data
+  - ✅ Profile saved locally
+  - ✅ Firebase sync attempted if configured
+  - ✅ Success message shown
+
+#### Test Case 21.3.3: Profile Edit Screen Uses Hybrid Service
+- **Precondition**: On profile edit screen
+- **Steps**:
+  1. Update profile fields
+  2. Save changes
+  3. Verify hybridUpdateProfile is called
+- **Expected Results**:
+  - ✅ hybridUpdateProfile called with email and updates
+  - ✅ Profile updated locally
+  - ✅ Firebase sync attempted if configured
+  - ✅ Success message shown
+
+### 21.4 Error Scenarios
+
+#### Test Case 21.4.1: Firebase Network Error
+- **Precondition**: Firebase configured, network unavailable
+- **Steps**:
+  1. Disconnect network
+  2. Create/update profile
+  3. Check app behavior
+- **Expected Results**:
+  - ✅ Operation succeeds locally
+  - ✅ Warning logged for Firebase failure
+  - ✅ App remains functional
+  - ✅ User sees success message
+
+#### Test Case 21.4.2: Firebase Permission Error
+- **Precondition**: Firebase configured, insufficient permissions
+- **Steps**:
+  1. Mock Firebase permission error
+  2. Create/update profile
+  3. Check app behavior
+- **Expected Results**:
+  - ✅ Operation succeeds locally
+  - ✅ Warning logged for Firebase failure
+  - ✅ App remains functional
+
+#### Test Case 21.4.3: Firebase Quota Exceeded
+- **Precondition**: Firebase quota exceeded
+- **Steps**:
+  1. Mock Firebase quota error
+  2. Create/update profile
+  3. Check app behavior
+- **Expected Results**:
+  - ✅ Operation succeeds locally
+  - ✅ Warning logged for Firebase failure
+  - ✅ App remains functional
+
+---
+
+## 22. SIGN-OFF
 
 ### Test Completion Criteria
 
