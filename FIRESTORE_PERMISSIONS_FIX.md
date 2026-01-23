@@ -235,14 +235,171 @@ Restart Expo after updating `.env`:
 npm run start:clear
 ```
 
+## Firestore Security Rules for Messages Collection
+
+Add rules for the `messages` collection:
+
+```javascript
+match /messages/{messageId} {
+  // Allow users to read messages they're involved in
+  allow read: if isSignedIn() && 
+    (resource.data.senderEmail == request.auth.token.email || 
+     resource.data.receiverEmail == request.auth.token.email);
+  
+  // Allow users to create messages as the sender
+  allow create: if isSignedIn() && 
+    request.resource.data.senderEmail == request.auth.token.email &&
+    request.resource.data.chatId is string &&
+    request.resource.data.text is string;
+  
+  // Don't allow updates or deletes (messages are immutable)
+  allow update, delete: if false;
+}
+```
+
+## Firestore Security Rules for Meetings Collection
+
+Add rules for the `meetings` collection:
+
+```javascript
+match /meetings/{meetingId} {
+  // Allow users to read meetings they're involved in (as organizer or participant)
+  allow read: if isSignedIn() && 
+    (resource.data.organizerEmail == request.auth.token.email || 
+     resource.data.participantEmail == request.auth.token.email);
+  
+  // Allow users to create meetings as the organizer
+  allow create: if isSignedIn() && 
+    request.resource.data.organizerEmail == request.auth.token.email &&
+    request.resource.data.participantEmail is string &&
+    request.resource.data.title is string &&
+    request.resource.data.date is string;
+  
+  // Allow organizer or participant to update (for accepting/declining)
+  allow update: if isSignedIn() && 
+    (resource.data.organizerEmail == request.auth.token.email || 
+     resource.data.participantEmail == request.auth.token.email);
+  
+  // Allow only the organizer to delete
+  allow delete: if isSignedIn() && 
+    resource.data.organizerEmail == request.auth.token.email;
+}
+```
+
+## Firestore Security Rules for Conversations Collection
+
+Add rules for the `conversations` collection:
+
+```javascript
+match /conversations/{conversationId} {
+  // Allow users to read conversations they're a participant in
+  allow read: if isSignedIn() && 
+    request.auth.token.email in resource.data.participants;
+  
+  // Allow users to create conversations if they're a participant
+  allow create: if isSignedIn() && 
+    request.auth.token.email in request.resource.data.participants &&
+    request.resource.data.participants is list;
+  
+  // Allow participants to update (for unread counts, last message)
+  allow update: if isSignedIn() && 
+    request.auth.token.email in resource.data.participants;
+  
+  // Don't allow deletes (preserve conversation history)
+  allow delete: if false;
+}
+```
+
+## Complete Firestore Security Rules
+
+Here's the complete rules file with all collections:
+
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper function
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    // Profiles collection
+    match /profiles/{profileId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && 
+        request.resource.data.email == request.auth.token.email;
+      allow update: if isSignedIn() && 
+        resource.data.email == request.auth.token.email;
+      allow delete: if false;
+    }
+    
+    // Mentorship requests collection
+    match /mentorshipRequests/{requestId} {
+      allow read: if isSignedIn() && 
+        (resource.data.requesterEmail == request.auth.token.email || 
+         resource.data.mentorEmail == request.auth.token.email);
+      allow create: if isSignedIn() && 
+        request.resource.data.requesterEmail == request.auth.token.email;
+      allow update: if isSignedIn() && 
+        (resource.data.requesterEmail == request.auth.token.email || 
+         resource.data.mentorEmail == request.auth.token.email);
+      allow delete: if isSignedIn() && 
+        resource.data.requesterEmail == request.auth.token.email;
+    }
+    
+    // Messages collection
+    match /messages/{messageId} {
+      allow read: if isSignedIn() && 
+        (resource.data.senderEmail == request.auth.token.email || 
+         resource.data.receiverEmail == request.auth.token.email);
+      allow create: if isSignedIn() && 
+        request.resource.data.senderEmail == request.auth.token.email &&
+        request.resource.data.chatId is string &&
+        request.resource.data.text is string;
+      allow update, delete: if false;
+    }
+    
+    // Meetings collection
+    match /meetings/{meetingId} {
+      allow read: if isSignedIn() && 
+        (resource.data.organizerEmail == request.auth.token.email || 
+         resource.data.participantEmail == request.auth.token.email);
+      allow create: if isSignedIn() && 
+        request.resource.data.organizerEmail == request.auth.token.email &&
+        request.resource.data.participantEmail is string &&
+        request.resource.data.title is string &&
+        request.resource.data.date is string;
+      allow update: if isSignedIn() && 
+        (resource.data.organizerEmail == request.auth.token.email || 
+         resource.data.participantEmail == request.auth.token.email);
+      allow delete: if isSignedIn() && 
+        resource.data.organizerEmail == request.auth.token.email;
+    }
+    
+    // Conversations collection
+    match /conversations/{conversationId} {
+      allow read: if isSignedIn() && 
+        request.auth.token.email in resource.data.participants;
+      allow create: if isSignedIn() && 
+        request.auth.token.email in request.resource.data.participants &&
+        request.resource.data.participants is list;
+      allow update: if isSignedIn() && 
+        request.auth.token.email in resource.data.participants;
+      allow delete: if false;
+    }
+  }
+}
+```
+
 ## Next Steps
 
-1. ✅ Update Firestore security rules in Firebase Console
+1. ✅ Update Firestore security rules in Firebase Console (copy complete rules above)
 2. ✅ Verify rules are published
 3. ✅ Restart the app (`npm run start:clear`)
-4. ✅ Test profile creation
-5. ✅ Check Firebase Console for new profile documents
+4. ✅ Test profile creation, messaging, and meeting scheduling
+5. ✅ Check Firebase Console for new documents
 
 ## Related Documentation
 - [Firebase Setup Guide](docs/FIREBASE_SETUP_GUIDE.md)
 - [Firestore Security Rules Documentation](https://firebase.google.com/docs/firestore/security/get-started)
+- [FIRESTORE_MESSAGING_RULES.md](FIRESTORE_MESSAGING_RULES.md) - Detailed rules for messaging

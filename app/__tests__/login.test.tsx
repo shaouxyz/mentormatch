@@ -82,7 +82,11 @@ describe('LoginScreen', () => {
 
     await waitFor(() => {
       // Error message now includes rate limiting info
-      expect(Alert.alert).toHaveBeenCalledWith('Error', expect.stringContaining('Invalid email or password'));
+      expect(Alert.alert).toHaveBeenCalledWith(
+        'Error', 
+        expect.stringContaining('Invalid email or password'),
+        expect.any(Array)
+      );
     });
   });
 
@@ -154,7 +158,11 @@ describe('LoginScreen', () => {
 
     await waitFor(() => {
       // Error message now includes rate limiting info
-      expect(Alert.alert).toHaveBeenCalledWith('Error', expect.stringContaining('Invalid email or password'));
+      expect(Alert.alert).toHaveBeenCalledWith(
+        'Error', 
+        expect.stringContaining('Invalid email or password'),
+        expect.any(Array)
+      );
     });
   });
 
@@ -178,7 +186,11 @@ describe('LoginScreen', () => {
 
     await waitFor(() => {
       // Error message now includes rate limiting info
-      expect(Alert.alert).toHaveBeenCalledWith('Error', expect.stringContaining('Invalid email or password'));
+      expect(Alert.alert).toHaveBeenCalledWith(
+        'Error', 
+        expect.stringContaining('Invalid email or password'),
+        expect.any(Array)
+      );
     });
   });
 
@@ -215,7 +227,11 @@ describe('LoginScreen', () => {
 
     await waitFor(() => {
       // Error message now includes rate limiting info
-      expect(Alert.alert).toHaveBeenCalledWith('Error', expect.stringContaining('Invalid email or password'));
+      expect(Alert.alert).toHaveBeenCalledWith(
+        'Error', 
+        expect.stringContaining('Invalid email or password'),
+        expect.any(Array)
+      );
     });
 
     AsyncStorage.getItem = originalGetItem;

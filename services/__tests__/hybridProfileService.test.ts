@@ -17,11 +17,13 @@ import {
 } from '../hybridProfileService';
 import * as firebaseConfig from '../../config/firebase.config';
 import * as firebaseProfileService from '../firebaseProfileService';
+import * as firebaseAuthService from '../firebaseAuthService';
 import { Profile } from '../../types/types';
 
 // Mock dependencies
 jest.mock('../../config/firebase.config');
 jest.mock('../firebaseProfileService');
+jest.mock('../firebaseAuthService');
 
 describe('Hybrid Profile Service', () => {
   const mockProfile: Profile = {
@@ -40,6 +42,12 @@ describe('Hybrid Profile Service', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     AsyncStorage.clear();
+    
+    // Mock authenticated Firebase user by default
+    (firebaseAuthService.getCurrentFirebaseUser as jest.Mock).mockReturnValue({
+      uid: 'test-uid',
+      email: 'john@example.com',
+    });
   });
 
   describe('hybridCreateProfile', () => {

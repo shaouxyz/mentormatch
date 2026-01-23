@@ -29,6 +29,7 @@ export default function UpcomingMeetingsScreen() {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [currentUserEmail, setCurrentUserEmail] = useState<string>('');
 
   useFocusEffect(
     useCallback(() => {
@@ -47,6 +48,7 @@ export default function UpcomingMeetingsScreen() {
       }
 
       const user = JSON.parse(userData);
+      setCurrentUserEmail(user.email);
       const upcomingMeetings = await hybridGetUpcomingMeetings(user.email);
       setMeetings(upcomingMeetings);
       logger.info('Upcoming meetings loaded', { count: upcomingMeetings.length });
@@ -226,7 +228,7 @@ export default function UpcomingMeetingsScreen() {
   };
 
   const renderMeeting = ({ item }: { item: Meeting }) => {
-    const isOrganizer = item.organizerEmail === item.participantEmail; // Check if current user
+    const isOrganizer = item.organizerEmail === currentUserEmail;
     const otherPerson = isOrganizer ? item.participantName : item.organizerName;
 
     return (

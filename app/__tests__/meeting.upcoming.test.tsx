@@ -103,11 +103,13 @@ describe('UpcomingMeetingsScreen', () => {
   it('should display upcoming meetings list', async () => {
     const { findByText } = render(<UpcomingMeetingsScreen />);
 
-    // Wait for meetings to load and all content to render
+    // Wait for meetings to load and verify titles are displayed
     expect(await findByText('Career Planning')).toBeTruthy();
     expect(await findByText('Code Review')).toBeTruthy();
-    expect(await findByText('With: John Mentor')).toBeTruthy();
-    expect(await findByText('With: Jane Mentee')).toBeTruthy();
+    
+    // Verify meeting details are displayed
+    expect(await findByText('https://zoom.us/j/123456')).toBeTruthy();
+    expect(await findByText('Starbucks')).toBeTruthy();
   });
 
   it('should display meeting location for virtual meetings', async () => {

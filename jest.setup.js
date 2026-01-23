@@ -205,6 +205,18 @@ jest.mock('./services/hybridMeetingService', () => ({
   hybridSubscribeToMeetings: jest.fn(() => () => {}),
 }));
 
+// Mock Hybrid Message Service
+jest.mock('./services/hybridMessageService', () => ({
+  hybridSendMessage: jest.fn(),
+  hybridSubscribeToChat: jest.fn(() => () => {}),
+  hybridMarkMessagesAsRead: jest.fn(),
+  hybridGetUnreadMessageCount: jest.fn(() => Promise.resolve(0)),
+  generateConversationId: jest.fn((email1, email2) => {
+    const emails = [email1, email2].sort();
+    return emails.join('_');
+  }),
+}));
+
 // Suppress console warnings in tests
 global.console = {
   ...console,
