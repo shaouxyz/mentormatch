@@ -1,0 +1,209 @@
+﻿node.exe : npm verbose cli C:\Users\Chunlin Wang\Miniconda3\node.exe C:\Users\Chunlin 
+Wang\Miniconda3\node_modules\npm\bin\npm-cli.js
+所在位置 C:\Users\Chunlin Wang\Miniconda3\npm.ps1:16 字符: 5
++     & "$basedir/node$exe"  "$basedir/node_modules/npm/bin/npm-cli.js" ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (npm verbose cli...\bin\npm-cli.js:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+npm info using npm@11.7.0
+npm info using node@v25.2.1
+npm verbose title npm test
+npm verbose argv "test" "--loglevel" "verbose"
+npm verbose logfile logs-max:10 dir:C:\Users\Chunlin Wang\AppData\Local\npm-cache\_logs\2026-01-23T05_24_06_511Z-
+npm verbose logfile C:\Users\Chunlin Wang\AppData\Local\npm-cache\_logs\2026-01-23T05_24_06_511Z-debug-0.log
+
+> cmn@0.1.0 test
+> jest
+
+PASS utils/__tests__/validation.test.ts
+PASS utils/__tests__/testAccounts.test.ts
+PASS utils/__tests__/security.test.ts
+PASS app/__tests__/signup.test.tsx
+  鈼?Console
+
+    console.log
+      [INFO] User created {
+        email: 'user@example.com',
+        id: '1769145848714',
+        timestamp: '2026-01-23T05:24:08.714Z'
+      }
+
+      at Logger.logMethod [as log] (utils/logger.ts:82:7)
+
+    console.log
+      [INFO] Session started { timestamp: '2026-01-23T05:24:08.720Z' }
+
+      at Logger.logMethod [as log] (utils/logger.ts:82:7)
+
+    console.log
+      [INFO] User created {
+        email: 'user.name@example.com',
+        id: '1769145848784',
+        timestamp: '2026-01-23T05:24:08.784Z'
+      }
+
+      at Logger.logMethod [as log] (utils/logger.ts:82:7)
+
+    console.log
+      [INFO] Session started { timestamp: '2026-01-23T05:24:08.784Z' }
+
+      at Logger.logMethod [as log] (utils/logger.ts:82:7)
+
+    console.log
+      [INFO] User created {
+        email: 'user+tag@example.co.uk',
+        id: '1769145848845',
+        timestamp: '2026-01-23T05:24:08.845Z'
+      }
+
+      at Logger.logMethod [as log] (utils/logger.ts:82:7)
+
+    console.log
+      [INFO] Session started { timestamp: '2026-01-23T05:24:08.845Z' }
+
+      at Logger.logMethod [as log] (utils/logger.ts:82:7)
+
+    console.log
+      [INFO] User created {
+        email: 'user_name@example-domain.com',
+        id: '1769145848909',
+        timestamp: '2026-01-23T05:24:08.909Z'
+      }
+
+      at Logger.logMethod [as log] (utils/logger.ts:82:7)
+
+    console.log
+      [INFO] Session started { timestamp: '2026-01-23T05:24:08.910Z' }
+
+      at Logger.logMethod [as log] (utils/logger.ts:82:7)
+
+    console.log
+      [INFO] User created {
+        email: 'test@example.com',
+        id: '1769145848973',
+        timestamp: '2026-01-23T05:24:08.973Z'
+      }
+
+      at Logger.logMethod [as log] (utils/logger.ts:82:7)
+
+    console.log
+      [INFO] Session started { timestamp: '2026-01-23T05:24:08.973Z' }
+
+      at Logger.logMethod [as log] (utils/logger.ts:82:7)
+
+    console.log
+      [INFO] User created {
+        email: 'test@example.com',
+        id: '1769145849035',
+        timestamp: '2026-01-23T05:24:09.035Z'
+      }
+
+      at Logger.logMethod [as log] (utils/logger.ts:82:7)
+
+    console.log
+      [INFO] Session started { timestamp: '2026-01-23T05:24:09.035Z' }
+
+      at Logger.logMethod [as log] (utils/logger.ts:82:7)
+
+PASS app/__tests__/profile.spaces.test.tsx
+PASS app/__tests__/login.test.tsx
+  鈼?Console
+
+    console.log
+      [INFO] User created {
+        email: 't0@example.com',
+        id: '1769145848691',
+        timestamp: '2026-01-23T05:24:08.691Z'
+      }
+
+      at Logger.logMethod [as log] (utils/logger.ts:82:7)
+
+    console.log
+      [INFO] Rate limit reset { key: 't0', timestamp: '2026-01-23T05:24:08.697Z' }
+
+      at Logger.logMethod [as log] (utils/logger.ts:82:7)
+
+    console.log
+      [INFO] Session started { timestamp: '2026-01-23T05:24:08.698Z' }
+
+      at Logger.logMethod [as log] (utils/logger.ts:82:7)
+
+    console.log
+      [INFO] User created {
+        email: 't1@example.com',
+        id: '1769145848752',
+        timestamp: '2026-01-23T05:24:08.752Z'
+      }
+
+      at Logger.logMethod [as log] (utils/logger.ts:82:7)
+
+    console.log
+      [INFO] Rate limit reset { key: 't1', timestamp: '2026-01-23T05:24:08.752Z' }
+
+      at Logger.logMethod [as log] (utils/logger.ts:82:7)
+
+    console.log
+      [INFO] Session started { timestamp: '2026-01-23T05:24:08.752Z' }
+
+      at Logger.logMethod [as log] (utils/logger.ts:82:7)
+
+    console.log
+      [INFO] Rate limit reset { key: 'regular@example.com', timestamp: '2026-01-23T05:24:08.876Z' }
+
+      at Logger.logMethod [as log] (utils/logger.ts:82:7)
+
+    console.log
+      [INFO] Session started { timestamp: '2026-01-23T05:24:08.877Z' }
+
+      at Logger.logMethod [as log] (utils/logger.ts:82:7)
+
+    console.log
+      [INFO] Rate limit reset { key: 'noprofile@example.com', timestamp: '2026-01-23T05:24:08.939Z' }
+
+      at Logger.logMethod [as log] (utils/logger.ts:82:7)
+
+    console.log
+      [INFO] Session started { timestamp: '2026-01-23T05:24:08.939Z' }
+
+      at Logger.logMethod [as log] (utils/logger.ts:82:7)
+
+    console.log
+      [INFO] User created {
+        email: 't0@example.com',
+        id: '1769145849130',
+        timestamp: '2026-01-23T05:24:09.131Z'
+      }
+
+      at Logger.logMethod [as log] (utils/logger.ts:82:7)
+
+    console.log
+      [INFO] Rate limit reset { key: 't0', timestamp: '2026-01-23T05:24:09.131Z' }
+
+      at Logger.logMethod [as log] (utils/logger.ts:82:7)
+
+    console.log
+      [INFO] Session started { timestamp: '2026-01-23T05:24:09.131Z' }
+
+      at Logger.logMethod [as log] (utils/logger.ts:82:7)
+
+PASS app/__tests__/profile.location.test.tsx
+PASS app/__tests__/profile.create.test.tsx
+PASS app/__tests__/profile.edit.test.tsx
+PASS app/__tests__/home.test.tsx
+PASS app/__tests__/mentorship.test.tsx
+PASS app/__tests__/requests.test.tsx
+PASS app/__tests__/request.respond.test.tsx
+PASS app/__tests__/request.send.test.tsx
+
+Test Suites: 14 passed, 14 total
+Tests:       201 passed, 201 total
+Snapshots:   0 total
+Time:        3.279 s
+Ran all test suites.
+npm verbose cwd C:\Proj\cmn
+npm verbose os Windows_NT 10.0.26100
+npm verbose node v25.2.1
+npm verbose npm  v11.7.0
+npm verbose exit 0
+npm info ok
