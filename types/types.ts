@@ -73,3 +73,24 @@ export interface Conversation {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface Meeting {
+  id: string;
+  organizerEmail: string;
+  organizerName: string;
+  participantEmail: string;
+  participantName: string;
+  title: string;
+  description?: string;
+  date: string; // ISO date string
+  time: string; // ISO time string
+  duration: number; // Duration in minutes
+  location: string;
+  locationType: 'in-person' | 'virtual' | 'phone';
+  meetingLink?: string; // For virtual meetings
+  status: 'pending' | 'accepted' | 'declined' | 'cancelled';
+  responseNote?: string;
+  createdAt: string;
+  updatedAt: string;
+  respondedAt?: string;
+}

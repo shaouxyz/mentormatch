@@ -275,30 +275,48 @@ export default function MentorshipScreen() {
                     <Ionicons name="chevron-forward" size={20} color="#94a3b8" />
                   </View>
                 </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.messageButton}
-                  onPress={async () => {
-                    const userData = await AsyncStorage.getItem('user');
-                    const profileData = await AsyncStorage.getItem('profile');
-                    if (userData && profileData) {
-                      const user = JSON.parse(userData);
-                      const profile = JSON.parse(profileData);
-                      const conversationId = generateConversationId(user.email, mentor.email);
+                <View style={styles.actionButtons}>
+                  <TouchableOpacity
+                    style={styles.messageButton}
+                    onPress={async () => {
+                      const userData = await AsyncStorage.getItem('user');
+                      const profileData = await AsyncStorage.getItem('profile');
+                      if (userData && profileData) {
+                        const user = JSON.parse(userData);
+                        const profile = JSON.parse(profileData);
+                        const conversationId = generateConversationId(user.email, mentor.email);
+                        router.push({
+                          pathname: '/messages/chat',
+                          params: {
+                            conversationId,
+                            participantEmail: mentor.email,
+                            participantName: mentor.name,
+                          },
+                        });
+                      }
+                    }}
+                    accessibilityLabel="Send message"
+                  >
+                    <Ionicons name="chatbubble" size={18} color="#2563eb" />
+                    <Text style={styles.messageButtonText}>Message</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.scheduleButton}
+                    onPress={() => {
                       router.push({
-                        pathname: '/messages/chat',
+                        pathname: '/meeting/schedule',
                         params: {
-                          conversationId,
                           participantEmail: mentor.email,
                           participantName: mentor.name,
                         },
                       });
-                    }
-                  }}
-                  accessibilityLabel="Send message"
-                >
-                  <Ionicons name="chatbubble" size={18} color="#2563eb" />
-                  <Text style={styles.messageButtonText}>Send Message</Text>
-                </TouchableOpacity>
+                    }}
+                    accessibilityLabel="Schedule meeting"
+                  >
+                    <Ionicons name="calendar" size={18} color="#10b981" />
+                    <Text style={styles.scheduleButtonText}>Schedule</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             ))
           )}
@@ -349,30 +367,48 @@ export default function MentorshipScreen() {
                     <Ionicons name="chevron-forward" size={20} color="#94a3b8" />
                   </View>
                 </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.messageButton}
-                  onPress={async () => {
-                    const userData = await AsyncStorage.getItem('user');
-                    const profileData = await AsyncStorage.getItem('profile');
-                    if (userData && profileData) {
-                      const user = JSON.parse(userData);
-                      const profile = JSON.parse(profileData);
-                      const conversationId = generateConversationId(user.email, mentee.email);
+                <View style={styles.actionButtons}>
+                  <TouchableOpacity
+                    style={styles.messageButton}
+                    onPress={async () => {
+                      const userData = await AsyncStorage.getItem('user');
+                      const profileData = await AsyncStorage.getItem('profile');
+                      if (userData && profileData) {
+                        const user = JSON.parse(userData);
+                        const profile = JSON.parse(profileData);
+                        const conversationId = generateConversationId(user.email, mentee.email);
+                        router.push({
+                          pathname: '/messages/chat',
+                          params: {
+                            conversationId,
+                            participantEmail: mentee.email,
+                            participantName: mentee.name,
+                          },
+                        });
+                      }
+                    }}
+                    accessibilityLabel="Send message"
+                  >
+                    <Ionicons name="chatbubble" size={18} color="#2563eb" />
+                    <Text style={styles.messageButtonText}>Message</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.scheduleButton}
+                    onPress={() => {
                       router.push({
-                        pathname: '/messages/chat',
+                        pathname: '/meeting/schedule',
                         params: {
-                          conversationId,
                           participantEmail: mentee.email,
                           participantName: mentee.name,
                         },
                       });
-                    }
-                  }}
-                  accessibilityLabel="Send message"
-                >
-                  <Ionicons name="chatbubble" size={18} color="#2563eb" />
-                  <Text style={styles.messageButtonText}>Send Message</Text>
-                </TouchableOpacity>
+                    }}
+                    accessibilityLabel="Schedule meeting"
+                  >
+                    <Ionicons name="calendar" size={18} color="#10b981" />
+                    <Text style={styles.scheduleButtonText}>Schedule</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             ))
           )}
@@ -410,21 +446,42 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 2,
   },
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 12,
+  },
   messageButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 12,
     paddingVertical: 10,
     paddingHorizontal: 16,
     backgroundColor: '#eff6ff',
     borderRadius: 8,
-    gap: 8,
+    gap: 6,
   },
   messageButtonText: {
     fontSize: 14,
     fontWeight: '600',
     color: '#2563eb',
+  },
+  scheduleButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    backgroundColor: '#d1fae5',
+    borderRadius: 8,
+    gap: 6,
+  },
+  scheduleButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#10b981',
   },
   connectionHeader: {
     flexDirection: 'row',
