@@ -19,6 +19,7 @@ import { safeParseJSON, validateProfileSchema } from '@/utils/schemaValidation';
 import { config } from '@/utils/config';
 import { refreshSession } from '@/utils/sessionManager';
 import { useFocusEffect } from 'expo-router';
+import { orderProfilesForUser } from '@/utils/profileOrdering';
 
 interface Profile {
   name: string;
@@ -79,6 +80,7 @@ export default function HomeScreen() {
       await initializeTestAccounts();
       
       const profileData = await AsyncStorage.getItem('profile');
+      let parsedCurrentProfile: Profile | null = null;
       if (profileData) {
         const profile = safeParseJSON(
           profileData,
@@ -87,6 +89,7 @@ export default function HomeScreen() {
         );
         if (profile) {
           setCurrentProfile(profile);
+          parsedCurrentProfile = profile;
         }
       }
 
@@ -163,7 +166,7 @@ export default function HomeScreen() {
 
       // Store all profiles for pagination
       const maxProfiles = config.performance.maxProfilesToLoad;
-      const limitedAllProfiles = uniqueProfiles.slice(0, maxProfiles);
+      const limitedProfiles = uniqueProfiles.slice(0, maxProfiles);
       
       if (uniqueProfiles.length > maxProfiles) {
         logger.warn('Profiles limited for performance', { 
@@ -172,11 +175,14 @@ export default function HomeScreen() {
         });
       }
 
-      setAllProfiles(limitedAllProfiles);
+      // Apply smart ordering: randomized but prioritizing better matches
+      const orderedProfiles = orderProfilesForUser(limitedProfiles, parsedCurrentProfile);
+      
+      setAllProfiles(orderedProfiles);
       
       // Load first page
       const profilesPerPage = PROFILES_PER_PAGE;
-      const initialProfiles = limitedAllProfiles.slice(0, profilesPerPage);
+      const initialProfiles = orderedProfiles.slice(0, profilesPerPage);
       setDisplayedProfiles(initialProfiles);
       setCurrentPage(0);
     } catch (error) {

@@ -2212,7 +2212,216 @@ Notes: [Any issues found]
 
 ---
 
-## 22. SIGN-OFF
+## 22. SMART PROFILE ORDERING
+
+### 22.1 Profile Ordering Algorithm
+
+#### Test Case 22.1.1: Calculate Match Score - Perfect Match
+- **Precondition**: Two profiles with bidirectional match
+- **Steps**:
+  1. Profile A: expertise="Software", interest="Design"
+  2. Profile B: expertise="Design", interest="Software"
+  3. Calculate match score
+- **Expected Results**:
+  - ✅ Score = 75 (50 + 25)
+  - ✅ Both directions matched
+
+#### Test Case 22.1.2: Calculate Match Score - Partial Match
+- **Precondition**: Profiles with one-way match
+- **Steps**:
+  1. Profile A: expertise="Software", interest="ML"
+  2. Profile B: expertise="ML", interest="Design"
+  3. Calculate match score
+- **Expected Results**:
+  - ✅ Score = 25 (one direction)
+  - ✅ Expertise-interest match detected
+
+#### Test Case 22.1.3: Calculate Match Score - No Match
+- **Precondition**: Profiles with no overlap
+- **Steps**:
+  1. Profile A: expertise="Software", interest="ML"
+  2. Profile B: expertise="Marketing", interest="Sales"
+  3. Calculate match score
+- **Expected Results**:
+  - ✅ Score = 0
+  - ✅ No matches found
+
+#### Test Case 22.1.4: Match Score Case Insensitivity
+- **Precondition**: Profiles with different case
+- **Steps**:
+  1. Profile A: expertise="SOFTWARE"
+  2. Profile B: interest="software"
+  3. Calculate match score
+- **Expected Results**:
+  - ✅ Match detected despite case difference
+  - ✅ Score > 0
+
+#### Test Case 22.1.5: Match Score Partial String Matching
+- **Precondition**: Profiles with partial overlap
+- **Steps**:
+  1. Profile A: expertise="Machine Learning"
+  2. Profile B: interest="Machine"
+  3. Calculate match score
+- **Expected Results**:
+  - ✅ Match detected for substring
+  - ✅ Score > 0
+
+### 22.2 Smart Ordering Behavior
+
+#### Test Case 22.2.1: Consistent Order Per User
+- **Precondition**: Same user, same profiles
+- **Steps**:
+  1. Order profiles for user A
+  2. Order same profiles for user A again
+  3. Compare results
+- **Expected Results**:
+  - ✅ Orders are identical
+  - ✅ Deterministic behavior per user
+
+#### Test Case 22.2.2: Different Order Per User
+- **Precondition**: Different users, same profiles
+- **Steps**:
+  1. Order profiles for user A
+  2. Order same profiles for user B
+  3. Compare results
+- **Expected Results**:
+  - ✅ Orders are different
+  - ✅ Each user sees unique ordering
+
+#### Test Case 22.2.3: High Match Profiles Appear First
+- **Precondition**: Mix of high and low match profiles
+- **Steps**:
+  1. Create profiles with varying match scores
+  2. Order profiles multiple times with different seeds
+  3. Track position of high-match profiles
+- **Expected Results**:
+  - ✅ High-match profiles (score >= 50) appear first in >60% of cases
+  - ✅ 3x weight applied to high matches
+
+#### Test Case 22.2.4: Medium Match Profiles Prioritized
+- **Precondition**: Mix of medium and no-match profiles
+- **Steps**:
+  1. Create profiles with medium matches (25-49)
+  2. Order profiles multiple times
+  3. Track position of medium-match profiles
+- **Expected Results**:
+  - ✅ Medium-match profiles appear first in >55% of cases
+  - ✅ 2x weight applied to medium matches
+
+#### Test Case 22.2.5: All Profiles Included
+- **Precondition**: Various profiles
+- **Steps**:
+  1. Order profiles
+  2. Verify all profiles present
+- **Expected Results**:
+  - ✅ No profiles lost
+  - ✅ No duplicates
+  - ✅ Same count as input
+
+#### Test Case 22.2.6: Randomization Without Current Profile
+- **Precondition**: No current user profile
+- **Steps**:
+  1. Order profiles with null current profile
+  2. Order again with different seed
+- **Expected Results**:
+  - ✅ Profiles randomized
+  - ✅ Different orders for different seeds
+  - ✅ No match-based prioritization
+
+#### Test Case 22.2.7: Empty Profile List
+- **Precondition**: No profiles available
+- **Steps**:
+  1. Order empty array
+- **Expected Results**:
+  - ✅ Returns empty array
+  - ✅ No errors
+
+#### Test Case 22.2.8: Single Profile
+- **Precondition**: Only one profile
+- **Steps**:
+  1. Order single profile
+- **Expected Results**:
+  - ✅ Returns same profile
+  - ✅ No errors
+
+### 22.3 Integration with Home Screen
+
+#### Test Case 22.3.1: Profiles Ordered on Load
+- **Precondition**: User has profile, profiles exist
+- **Steps**:
+  1. Navigate to Discover tab
+  2. Observe profile order
+  3. Reload app
+  4. Observe profile order again
+- **Expected Results**:
+  - ✅ Profiles displayed in smart order
+  - ✅ Same order on reload for same user
+  - ✅ Better matches appear earlier
+
+#### Test Case 22.3.2: Search Maintains Original Order
+- **Precondition**: Profiles ordered
+- **Steps**:
+  1. View ordered profiles
+  2. Search for specific term
+  3. Clear search
+- **Expected Results**:
+  - ✅ Filtered profiles maintain relative order
+  - ✅ Original order restored after clearing search
+
+#### Test Case 22.3.3: Refresh Re-orders Profiles
+- **Precondition**: Profiles displayed
+- **Steps**:
+  1. Note current order
+  2. Pull to refresh
+  3. Observe new order
+- **Expected Results**:
+  - ✅ Profiles re-ordered on refresh
+  - ✅ Same order maintained (deterministic)
+
+#### Test Case 22.3.4: Pagination Maintains Order
+- **Precondition**: Many profiles, pagination active
+- **Steps**:
+  1. View first page
+  2. Scroll to load more
+  3. Verify order continuity
+- **Expected Results**:
+  - ✅ Next page continues from first page
+  - ✅ No order disruption
+  - ✅ Smart ordering preserved
+
+### 22.4 Edge Cases
+
+#### Test Case 22.4.1: Very Large Profile Lists
+- **Precondition**: 100+ profiles
+- **Steps**:
+  1. Order large profile list
+  2. Verify performance
+- **Expected Results**:
+  - ✅ Completes in reasonable time (<1s)
+  - ✅ All profiles included
+  - ✅ Smart ordering applied
+
+#### Test Case 22.4.2: Special Characters in Profile Data
+- **Precondition**: Profiles with special characters
+- **Steps**:
+  1. Create profiles with unicode, symbols
+  2. Order profiles
+- **Expected Results**:
+  - ✅ No errors
+  - ✅ Matching works correctly
+  - ✅ Ordering applied
+
+#### Test Case 22.4.3: Profiles with Missing Optional Fields
+- **Precondition**: Profiles without location
+- **Steps**:
+  1. Order profiles with missing optional fields
+- **Expected Results**:
+  - ✅ No errors
+  - ✅ Ordering works correctly
+
+---
+
+## 23. SIGN-OFF
 
 ### Test Completion Criteria
 
