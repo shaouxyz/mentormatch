@@ -7,6 +7,7 @@ import { initializeTestAccounts } from '@/utils/testAccounts';
 import { logger } from '@/utils/logger';
 import { initializeDataMigration } from '@/utils/dataMigration';
 import { refreshSession, isSessionValid } from '@/utils/sessionManager';
+import { deleteSpecificUsers } from '@/utils/deleteUsers';
 
 /**
  * Welcome Screen Component
@@ -28,6 +29,12 @@ export default function WelcomeScreen() {
   useEffect(() => {
         if (!hasInitialized.current) {
           hasInitialized.current = true;
+          
+          // TEMPORARY: Delete specific users from local storage
+          deleteSpecificUsers().catch((error) => {
+            logger.error('Failed to delete users', error instanceof Error ? error : new Error(String(error)));
+          });
+          
           // Initialize data migration first
           initializeDataMigration().catch((error) => {
             logger.error('Failed to initialize data migration', error instanceof Error ? error : new Error(String(error)));
