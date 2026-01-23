@@ -25,13 +25,20 @@ export async function hybridSignUp(email: string, password: string): Promise<any
     // Try to sync to Firebase if configured
     if (isFirebaseConfigured()) {
       try {
-        await firebaseSignUp(email, password);
-        logger.info('User synced to Firebase', { email });
+        logger.info('Attempting Firebase signup', { email });
+        const firebaseUser = await firebaseSignUp(email, password);
+        logger.info('User synced to Firebase', { 
+          email,
+          uid: firebaseUser.user?.uid,
+          firebaseEmail: firebaseUser.user?.email
+        });
       } catch (firebaseError) {
         // Log but don't fail - local user is already created
         logger.warn('Failed to sync user to Firebase, continuing with local only', {
           email,
-          error: firebaseError instanceof Error ? firebaseError.message : String(firebaseError)
+          error: firebaseError instanceof Error ? firebaseError.message : String(firebaseError),
+          errorCode: (firebaseError as any)?.code,
+          errorName: firebaseError instanceof Error ? firebaseError.name : 'Unknown'
         });
       }
     } else {
@@ -57,15 +64,24 @@ export async function hybridSignIn(email: string, password: string): Promise<any
     // Try to sync with Firebase if configured
     if (isFirebaseConfigured()) {
       try {
-        await firebaseSignIn(email, password);
-        logger.info('User authenticated with Firebase', { email });
+        logger.info('Attempting Firebase signin', { email });
+        const firebaseUser = await firebaseSignIn(email, password);
+        logger.info('User authenticated with Firebase', { 
+          email,
+          uid: firebaseUser.user?.uid,
+          firebaseEmail: firebaseUser.user?.email
+        });
       } catch (firebaseError) {
         // Log but don't fail - local authentication succeeded
         logger.warn('Failed to authenticate with Firebase, continuing with local only', {
           email,
-          error: firebaseError instanceof Error ? firebaseError.message : String(firebaseError)
+          error: firebaseError instanceof Error ? firebaseError.message : String(firebaseError),
+          errorCode: (firebaseError as any)?.code,
+          errorName: firebaseError instanceof Error ? firebaseError.name : 'Unknown'
         });
       }
+    } else {
+      logger.info('Firebase not configured, signin using local storage only', { email });
     }
 
     return localUser;
