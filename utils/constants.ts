@@ -9,6 +9,7 @@ export const MATCH_SCORE_THRESHOLD = 50; // Minimum score to show "Good Match" b
 export const MAX_NAME_LENGTH = 100;
 export const MAX_EXPERTISE_LENGTH = 200;
 export const MAX_INTEREST_LENGTH = 200;
+export const MAX_LOCATION_LENGTH = 100;
 export const MAX_EMAIL_LENGTH = 254; // RFC 5321
 export const MAX_PHONE_LENGTH = 20;
 export const MAX_NOTE_LENGTH = 1000;

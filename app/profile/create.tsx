@@ -17,7 +17,7 @@ import { SUCCESS_MESSAGES } from '@/utils/constants';
 import { ErrorHandler } from '@/utils/errorHandler';
 import { validateProfileSchema } from '@/utils/schemaValidation';
 import { logger } from '@/utils/logger';
-import { sanitizeString, sanitizeEmail, sanitizePhoneNumber } from '@/utils/security';
+import { sanitizeTextField, sanitizeEmail, sanitizePhoneNumber } from '@/utils/security';
 import { ProfileFormFields } from '@/components/ProfileFormFields';
 
 interface ProfileData {
@@ -28,6 +28,7 @@ interface ProfileData {
   interestYears: string;
   email: string;
   phoneNumber: string;
+  location: string;
 }
 
 /**
@@ -54,6 +55,7 @@ export default function CreateProfileScreen() {
     interestYears: '',
     email: '',
     phoneNumber: '',
+    location: '',
   });
 
   useEffect(() => {
@@ -85,13 +87,14 @@ export default function CreateProfileScreen() {
     try {
       // Sanitize all profile data before storing
       const profileData = {
-        name: sanitizeString(profile.name),
-        expertise: sanitizeString(profile.expertise),
-        interest: sanitizeString(profile.interest),
+        name: sanitizeTextField(profile.name),
+        expertise: sanitizeTextField(profile.expertise),
+        interest: sanitizeTextField(profile.interest),
         expertiseYears: Number(profile.expertiseYears),
         interestYears: Number(profile.interestYears),
         email: sanitizeEmail(profile.email),
         phoneNumber: sanitizePhoneNumber(profile.phoneNumber),
+        location: profile.location ? sanitizeTextField(profile.location) : undefined,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };

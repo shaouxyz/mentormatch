@@ -22,6 +22,7 @@ interface Profile {
   interestYears: number;
   email: string;
   phoneNumber: string;
+  location?: string;
 }
 
 /**
@@ -242,6 +243,18 @@ export default function ViewProfileScreen() {
               <Ionicons name="chevron-forward" size={20} color="#cbd5e1" />
             </View>
           </TouchableOpacity>
+
+          {profile.location && (
+            <View style={styles.infoCard}>
+              <View style={styles.infoRow}>
+                <Ionicons name="location" size={24} color="#10b981" />
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>Location</Text>
+                  <Text style={styles.infoValue}>{profile.location}</Text>
+                </View>
+              </View>
+            </View>
+          )}
         </View>
 
         <View style={styles.section}>

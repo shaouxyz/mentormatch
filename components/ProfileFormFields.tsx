@@ -3,8 +3,8 @@
 
 import React from 'react';
 import { View, Text, TextInput, StyleSheet } from 'react-native';
-import { MAX_NAME_LENGTH, MAX_EXPERTISE_LENGTH, MAX_INTEREST_LENGTH, MAX_YEARS } from '../utils/constants';
-import { sanitizeString, sanitizeEmail, sanitizePhoneNumber, sanitizeNumber } from '../utils/security';
+import { MAX_NAME_LENGTH, MAX_EXPERTISE_LENGTH, MAX_INTEREST_LENGTH, MAX_LOCATION_LENGTH, MAX_YEARS } from '../utils/constants';
+import { sanitizeString, sanitizeTextField, sanitizeEmail, sanitizePhoneNumber, sanitizeNumber } from '../utils/security';
 
 interface ProfileFormData {
   name: string;
@@ -14,6 +14,7 @@ interface ProfileFormData {
   interestYears: string;
   email: string;
   phoneNumber: string;
+  location: string;
 }
 
 interface ProfileFormFieldsProps {
@@ -67,7 +68,7 @@ export const ProfileFormFields: React.FC<ProfileFormFieldsProps> = React.memo(({
           placeholder="e.g., Software Development, Marketing, Design"
           value={profile.expertise}
           onChangeText={(text) => {
-            const sanitized = sanitizeString(text);
+            const sanitized = sanitizeTextField(text);
             if (sanitized.length <= MAX_EXPERTISE_LENGTH) {
               updateField('expertise', sanitized);
             }
@@ -104,7 +105,7 @@ export const ProfileFormFields: React.FC<ProfileFormFieldsProps> = React.memo(({
           placeholder="e.g., Data Science, Business Strategy, Photography"
           value={profile.interest}
           onChangeText={(text) => {
-            const sanitized = sanitizeString(text);
+            const sanitized = sanitizeTextField(text);
             if (sanitized.length <= MAX_INTEREST_LENGTH) {
               updateField('interest', sanitized);
             }
@@ -131,6 +132,24 @@ export const ProfileFormFields: React.FC<ProfileFormFieldsProps> = React.memo(({
           keyboardType="numeric"
           accessibilityLabel="Years of experience in interest input"
           accessibilityHint={`Enter number of years of experience, maximum ${MAX_YEARS} years`}
+        />
+      </View>
+
+      <View style={styles.inputContainer}>
+        <Text style={styles.label}>Location</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="e.g., San Francisco, CA or New York City"
+          value={profile.location}
+          onChangeText={(text) => {
+            const sanitized = sanitizeTextField(text);
+            if (sanitized.length <= MAX_LOCATION_LENGTH) {
+              updateField('location', sanitized);
+            }
+          }}
+          maxLength={MAX_LOCATION_LENGTH}
+          accessibilityLabel="Location input"
+          accessibilityHint="Enter your city or region"
         />
       </View>
 

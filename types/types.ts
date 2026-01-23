@@ -9,6 +9,7 @@ export interface Profile {
   interestYears: number;
   email: string;
   phoneNumber: string;
+  location?: string;
   createdAt?: string;
   updatedAt?: string;
 }

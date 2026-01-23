@@ -112,17 +112,36 @@ export function sanitizeString(input: string): string {
   }
   
   return input
-    .trim()
     // Remove HTML tags
     .replace(/<[^>]*>/g, '')
     // Remove script tags and content
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
     // Remove dangerous characters
     .replace(/[<>\"']/g, '')
+    // Remove control characters (but keep newlines and tabs for now)
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+    // Normalize multiple spaces to single space, but preserve the space
+    .replace(/  +/g, ' ');
+}
+
+/**
+ * Sanitize text input for fields that need spaces (expertise, interest, location)
+ * Less aggressive than sanitizeString - preserves spaces during typing
+ */
+export function sanitizeTextField(input: string): string {
+  if (typeof input !== 'string') {
+    return '';
+  }
+  
+  return input
+    // Remove HTML tags
+    .replace(/<[^>]*>/g, '')
+    // Remove script tags and content
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    // Remove only the most dangerous characters, keep apostrophes for names like "O'Brien"
+    .replace(/[<>\"]/g, '')
     // Remove control characters
-    .replace(/[\x00-\x1F\x7F]/g, '')
-    // Normalize whitespace
-    .replace(/\s+/g, ' ');
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
 }
 
 /**

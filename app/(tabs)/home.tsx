@@ -315,6 +315,16 @@ export default function HomeScreen() {
               {item.interest} ({item.interestYears} years)
             </Text>
           </View>
+
+          {item.location && (
+            <View style={styles.detailRow}>
+              <Ionicons name="location" size={16} color="#10b981" />
+              <Text style={styles.detailText}>
+                <Text style={styles.detailLabel}>Location: </Text>
+                {item.location}
+              </Text>
+            </View>
+          )}
         </View>
       </TouchableOpacity>
     );
