@@ -3,6 +3,99 @@ jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock')
 );
 
+// Mock Firebase config
+jest.mock('./config/firebase.config', () => ({
+  initializeFirebase: jest.fn(),
+  getFirebaseAuth: jest.fn(() => ({})),
+  getFirebaseFirestore: jest.fn(() => ({})),
+  isFirebaseConfigured: jest.fn(() => false), // Default to not configured for tests
+  firebaseConfig: {},
+}));
+
+// Mock Firebase auth service
+jest.mock('./services/firebaseAuthService', () => ({
+  firebaseSignUp: jest.fn(),
+  firebaseSignIn: jest.fn(),
+  firebaseSignOut: jest.fn(),
+  getCurrentFirebaseUser: jest.fn(() => null),
+}));
+
+// Mock Firebase profile service
+jest.mock('./services/firebaseProfileService', () => ({
+  createFirebaseProfile: jest.fn(),
+  updateFirebaseProfile: jest.fn(),
+  getFirebaseProfile: jest.fn(() => Promise.resolve(null)),
+  getAllFirebaseProfiles: jest.fn(() => Promise.resolve([])),
+  deleteFirebaseProfile: jest.fn(),
+}));
+
+// Mock hybrid auth service to use local only
+jest.mock('./services/hybridAuthService', () => {
+  const { createUser, authenticateUser } = jest.requireActual('./utils/userManagement');
+  return {
+    hybridSignUp: jest.fn(async (email, password) => {
+      return await createUser(email, password);
+    }),
+    hybridSignIn: jest.fn(async (email, password) => {
+      return await authenticateUser(email, password);
+    }),
+    isFirebaseSyncAvailable: jest.fn(() => false),
+  };
+});
+
+// Mock hybrid profile service to use local only
+jest.mock('./services/hybridProfileService', () => {
+  const AsyncStorage = require('@react-native-async-storage/async-storage');
+  return {
+    hybridCreateProfile: jest.fn(async (profile) => {
+      await AsyncStorage.setItem('profile', JSON.stringify(profile));
+      const allProfilesData = await AsyncStorage.getItem('allProfiles');
+      let allProfiles = allProfilesData ? JSON.parse(allProfilesData) : [];
+      allProfiles = allProfiles.filter((p) => p.email !== profile.email);
+      allProfiles.push(profile);
+      await AsyncStorage.setItem('allProfiles', JSON.stringify(allProfiles));
+    }),
+    hybridUpdateProfile: jest.fn(async (email, updates) => {
+      const profileData = await AsyncStorage.getItem('profile');
+      if (profileData) {
+        const currentProfile = JSON.parse(profileData);
+        const updatedProfile = { ...currentProfile, ...updates };
+        await AsyncStorage.setItem('profile', JSON.stringify(updatedProfile));
+        
+        const allProfilesData = await AsyncStorage.getItem('allProfiles');
+        if (allProfilesData) {
+          let allProfiles = JSON.parse(allProfilesData);
+          const index = allProfiles.findIndex((p) => p.email === email);
+          if (index !== -1) {
+            allProfiles[index] = updatedProfile;
+            await AsyncStorage.setItem('allProfiles', JSON.stringify(allProfiles));
+          }
+        }
+      }
+    }),
+    hybridGetProfile: jest.fn(async (email) => {
+      const profileData = await AsyncStorage.getItem('profile');
+      if (profileData) {
+        const profile = JSON.parse(profileData);
+        if (profile.email === email) {
+          return profile;
+        }
+      }
+      const allProfilesData = await AsyncStorage.getItem('allProfiles');
+      if (allProfilesData) {
+        const allProfiles = JSON.parse(allProfilesData);
+        return allProfiles.find((p) => p.email === email) || null;
+      }
+      return null;
+    }),
+    hybridGetAllProfiles: jest.fn(async () => {
+      const allProfilesData = await AsyncStorage.getItem('allProfiles');
+      return allProfilesData ? JSON.parse(allProfilesData) : [];
+    }),
+    isFirebaseSyncAvailable: jest.fn(() => false),
+  };
+});
+
 // Mock expo-secure-store
 jest.mock('expo-secure-store', () => ({
   getItemAsync: jest.fn(async (key) => {

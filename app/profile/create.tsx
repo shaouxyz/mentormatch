@@ -19,6 +19,7 @@ import { validateProfileSchema } from '@/utils/schemaValidation';
 import { logger } from '@/utils/logger';
 import { sanitizeTextField, sanitizeEmail, sanitizePhoneNumber } from '@/utils/security';
 import { ProfileFormFields } from '@/components/ProfileFormFields';
+import { hybridCreateProfile } from '@/services/hybridProfileService';
 
 interface ProfileData {
   name: string;
@@ -99,25 +100,14 @@ export default function CreateProfileScreen() {
         updatedAt: new Date().toISOString(),
       };
 
-      await AsyncStorage.setItem('profile', JSON.stringify(profileData));
-      
-      // Add profile to allProfiles array so it's visible in discover
-      const allProfilesData = await AsyncStorage.getItem('allProfiles');
-      let allProfiles: typeof profileData[] = allProfilesData ? JSON.parse(allProfilesData) : [];
-      
-      // Remove existing profile with same email if it exists (update case)
-      allProfiles = allProfiles.filter((p) => p.email !== profileData.email);
-      
-      // Add new/updated profile
-      allProfiles.push(profileData);
-      
       // Validate before storing
       if (!validateProfileSchema(profileData)) {
         ErrorHandler.handleError(new Error('Invalid profile data'), 'Profile data validation failed');
         return;
       }
 
-      await AsyncStorage.setItem('allProfiles', JSON.stringify(allProfiles));
+      // Use hybrid service to save profile (local + Firebase if configured)
+      await hybridCreateProfile(profileData);
       
       Alert.alert('Success', SUCCESS_MESSAGES.PROFILE_CREATED, [
         {

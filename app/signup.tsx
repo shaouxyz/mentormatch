@@ -19,6 +19,7 @@ import { ErrorHandler } from '@/utils/errorHandler';
 import { createUser, setCurrentUser } from '@/utils/userManagement';
 import { sanitizeEmail } from '@/utils/security';
 import { startSession } from '@/utils/sessionManager';
+import { hybridSignUp } from '@/services/hybridAuthService';
 
 /**
  * Signup Screen Component
@@ -66,8 +67,8 @@ export default function SignupScreen() {
       // Sanitize email input
       const sanitizedEmail = sanitizeEmail(email);
       
-      // Create user with hashed password (multi-user support)
-      const user = await createUser(sanitizedEmail, password);
+      // Create user with hybrid service (local + Firebase if configured)
+      const user = await hybridSignUp(sanitizedEmail, password);
       
       // Set current user session
       await setCurrentUser(user.email);

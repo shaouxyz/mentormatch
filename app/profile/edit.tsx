@@ -19,6 +19,7 @@ import { validateProfileSchema, safeParseJSON } from '@/utils/schemaValidation';
 import { logger } from '@/utils/logger';
 import { sanitizeTextField, sanitizeEmail, sanitizePhoneNumber } from '@/utils/security';
 import { ProfileFormFields } from '@/components/ProfileFormFields';
+import { hybridUpdateProfile } from '@/services/hybridProfileService';
 
 interface ProfileData {
   name: string;
@@ -112,34 +113,14 @@ export default function EditProfileScreen() {
         updatedAt: new Date().toISOString(),
       };
 
-      await AsyncStorage.setItem('profile', JSON.stringify(profileData));
-      
-      // Update profile in allProfiles array so changes are visible in discover
-      const allProfilesData = await AsyncStorage.getItem('allProfiles');
-      if (allProfilesData) {
-        let allProfiles = safeParseJSON<typeof profileData[]>(
-          allProfilesData,
-          (data): data is typeof profileData[] => {
-            if (!Array.isArray(data)) return false;
-            return data.every(p => validateProfileSchema(p));
-          },
-          []
-        ) || [];
-        
-        // Remove existing profile with same email
-        allProfiles = allProfiles.filter((p) => p.email !== profileData.email);
-        
-        // Add updated profile
-        allProfiles.push(profileData);
-        
-        // Validate before storing
+      // Validate before storing
       if (!validateProfileSchema(profileData)) {
         ErrorHandler.handleError(new Error('Invalid profile data'), 'Profile data validation failed');
         return;
       }
 
-      await AsyncStorage.setItem('allProfiles', JSON.stringify(allProfiles));
-      }
+      // Use hybrid service to update profile (local + Firebase if configured)
+      await hybridUpdateProfile(profileData.email, profileData);
       
       Alert.alert('Success', SUCCESS_MESSAGES.PROFILE_UPDATED, [
         {
