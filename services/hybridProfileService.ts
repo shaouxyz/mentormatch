@@ -15,6 +15,7 @@ import {
   getFirebaseProfile,
   getAllFirebaseProfiles,
 } from './firebaseProfileService';
+import { getCurrentFirebaseUser } from './firebaseAuthService';
 import { Profile } from '@/types/types';
 import { logger } from '@/utils/logger';
 
@@ -42,13 +43,36 @@ export async function hybridCreateProfile(profile: Profile): Promise<void> {
     // Try to sync to Firebase if configured
     if (isFirebaseConfigured()) {
       try {
-        await createFirebaseProfile(profile);
-        logger.info('Profile synced to Firebase', { email: profile.email });
+        // Check if user is authenticated in Firebase
+        const currentUser = getCurrentFirebaseUser();
+        logger.info('Firebase auth status', { 
+          isAuthenticated: !!currentUser,
+          uid: currentUser?.uid,
+          email: currentUser?.email,
+          profileEmail: profile.email
+        });
+        
+        if (!currentUser) {
+          logger.warn('User not authenticated in Firebase, skipping sync', {
+            email: profile.email,
+            hint: 'Make sure to sign up/sign in with Firebase Auth before creating profile'
+          });
+        } else if (currentUser.email !== profile.email) {
+          logger.warn('Firebase user email does not match profile email', {
+            firebaseEmail: currentUser.email,
+            profileEmail: profile.email,
+            hint: 'Profile can only be created for the authenticated user'
+          });
+        } else {
+          await createFirebaseProfile(profile);
+          logger.info('Profile synced to Firebase', { email: profile.email });
+        }
       } catch (firebaseError) {
         // Log but don't fail - local profile is already saved
         logger.warn('Failed to sync profile to Firebase, continuing with local only', {
           email: profile.email,
-          error: firebaseError instanceof Error ? firebaseError.message : String(firebaseError)
+          error: firebaseError instanceof Error ? firebaseError.message : String(firebaseError),
+          errorName: firebaseError instanceof Error ? firebaseError.name : 'Unknown'
         });
       }
     } else {

@@ -16,8 +16,9 @@
  */
 
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
-import { getAuth, Auth } from 'firebase/auth';
+import { initializeAuth, getAuth, Auth, getReactNativePersistence } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { logger } from '@/utils/logger';
 
 /**
@@ -58,13 +59,19 @@ export function initializeFirebase(): void {
     if (getApps().length === 0) {
       app = initializeApp(firebaseConfig);
       logger.info('Firebase initialized successfully');
+      
+      // Initialize Auth with AsyncStorage persistence for React Native
+      auth = initializeAuth(app, {
+        persistence: getReactNativePersistence(AsyncStorage)
+      });
+      logger.info('Firebase Auth initialized with AsyncStorage persistence');
     } else {
       app = getApps()[0];
+      auth = getAuth(app);
       logger.info('Firebase already initialized');
     }
 
-    // Initialize services
-    auth = getAuth(app);
+    // Initialize Firestore
     db = getFirestore(app);
   } catch (error) {
     logger.error('Error initializing Firebase', error instanceof Error ? error : new Error(String(error)));
