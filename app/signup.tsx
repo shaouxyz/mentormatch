@@ -20,6 +20,7 @@ import { createUser, setCurrentUser } from '@/utils/userManagement';
 import { sanitizeEmail } from '@/utils/security';
 import { startSession } from '@/utils/sessionManager';
 import { hybridSignUp } from '@/services/hybridAuthService';
+import { useInvitationCode, isValidInvitationCode } from '@/services/invitationCodeService';
 
 /**
  * Signup Screen Component
@@ -39,11 +40,20 @@ export default function SignupScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [invitationCode, setInvitationCode] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSignup = async () => {
-    if (!email || !password) {
-      Alert.alert('Error', ERROR_MESSAGES.FILL_ALL_FIELDS);
+    if (!email || !password || !invitationCode) {
+      Alert.alert('Error', 'Please fill in all fields including invitation code');
+      return;
+    }
+
+    // Validate invitation code
+    const codeUpper = invitationCode.trim().toUpperCase();
+    const isValid = await isValidInvitationCode(codeUpper);
+    if (!isValid) {
+      Alert.alert('Error', 'Invalid or already used invitation code. Please check your code and try again.');
       return;
     }
 
@@ -66,6 +76,14 @@ export default function SignupScreen() {
     try {
       // Sanitize email input
       const sanitizedEmail = sanitizeEmail(email);
+      
+      // Use the invitation code
+      const codeUsed = await useInvitationCode(codeUpper, sanitizedEmail);
+      if (!codeUsed) {
+        Alert.alert('Error', 'Failed to use invitation code. It may have been used already.');
+        setLoading(false);
+        return;
+      }
       
       // Create user with hybrid service (local + Firebase if configured)
       const user = await hybridSignUp(sanitizedEmail, password);
@@ -106,6 +124,24 @@ export default function SignupScreen() {
         </View>
 
         <View style={styles.form}>
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Invitation Code *</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter invitation code"
+              value={invitationCode}
+              onChangeText={(text) => setInvitationCode(text.toUpperCase().trim())}
+              autoCapitalize="characters"
+              autoComplete="off"
+              maxLength={8}
+              accessibilityLabel="Invitation code input"
+              accessibilityHint="Enter the 8-character invitation code you received"
+            />
+            <Text style={styles.hintText}>
+              You need an invitation code to sign up. Ask a mentor or mentee for one.
+            </Text>
+          </View>
+
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Email</Text>
             <TextInput
@@ -243,5 +279,11 @@ const styles = StyleSheet.create({
   linkText: {
     color: '#2563eb',
     fontSize: 16,
+  },
+  hintText: {
+    fontSize: 12,
+    color: '#64748b',
+    marginTop: 4,
+    fontStyle: 'italic',
   },
 });

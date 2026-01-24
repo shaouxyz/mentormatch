@@ -135,6 +135,38 @@ service cloud.firestore {
         request.auth.token.email in resource.data.participants;
       allow delete: if false;
     }
+    
+    // Invitation codes collection
+    match /invitationCodes/{codeId} {
+      // Users can read codes they created
+      allow read: if isSignedIn() && 
+        resource.data.createdBy == request.auth.token.email;
+      // Users can create codes for themselves
+      allow create: if isSignedIn() && 
+        request.resource.data.createdBy == request.auth.token.email &&
+        request.resource.data.code is string &&
+        request.resource.data.isUsed == false;
+      // Users can update codes they created (to mark as used)
+      allow update: if isSignedIn() && 
+        resource.data.createdBy == request.auth.token.email;
+      // Don't allow deletes
+      allow delete: if false;
+    }
+    
+    // Inbox collection
+    match /inbox/{itemId} {
+      // Users can only read their own inbox items
+      allow read: if isSignedIn() && 
+        resource.data.recipientEmail == request.auth.token.email;
+      // Users can create inbox items for themselves (or system can create for them)
+      allow create: if isSignedIn() && 
+        request.resource.data.recipientEmail == request.auth.token.email;
+      // Users can update their own inbox items (e.g., mark as read)
+      allow update: if isSignedIn() && 
+        resource.data.recipientEmail == request.auth.token.email;
+      // Don't allow deletes
+      allow delete: if false;
+    }
   }
 }
 ```

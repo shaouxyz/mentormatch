@@ -94,3 +94,24 @@ export interface Meeting {
   updatedAt: string;
   respondedAt?: string;
 }
+
+export interface InvitationCode {
+  id: string;
+  code: string; // Unique invitation code
+  createdBy: string; // Email of user who created/received it
+  usedBy?: string; // Email of user who used it (if used)
+  usedAt?: string; // ISO timestamp when used
+  isUsed: boolean;
+  createdAt: string; // ISO timestamp
+}
+
+export interface InboxItem {
+  id: string;
+  recipientEmail: string;
+  type: 'invitation_code' | 'mentorship_accepted' | 'meeting_request';
+  title: string;
+  message: string;
+  invitationCode?: string; // For invitation_code type
+  read: boolean;
+  createdAt: string; // ISO timestamp
+}

@@ -13,6 +13,7 @@ import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { logger } from '@/utils/logger';
 import { safeParseJSON, validateProfileSchema } from '@/utils/schemaValidation';
+import { areUsersMatched } from '@/utils/connectionUtils';
 
 interface Profile {
   name: string;
@@ -42,6 +43,8 @@ export default function ViewProfileScreen() {
   const params = useLocalSearchParams();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isMatched, setIsMatched] = useState(false);
+  const [isOwnProfile, setIsOwnProfile] = useState(false);
   const isLoadingRef = useRef(false);
   const lastParamsRef = useRef<string>('');
 
@@ -81,6 +84,26 @@ export default function ViewProfileScreen() {
           );
           if (parsed) {
             setProfile(parsed);
+            
+            // Check if it's own profile or if users are matched
+            const userData = await AsyncStorage.getItem('user');
+            if (userData) {
+              const user = safeParseJSON<{ email: string }>(
+                userData,
+                (data): data is { email: string } => typeof data === 'object' && data !== null && 'email' in data && typeof (data as { email: unknown }).email === 'string',
+                null
+              );
+              if (user) {
+                setIsOwnProfile(user.email === parsed.email);
+                if (user.email !== parsed.email) {
+                  const matched = await areUsersMatched(user.email, parsed.email);
+                  setIsMatched(matched);
+                } else {
+                  setIsMatched(true); // Own profile is always "matched"
+                }
+              }
+            }
+            
             setLoading(false);
             isLoadingRef.current = false;
             return;
@@ -105,6 +128,26 @@ export default function ViewProfileScreen() {
             const foundProfile = allProfiles.find((p) => p.email === email);
             if (foundProfile) {
               setProfile(foundProfile);
+              
+              // Check if it's own profile or if users are matched
+              const userData = await AsyncStorage.getItem('user');
+              if (userData) {
+                const user = safeParseJSON<{ email: string }>(
+                  userData,
+                  (data): data is { email: string } => typeof data === 'object' && data !== null && 'email' in data && typeof (data as { email: unknown }).email === 'string',
+                  null
+                );
+                if (user) {
+                  setIsOwnProfile(user.email === foundProfile.email);
+                  if (user.email !== foundProfile.email) {
+                    const matched = await areUsersMatched(user.email, foundProfile.email);
+                    setIsMatched(matched);
+                  } else {
+                    setIsMatched(true); // Own profile is always "matched"
+                  }
+                }
+              }
+              
               setLoading(false);
               isLoadingRef.current = false;
               return;
@@ -122,6 +165,26 @@ export default function ViewProfileScreen() {
             );
             if (testProfile) {
               setProfile(testProfile);
+              
+              // Check if it's own profile or if users are matched
+              const userData = await AsyncStorage.getItem('user');
+              if (userData) {
+                const user = safeParseJSON<{ email: string }>(
+                  userData,
+                  (data): data is { email: string } => typeof data === 'object' && data !== null && 'email' in data && typeof (data as { email: unknown }).email === 'string',
+                  null
+                );
+                if (user) {
+                  setIsOwnProfile(user.email === testProfile.email);
+                  if (user.email !== testProfile.email) {
+                    const matched = await areUsersMatched(user.email, testProfile.email);
+                    setIsMatched(matched);
+                  } else {
+                    setIsMatched(true); // Own profile is always "matched"
+                  }
+                }
+              }
+              
               setLoading(false);
               isLoadingRef.current = false;
               return;
@@ -212,37 +275,51 @@ export default function ViewProfileScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Contact Information</Text>
           
-          <TouchableOpacity 
-            style={styles.infoCard} 
-            onPress={handleEmail}
-            accessibilityLabel={`Email ${profile.email}`}
-            accessibilityHint="Tap to open email app to send email"
-          >
-            <View style={styles.infoRow}>
-              <Ionicons name="mail" size={24} color="#2563eb" />
-              <View style={styles.infoContent}>
-                <Text style={styles.infoLabel}>Email</Text>
-                <Text style={styles.infoValue}>{profile.email}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="#cbd5e1" />
-            </View>
-          </TouchableOpacity>
+          {(isOwnProfile || isMatched) ? (
+            <>
+              <TouchableOpacity 
+                style={styles.infoCard} 
+                onPress={handleEmail}
+                accessibilityLabel={`Email ${profile.email}`}
+                accessibilityHint="Tap to open email app to send email"
+              >
+                <View style={styles.infoRow}>
+                  <Ionicons name="mail" size={24} color="#2563eb" />
+                  <View style={styles.infoContent}>
+                    <Text style={styles.infoLabel}>Email</Text>
+                    <Text style={styles.infoValue}>{profile.email}</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color="#cbd5e1" />
+                </View>
+              </TouchableOpacity>
 
-          <TouchableOpacity 
-            style={styles.infoCard} 
-            onPress={handlePhone}
-            accessibilityLabel={`Phone ${profile.phoneNumber}`}
-            accessibilityHint="Tap to open phone app to call"
-          >
-            <View style={styles.infoRow}>
-              <Ionicons name="call" size={24} color="#2563eb" />
-              <View style={styles.infoContent}>
-                <Text style={styles.infoLabel}>Phone</Text>
-                <Text style={styles.infoValue}>{profile.phoneNumber}</Text>
+              <TouchableOpacity 
+                style={styles.infoCard} 
+                onPress={handlePhone}
+                accessibilityLabel={`Phone ${profile.phoneNumber}`}
+                accessibilityHint="Tap to open phone app to call"
+              >
+                <View style={styles.infoRow}>
+                  <Ionicons name="call" size={24} color="#2563eb" />
+                  <View style={styles.infoContent}>
+                    <Text style={styles.infoLabel}>Phone</Text>
+                    <Text style={styles.infoValue}>{profile.phoneNumber}</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color="#cbd5e1" />
+                </View>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <View style={styles.infoCard}>
+              <View style={styles.infoRow}>
+                <Ionicons name="lock-closed" size={24} color="#94a3b8" />
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>Contact Information</Text>
+                  <Text style={styles.infoValue}>Connect to view contact details</Text>
+                </View>
               </View>
-              <Ionicons name="chevron-forward" size={20} color="#cbd5e1" />
             </View>
-          </TouchableOpacity>
+          )}
 
           {profile.location && (
             <View style={styles.infoCard}>

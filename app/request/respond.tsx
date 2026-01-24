@@ -18,6 +18,8 @@ import { logger } from '@/utils/logger';
 import { ErrorHandler } from '@/utils/errorHandler';
 import { sanitizeString } from '@/utils/security';
 import { safeParseJSON, validateMentorshipRequestSchema } from '@/utils/schemaValidation';
+import { createInvitationCode } from '@/services/invitationCodeService';
+import { addInvitationCodeToInbox } from '@/services/inboxService';
 
 interface MentorshipRequest {
   id: string;
@@ -123,6 +125,33 @@ export default function RespondRequestScreen() {
       };
 
       await AsyncStorage.setItem('mentorshipRequests', JSON.stringify(requests));
+      
+      // If accepted, generate a new invitation code for the mentor
+      if (status === 'accepted') {
+        try {
+          const userData = await AsyncStorage.getItem('user');
+          if (userData) {
+            const user = safeParseJSON<{ email: string }>(
+              userData,
+              (data): data is { email: string } => typeof data === 'object' && data !== null && 'email' in data && typeof (data as { email: unknown }).email === 'string',
+              null
+            );
+            if (user) {
+              const invitationCode = await createInvitationCode(user.email);
+              await addInvitationCodeToInbox(user.email, invitationCode.code, user.email);
+              logger.info('Invitation code generated and added to inbox', { 
+                mentorEmail: user.email, 
+                code: invitationCode.code 
+              });
+            }
+          }
+        } catch (error) {
+          // Don't fail the accept if invitation code generation fails
+          logger.error('Error generating invitation code after accepting mentee', 
+            error instanceof Error ? error : new Error(String(error)));
+        }
+      }
+      
       router.back();
     } catch (error) {
       ErrorHandler.handleStorageError(error, 'respond to request');
