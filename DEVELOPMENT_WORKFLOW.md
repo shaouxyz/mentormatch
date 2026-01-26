@@ -55,20 +55,23 @@ npm test
 - Re-run all tests
 - Repeat until **ALL tests pass with 0 failures and 0 skipped**
 
-### 6. Verify 100% Test Passing
+### 6. Verify 100% Test Passing AND 100% Code Coverage
 ```bash
 npm test
+npm run test:coverage
 ```
 **Required output:**
 - `Test Suites: X passed, X total` (no failures)
 - `Tests: X passed, X total` (no failures, no skipped)
+- **Code Coverage: 100% for all metrics** (statements, branches, lines, functions)
 
-**If you see ANY failures or skipped tests:**
+**If you see ANY failures, skipped tests, or coverage below 100%:**
 - ❌ STOP immediately
 - ❌ DO NOT commit
 - ✅ Fix the issues
+- ✅ Add missing tests to achieve 100% coverage
 - ✅ Re-run tests
-- ✅ Verify 100% passing
+- ✅ Verify 100% passing AND 100% coverage
 - ✅ Then proceed to commit
 
 ### 7. Commit to GitHub (ONLY after 100% test passing)
