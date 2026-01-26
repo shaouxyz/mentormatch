@@ -23,6 +23,7 @@ import { startSession } from '@/utils/sessionManager';
 import { hybridSignIn } from '@/services/hybridAuthService';
 import { hybridGetProfile } from '@/services/hybridProfileService';
 import { Profile } from '@/types/types';
+import { safeParseJSON, validateProfileSchema } from '@/utils/schemaValidation';
 
 /**
  * Login Screen Component
@@ -147,7 +148,50 @@ export default function LoginScreen() {
       }));
       
       // Check if profile exists (try Firebase first, then local)
-      const profile = await hybridGetProfile(user.email);
+      let profile = await hybridGetProfile(user.email);
+      
+      // If profile exists locally but not in Firebase, try to sync it
+      if (!profile) {
+        const localProfileData = await AsyncStorage.getItem('profile');
+        if (localProfileData) {
+          const localProfile = safeParseJSON<Profile>(
+            localProfileData,
+            validateProfileSchema,
+            null
+          );
+          if (localProfile && localProfile.email === user.email) {
+            logger.info('Found local profile but not in Firestore, attempting to sync', { email: user.email });
+            // Try to sync local profile to Firestore
+            try {
+              const { getCurrentFirebaseUser } = await import('@/services/firebaseAuthService');
+              const { createFirebaseProfile } = await import('@/services/firebaseProfileService');
+              
+              const currentUser = getCurrentFirebaseUser();
+              if (currentUser && currentUser.email === user.email) {
+                await createFirebaseProfile(localProfile);
+                logger.info('Profile synced to Firestore successfully', { email: user.email });
+                // Profile was synced, now try to get it again
+                profile = await hybridGetProfile(user.email);
+              } else {
+                logger.warn('User not authenticated in Firebase, cannot sync profile', {
+                  email: user.email,
+                  hasCurrentUser: !!currentUser,
+                  currentUserEmail: currentUser?.email
+                });
+                // Use local profile
+                profile = localProfile;
+              }
+            } catch (syncError) {
+              logger.warn('Failed to sync profile to Firestore, using local profile', {
+                email: user.email,
+                error: syncError instanceof Error ? syncError.message : String(syncError)
+              });
+              profile = localProfile;
+            }
+          }
+        }
+      }
+      
       if (profile) {
         // Save profile locally if retrieved from Firebase
         await AsyncStorage.setItem('profile', JSON.stringify(profile));
