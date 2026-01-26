@@ -34,3 +34,7 @@ serviceAccountKey.json
 # Next.js (if keeping any Next.js files)
 .next/
 out/
+
+# Test Coverage
+coverage/
+*.lcov
