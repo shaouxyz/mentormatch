@@ -191,30 +191,67 @@ export default function HomeScreen() {
         }
       }
 
-      // Exclude current user's profile from the list
-      if (currentUserEmail) {
-        profilesList = profilesList.filter((profile) => profile.email !== currentUserEmail);
+      // Normalize current user email for comparison (lowercase, trim)
+      const normalizedCurrentUserEmail = currentUserEmail 
+        ? currentUserEmail.toLowerCase().trim() 
+        : null;
+
+      // Exclude current user's profile from the list (case-insensitive)
+      if (normalizedCurrentUserEmail) {
+        profilesList = profilesList.filter((profile) => {
+          const normalizedProfileEmail = profile.email?.toLowerCase().trim();
+          return normalizedProfileEmail !== normalizedCurrentUserEmail;
+        });
+        logger.info('Filtered out current user profile', { 
+          currentUserEmail: normalizedCurrentUserEmail,
+          profilesBeforeFilter: profilesList.length + 1,
+          profilesAfterFilter: profilesList.length
+        });
       }
 
       // Add test account profiles (excluding current user)
       const testProfiles: Profile[] = TEST_ACCOUNTS
-        .filter((account) => account.email !== currentUserEmail && account.profile)
+        .filter((account) => {
+          if (!normalizedCurrentUserEmail) return true;
+          const normalizedAccountEmail = account.email?.toLowerCase().trim();
+          return normalizedAccountEmail !== normalizedCurrentUserEmail && account.profile;
+        })
         .map((account) => account.profile!);
       
       // Combine and remove duplicates
       const allProfilesCombined = [...profilesList, ...testProfiles];
       const uniqueProfiles = allProfilesCombined.filter(
         (profile, index, self) =>
-          index === self.findIndex((p) => p.email === profile.email)
+          index === self.findIndex((p) => {
+            const email1 = p.email?.toLowerCase().trim();
+            const email2 = profile.email?.toLowerCase().trim();
+            return email1 === email2;
+          })
       );
+
+      // Final filter to ensure current user is not in the list (after deduplication)
+      const finalFilteredProfiles = normalizedCurrentUserEmail
+        ? uniqueProfiles.filter((profile) => {
+            const normalizedProfileEmail = profile.email?.toLowerCase().trim();
+            return normalizedProfileEmail !== normalizedCurrentUserEmail;
+          })
+        : uniqueProfiles;
+      
+      if (normalizedCurrentUserEmail && finalFilteredProfiles.length !== uniqueProfiles.length) {
+        logger.warn('Current user profile was found after deduplication and removed', {
+          currentUserEmail: normalizedCurrentUserEmail,
+          beforeFinalFilter: uniqueProfiles.length,
+          afterFinalFilter: finalFilteredProfiles.length
+        });
+      }
 
       // Store all profiles for pagination
       const maxProfiles = config.performance.maxProfilesToLoad;
-      const limitedProfiles = uniqueProfiles.slice(0, maxProfiles);
+      const limitedProfiles = finalFilteredProfiles.slice(0, maxProfiles);
       
-      if (uniqueProfiles.length > maxProfiles) {
+      if (finalFilteredProfiles.length > maxProfiles) {
         logger.warn('Profiles limited for performance', { 
-          total: uniqueProfiles.length, 
+          total: finalFilteredProfiles.length, 
           loaded: maxProfiles 
         });
       }
@@ -301,8 +338,18 @@ export default function HomeScreen() {
     }
 
     const query = searchQuery.toLowerCase().trim();
+    // Normalize current user email for comparison
+    const normalizedCurrentEmail = currentProfile?.email?.toLowerCase().trim();
+    
     // When searching, search through all profiles, not just displayed ones
+    // But exclude current user's profile
     return allProfiles.filter((profile) => {
+      // Exclude current user's profile from search results
+      const normalizedProfileEmail = profile.email?.toLowerCase().trim();
+      if (normalizedCurrentEmail && normalizedProfileEmail === normalizedCurrentEmail) {
+        return false;
+      }
+      
       // Search across all fields
       return (
         profile.name.toLowerCase().includes(query) ||
@@ -314,7 +361,7 @@ export default function HomeScreen() {
         profile.interestYears.toString().includes(query)
       );
     });
-  }, [displayedProfiles, allProfiles, searchQuery]);
+  }, [displayedProfiles, allProfiles, searchQuery, currentProfile]);
 
   // Memoize profile render function for performance
   const renderProfile = useCallback(({ item }: { item: Profile }) => {

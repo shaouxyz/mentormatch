@@ -333,6 +333,132 @@ describe('HomeScreen (Discover)', () => {
     }, { timeout: 3000 });
   });
 
+  it('should exclude current user profile with case-insensitive email matching', async () => {
+    // Test the fix: user email is lowercase, but profile email might be different case
+    const userProfile = {
+      name: 'Shaouxyz User',
+      expertise: 'Software Development',
+      interest: 'Data Science',
+      expertiseYears: 5,
+      interestYears: 2,
+      email: 'shaouxyz@gmail.com', // lowercase
+      phoneNumber: '+1234567890',
+    };
+
+    const allProfiles = [
+      {
+        name: 'Other User',
+        expertise: 'Marketing',
+        interest: 'Design',
+        expertiseYears: 3,
+        interestYears: 1,
+        email: 'other@example.com',
+        phoneNumber: '+1234567891',
+      },
+      {
+        name: 'Shaouxyz User',
+        expertise: 'Software Development',
+        interest: 'Data Science',
+        expertiseYears: 5,
+        interestYears: 2,
+        email: 'Shaouxyz@Gmail.com', // Different case - should still be filtered
+        phoneNumber: '+1234567890',
+      },
+      {
+        name: 'Shaouxyz User',
+        expertise: 'Software Development',
+        interest: 'Data Science',
+        expertiseYears: 5,
+        interestYears: 2,
+        email: '  shaouxyz@gmail.com  ', // With whitespace - should still be filtered
+        phoneNumber: '+1234567890',
+      },
+    ];
+
+    await AsyncStorage.setItem('user', JSON.stringify({ email: 'shaouxyz@gmail.com' }));
+    await AsyncStorage.setItem('profile', JSON.stringify(userProfile));
+    await AsyncStorage.setItem('allProfiles', JSON.stringify(allProfiles));
+    // Mock hybridGetProfile to return current user's profile
+    (hybridProfileService.hybridGetProfile as jest.Mock).mockResolvedValue(userProfile);
+    // Mock hybridGetAllProfiles to return all profiles (including current user with different case)
+    (hybridProfileService.hybridGetAllProfiles as jest.Mock).mockResolvedValue(allProfiles);
+
+    const { queryByText, getByText } = render(<HomeScreen />);
+
+    await waitFor(() => {
+      // Wait for loading to complete
+      expect(queryByText('Loading...')).toBeNull();
+    }, { timeout: 3000 });
+
+    await waitFor(() => {
+      // Current user should not appear in the list, even with different case or whitespace
+      expect(queryByText('Shaouxyz User')).toBeNull();
+      // Other user should still appear
+      expect(getByText('Other User')).toBeTruthy();
+    }, { timeout: 3000 });
+  });
+
+  it('should exclude current user from search results', async () => {
+    const userProfile = {
+      name: 'Current User',
+      expertise: 'Software Development',
+      interest: 'Data Science',
+      expertiseYears: 5,
+      interestYears: 2,
+      email: 'current@example.com',
+      phoneNumber: '+1234567890',
+    };
+
+    const allProfiles = [
+      {
+        name: 'Sarah Johnson',
+        expertise: 'Software Development',
+        interest: 'Data Science',
+        expertiseYears: 5,
+        interestYears: 1,
+        email: 'sarah@example.com',
+        phoneNumber: '+1234567890',
+      },
+      {
+        name: 'Current User',
+        expertise: 'Software Development',
+        interest: 'Data Science',
+        expertiseYears: 5,
+        interestYears: 2,
+        email: 'current@example.com',
+        phoneNumber: '+1234567890',
+      },
+    ];
+
+    await AsyncStorage.setItem('user', JSON.stringify({ email: 'current@example.com' }));
+    await AsyncStorage.setItem('profile', JSON.stringify(userProfile));
+    await AsyncStorage.setItem('allProfiles', JSON.stringify(allProfiles));
+    // Mock hybridGetProfile to return current user's profile
+    (hybridProfileService.hybridGetProfile as jest.Mock).mockResolvedValue(userProfile);
+    // Mock hybridGetAllProfiles to return all profiles
+    (hybridProfileService.hybridGetAllProfiles as jest.Mock).mockResolvedValue(allProfiles);
+
+    const { queryByText, getByPlaceholderText, getByText } = render(<HomeScreen />);
+
+    await waitFor(() => {
+      expect(queryByText('Loading...')).toBeNull();
+    }, { timeout: 3000 });
+
+    // Wait for profiles to load
+    await waitFor(() => {
+      expect(getByText('Sarah Johnson')).toBeTruthy();
+    }, { timeout: 3000 });
+
+    // Search for current user's name
+    const searchInput = getByPlaceholderText('Search by name, expertise, interest, email, phone...');
+    fireEvent.changeText(searchInput, 'Current User');
+
+    await waitFor(() => {
+      // Current user should not appear in search results
+      expect(queryByText('Current User')).toBeNull();
+    }, { timeout: 3000 });
+  });
+
   it('should exclude current user from Firebase-synced profiles', async () => {
     const userProfile = {
       name: 'Current User',
@@ -470,13 +596,22 @@ describe('HomeScreen (Discover)', () => {
     await AsyncStorage.setItem('user', JSON.stringify({ email: 'current@example.com' }));
     await AsyncStorage.setItem('profile', JSON.stringify(userProfile));
     await AsyncStorage.setItem('allProfiles', JSON.stringify(allProfiles));
+    // Mock hybridGetProfile to return current user's profile
+    (hybridProfileService.hybridGetProfile as jest.Mock).mockResolvedValue(userProfile);
+    // Mock hybridGetAllProfiles to return all profiles
+    (hybridProfileService.hybridGetAllProfiles as jest.Mock).mockResolvedValue(allProfiles);
 
-    const { getByText } = render(<HomeScreen />);
+    const { getByText, queryByText } = render(<HomeScreen />);
+
+    await waitFor(() => {
+      // Wait for loading to complete
+      expect(queryByText('Loading...')).toBeNull();
+    }, { timeout: 3000 });
 
     await waitFor(() => {
       const profileCard = getByText('Sarah Johnson');
       fireEvent.press(profileCard);
-    });
+    }, { timeout: 3000 });
 
     await waitFor(() => {
       expect(mockRouter.push).toHaveBeenCalledWith({
@@ -638,15 +773,24 @@ describe('HomeScreen (Discover)', () => {
     await AsyncStorage.setItem('user', JSON.stringify({ email: 'current@example.com' }));
     await AsyncStorage.setItem('profile', JSON.stringify(userProfile));
     await AsyncStorage.setItem('allProfiles', JSON.stringify(allProfiles));
+    // Mock hybridGetProfile to return current user's profile
+    (hybridProfileService.hybridGetProfile as jest.Mock).mockResolvedValue(userProfile);
+    // Mock hybridGetAllProfiles to return all profiles
+    (hybridProfileService.hybridGetAllProfiles as jest.Mock).mockResolvedValue(allProfiles);
     // Clear test accounts to avoid interference
     await AsyncStorage.removeItem('testAccounts');
 
     const { queryByText, getByText } = render(<HomeScreen />);
 
     await waitFor(() => {
+      // Wait for loading to complete
+      expect(queryByText('Loading...')).toBeNull();
+    }, { timeout: 3000 });
+
+    await waitFor(() => {
       // Profile should appear
       expect(getByText('John Doe')).toBeTruthy();
-    });
+    }, { timeout: 3000 });
 
     // Check that John Doe's card doesn't have a good match badge
     // Note: Test accounts might create good matches, so we check specifically for John Doe's profile
