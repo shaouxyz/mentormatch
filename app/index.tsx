@@ -7,6 +7,7 @@ import { initializeTestAccounts } from '@/utils/testAccounts';
 import { logger } from '@/utils/logger';
 import { initializeDataMigration } from '@/utils/dataMigration';
 import { refreshSession, isSessionValid } from '@/utils/sessionManager';
+import { initializeFirebase } from '@/config/firebase.config';
 
 /**
  * Welcome Screen Component
@@ -28,7 +29,16 @@ export default function WelcomeScreen() {
   useEffect(() => {
         if (!hasInitialized.current) {
           hasInitialized.current = true;
-          // Initialize data migration first
+          // Initialize Firebase first (if configured)
+          try {
+            initializeFirebase();
+            logger.info('Firebase initialized at app startup');
+          } catch (error) {
+            logger.warn('Firebase initialization failed at app startup, continuing with local only', {
+              error: error instanceof Error ? error.message : String(error)
+            });
+          }
+          // Initialize data migration
           initializeDataMigration().catch((error) => {
             logger.error('Failed to initialize data migration', error instanceof Error ? error : new Error(String(error)));
           });

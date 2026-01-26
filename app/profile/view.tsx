@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { logger } from '@/utils/logger';
 import { safeParseJSON, validateProfileSchema } from '@/utils/schemaValidation';
 import { areUsersMatched } from '@/utils/connectionUtils';
+import { hybridGetProfile } from '@/services/hybridProfileService';
 
 interface Profile {
   name: string;
@@ -110,11 +111,47 @@ export default function ViewProfileScreen() {
           }
         }
 
-        // If email is passed, load from storage
+        // If email is passed, load from Firebase first, then local storage
         if (emailValue) {
           const email = emailValue;
           
-          // Try to get from allProfiles
+          // Try Firebase first using hybridGetProfile
+          try {
+            const foundProfile = await hybridGetProfile(email);
+            if (foundProfile) {
+              setProfile(foundProfile);
+              
+              // Check if it's own profile or if users are matched
+              const userData = await AsyncStorage.getItem('user');
+              if (userData) {
+                const user = safeParseJSON<{ email: string }>(
+                  userData,
+                  (data): data is { email: string } => typeof data === 'object' && data !== null && 'email' in data && typeof (data as { email: unknown }).email === 'string',
+                  null
+                );
+                if (user) {
+                  setIsOwnProfile(user.email === foundProfile.email);
+                  if (user.email !== foundProfile.email) {
+                    const matched = await areUsersMatched(user.email, foundProfile.email);
+                    setIsMatched(matched);
+                  } else {
+                    setIsMatched(true); // Own profile is always "matched"
+                  }
+                }
+              }
+              
+              setLoading(false);
+              isLoadingRef.current = false;
+              return;
+            }
+          } catch (error) {
+            logger.warn('Failed to load profile from Firebase, trying local storage', {
+              email,
+              error: error instanceof Error ? error.message : String(error)
+            });
+          }
+          
+          // Fallback to local storage: Try to get from allProfiles
           const allProfilesData = await AsyncStorage.getItem('allProfiles');
           if (allProfilesData) {
             const allProfiles = safeParseJSON<Profile[]>(

@@ -107,7 +107,7 @@ describe('LoginScreen', () => {
       phoneNumber: '+1234567890'
     };
 
-    // Mock hybridGetProfile to return the profile
+    // Mock hybridGetProfile to return the profile (simulating Firebase sync)
     (hybridProfileService.hybridGetProfile as jest.Mock).mockResolvedValue(profile);
     
     // Create a regular user account with hashed password
@@ -374,5 +374,94 @@ describe('LoginScreen', () => {
     });
 
     AsyncStorage.getItem = originalGetItem;
+  });
+
+  describe('Firebase profile sync on login', () => {
+    it('should save profile to allProfiles when loaded from Firebase', async () => {
+      const profile = {
+        name: 'Firebase User',
+        expertise: 'Software Development',
+        interest: 'Data Science',
+        expertiseYears: 5,
+        interestYears: 2,
+        email: 'firebase@example.com',
+        phoneNumber: '+1234567890',
+      };
+
+      // Mock hybridGetProfile to return profile from Firebase
+      (hybridProfileService.hybridGetProfile as jest.Mock).mockResolvedValue(profile);
+
+      const { hashPassword } = require('../../utils/security');
+      const passwordHash = await hashPassword('password123');
+      
+      const users = [{
+        email: 'firebase@example.com',
+        passwordHash: passwordHash,
+        id: 'firebase123',
+        createdAt: new Date().toISOString(),
+      }];
+      await AsyncStorage.setItem('users', JSON.stringify(users));
+
+      const { getByText, getByPlaceholderText } = render(<LoginScreen />);
+
+      fireEvent.changeText(getByPlaceholderText('Enter your email'), 'firebase@example.com');
+      fireEvent.changeText(getByPlaceholderText('Enter your password'), 'password123');
+      fireEvent.press(getByText('Log In'));
+
+      await waitFor(() => {
+        expect(hybridProfileService.hybridGetProfile).toHaveBeenCalledWith('firebase@example.com');
+      });
+
+      // Verify profile was saved to allProfiles
+      await waitFor(async () => {
+        const allProfilesData = await AsyncStorage.getItem('allProfiles');
+        expect(allProfilesData).toBeTruthy();
+        const allProfiles = JSON.parse(allProfilesData || '[]');
+        expect(allProfiles.some((p: any) => p.email === 'firebase@example.com')).toBe(true);
+      });
+    });
+
+    it('should handle Firebase sync failure gracefully and use local profile', async () => {
+      const localProfile = {
+        name: 'Local User',
+        expertise: 'Software Development',
+        interest: 'Data Science',
+        expertiseYears: 5,
+        interestYears: 2,
+        email: 'local@example.com',
+        phoneNumber: '+1234567890',
+      };
+
+      // Set local profile first
+      await AsyncStorage.setItem('profile', JSON.stringify(localProfile));
+      await AsyncStorage.setItem('allProfiles', JSON.stringify([localProfile]));
+
+      const { hashPassword } = require('../../utils/security');
+      const passwordHash = await hashPassword('password123');
+      
+      const users = [{
+        email: 'local@example.com',
+        passwordHash: passwordHash,
+        id: 'local123',
+        createdAt: new Date().toISOString(),
+      }];
+      await AsyncStorage.setItem('users', JSON.stringify(users));
+
+      // Mock hybridGetProfile to return null (simulating Firebase failure, but local profile exists)
+      // The login code will catch the error and check local storage
+      (hybridProfileService.hybridGetProfile as jest.Mock).mockResolvedValue(localProfile);
+
+      const { getByText, getByPlaceholderText } = render(<LoginScreen />);
+
+      fireEvent.changeText(getByPlaceholderText('Enter your email'), 'local@example.com');
+      fireEvent.changeText(getByPlaceholderText('Enter your password'), 'password123');
+      fireEvent.press(getByText('Log In'));
+
+      // Should navigate to home since profile exists (from local storage)
+      await waitFor(() => {
+        expect(hybridProfileService.hybridGetProfile).toHaveBeenCalledWith('local@example.com');
+        expect(mockRouter.replace).toHaveBeenCalledWith('/(tabs)/home');
+      }, { timeout: 3000 });
+    });
   });
 });

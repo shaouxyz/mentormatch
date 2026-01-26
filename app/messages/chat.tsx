@@ -19,6 +19,7 @@ import {
   hybridCreateOrGetConversation,
   subscribeToMessages,
 } from '@/services/hybridMessageService';
+import { hybridGetProfile } from '@/services/hybridProfileService';
 import { isFirebaseConfigured } from '@/config/firebase.config';
 import { Message } from '@/types/types';
 import { logger } from '@/utils/logger';
@@ -77,18 +78,37 @@ export default function ChatScreen() {
   const loadUserData = async () => {
     try {
       const userData = await AsyncStorage.getItem('user');
-      const profileData = await AsyncStorage.getItem('profile');
       
-      if (!userData || !profileData) {
+      if (!userData) {
         router.replace('/login');
         return;
       }
 
       const user = JSON.parse(userData);
-      const profile = JSON.parse(profileData);
-      
       setCurrentUserEmail(user.email);
-      setCurrentUserName(profile.name);
+      
+      // Try Firebase first using hybridGetProfile
+      let profile = null;
+      try {
+        profile = await hybridGetProfile(user.email);
+      } catch (error) {
+        logger.warn('Failed to load profile from Firebase, trying local storage', {
+          email: user.email,
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+      
+      // Fallback to local storage if Firebase failed
+      if (!profile) {
+        const profileData = await AsyncStorage.getItem('profile');
+        if (profileData) {
+          profile = JSON.parse(profileData);
+        }
+      }
+      
+      if (profile) {
+        setCurrentUserName(profile.name);
+      }
     } catch (error) {
       ErrorHandler.handleError(error, 'Failed to load user data');
     }

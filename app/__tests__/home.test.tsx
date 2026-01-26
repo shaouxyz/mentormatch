@@ -4,9 +4,17 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import HomeScreen from '../(tabs)/home';
 import { useRouter } from 'expo-router';
 import { initializeTestAccounts } from '../../utils/testAccounts';
+import * as hybridProfileService from '@/services/hybridProfileService';
+import * as firebaseConfig from '@/config/firebase.config';
 
 // Get mock router (from global mock in jest.setup.js)
 const mockRouter = useRouter();
+
+// Mock Firebase config
+jest.mock('@/config/firebase.config', () => ({
+  initializeFirebase: jest.fn(),
+  isFirebaseConfigured: jest.fn(() => false),
+}));
 
 describe('HomeScreen (Discover)', () => {
   beforeEach(async () => {
@@ -523,5 +531,232 @@ describe('HomeScreen (Discover)', () => {
     // For now, we'll just verify John Doe appears without checking for badge absence
     // as test accounts might interfere
     expect(johnDoeCard).toBeTruthy();
+  });
+
+  describe('Firebase sync functionality', () => {
+    it('should initialize Firebase when loading profiles', async () => {
+      const userProfile = {
+        name: 'Current User',
+        expertise: 'Software Development',
+        interest: 'Data Science',
+        expertiseYears: 5,
+        interestYears: 2,
+        email: 'current@example.com',
+        phoneNumber: '+1234567890',
+      };
+
+      await AsyncStorage.setItem('user', JSON.stringify({ email: 'current@example.com' }));
+      await AsyncStorage.setItem('profile', JSON.stringify(userProfile));
+
+      render(<HomeScreen />);
+
+      await waitFor(() => {
+        expect(firebaseConfig.initializeFirebase).toHaveBeenCalled();
+      });
+    });
+
+    it('should load current user profile from Firebase using hybridGetProfile', async () => {
+      const userProfile = {
+        name: 'Current User',
+        expertise: 'Software Development',
+        interest: 'Data Science',
+        expertiseYears: 5,
+        interestYears: 2,
+        email: 'current@example.com',
+        phoneNumber: '+1234567890',
+      };
+
+      await AsyncStorage.setItem('user', JSON.stringify({ email: 'current@example.com' }));
+      // Don't set profile in AsyncStorage - simulate it coming from Firebase
+      (hybridProfileService.hybridGetProfile as jest.Mock).mockResolvedValue(userProfile);
+
+      render(<HomeScreen />);
+
+      await waitFor(() => {
+        expect(hybridProfileService.hybridGetProfile).toHaveBeenCalledWith('current@example.com');
+      });
+
+      // Verify profile was saved to local storage
+      await waitFor(async () => {
+        const savedProfile = await AsyncStorage.getItem('profile');
+        expect(savedProfile).toBeTruthy();
+        const parsed = JSON.parse(savedProfile || '{}');
+        expect(parsed.email).toBe('current@example.com');
+      });
+    });
+
+    it('should fallback to local storage if hybridGetProfile fails', async () => {
+      const userProfile = {
+        name: 'Current User',
+        expertise: 'Software Development',
+        interest: 'Data Science',
+        expertiseYears: 5,
+        interestYears: 2,
+        email: 'current@example.com',
+        phoneNumber: '+1234567890',
+      };
+
+      await AsyncStorage.setItem('user', JSON.stringify({ email: 'current@example.com' }));
+      await AsyncStorage.setItem('profile', JSON.stringify(userProfile));
+      // Mock hybridGetProfile to throw error
+      (hybridProfileService.hybridGetProfile as jest.Mock).mockRejectedValue(new Error('Firebase error'));
+
+      const { getByText } = render(<HomeScreen />);
+
+      await waitFor(() => {
+        // Should still load profile from local storage
+        expect(getByText('Find Your Mentor')).toBeTruthy();
+      });
+    });
+
+    it('should sync all profiles from Firebase using hybridGetAllProfiles', async () => {
+      const userProfile = {
+        name: 'Current User',
+        expertise: 'Software Development',
+        interest: 'Data Science',
+        expertiseYears: 5,
+        interestYears: 2,
+        email: 'current@example.com',
+        phoneNumber: '+1234567890',
+      };
+
+      const firebaseProfiles = [
+        {
+          name: 'Firebase User 1',
+          expertise: 'Marketing',
+          interest: 'Design',
+          expertiseYears: 3,
+          interestYears: 1,
+          email: 'firebase1@example.com',
+          phoneNumber: '+1234567890',
+        },
+        {
+          name: 'Firebase User 2',
+          expertise: 'Data Science',
+          interest: 'Software Development',
+          expertiseYears: 5,
+          interestYears: 2,
+          email: 'firebase2@example.com',
+          phoneNumber: '+1234567891',
+        },
+      ];
+
+      await AsyncStorage.setItem('user', JSON.stringify({ email: 'current@example.com' }));
+      await AsyncStorage.setItem('profile', JSON.stringify(userProfile));
+      // Mock hybridGetAllProfiles to return Firebase profiles
+      (hybridProfileService.hybridGetAllProfiles as jest.Mock).mockResolvedValue(firebaseProfiles);
+
+      render(<HomeScreen />);
+
+      await waitFor(() => {
+        expect(hybridProfileService.hybridGetAllProfiles).toHaveBeenCalled();
+      });
+
+      // Verify profiles were saved to local storage
+      await waitFor(async () => {
+        const savedProfiles = await AsyncStorage.getItem('allProfiles');
+        expect(savedProfiles).toBeTruthy();
+        const parsed = JSON.parse(savedProfiles || '[]');
+        expect(parsed.length).toBeGreaterThanOrEqual(2);
+        expect(parsed.some((p: any) => p.email === 'firebase1@example.com')).toBe(true);
+        expect(parsed.some((p: any) => p.email === 'firebase2@example.com')).toBe(true);
+      });
+    });
+
+    it('should fallback to local storage if hybridGetAllProfiles fails', async () => {
+      const userProfile = {
+        name: 'Current User',
+        expertise: 'Software Development',
+        interest: 'Data Science',
+        expertiseYears: 5,
+        interestYears: 2,
+        email: 'current@example.com',
+        phoneNumber: '+1234567890',
+      };
+
+      const localProfiles = [
+        {
+          name: 'Local User',
+          expertise: 'Marketing',
+          interest: 'Design',
+          expertiseYears: 3,
+          interestYears: 1,
+          email: 'local@example.com',
+          phoneNumber: '+1234567890',
+        },
+      ];
+
+      await AsyncStorage.setItem('user', JSON.stringify({ email: 'current@example.com' }));
+      await AsyncStorage.setItem('profile', JSON.stringify(userProfile));
+      await AsyncStorage.setItem('allProfiles', JSON.stringify(localProfiles));
+      // Mock hybridGetAllProfiles to throw error
+      (hybridProfileService.hybridGetAllProfiles as jest.Mock).mockRejectedValue(new Error('Firebase error'));
+
+      const { getByText } = render(<HomeScreen />);
+
+      await waitFor(() => {
+        // Should still load profiles from local storage
+        expect(getByText('Find Your Mentor')).toBeTruthy();
+      });
+    });
+
+    it('should merge Firebase and local profiles', async () => {
+      const userProfile = {
+        name: 'Current User',
+        expertise: 'Software Development',
+        interest: 'Data Science',
+        expertiseYears: 5,
+        interestYears: 2,
+        email: 'current@example.com',
+        phoneNumber: '+1234567890',
+      };
+
+      const firebaseProfiles = [
+        {
+          name: 'Firebase User',
+          expertise: 'Marketing',
+          interest: 'Design',
+          expertiseYears: 3,
+          interestYears: 1,
+          email: 'firebase@example.com',
+          phoneNumber: '+1234567890',
+        },
+      ];
+
+      const localProfiles = [
+        {
+          name: 'Local User',
+          expertise: 'Data Science',
+          interest: 'Marketing',
+          expertiseYears: 4,
+          interestYears: 2,
+          email: 'local@example.com',
+          phoneNumber: '+1234567891',
+        },
+      ];
+
+      await AsyncStorage.setItem('user', JSON.stringify({ email: 'current@example.com' }));
+      await AsyncStorage.setItem('profile', JSON.stringify(userProfile));
+      await AsyncStorage.setItem('allProfiles', JSON.stringify(localProfiles));
+      // Mock hybridGetAllProfiles to return merged profiles (Firebase + local)
+      (hybridProfileService.hybridGetAllProfiles as jest.Mock).mockResolvedValue([
+        ...firebaseProfiles,
+        ...localProfiles,
+      ]);
+
+      render(<HomeScreen />);
+
+      await waitFor(() => {
+        expect(hybridProfileService.hybridGetAllProfiles).toHaveBeenCalled();
+      });
+
+      // Verify merged profiles were saved
+      await waitFor(async () => {
+        const savedProfiles = await AsyncStorage.getItem('allProfiles');
+        expect(savedProfiles).toBeTruthy();
+        const parsed = JSON.parse(savedProfiles || '[]');
+        expect(parsed.length).toBeGreaterThanOrEqual(2);
+      });
+    });
   });
 });

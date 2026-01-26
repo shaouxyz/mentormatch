@@ -20,6 +20,8 @@ import { config } from '@/utils/config';
 import { refreshSession } from '@/utils/sessionManager';
 import { useFocusEffect } from 'expo-router';
 import { orderProfilesForUser } from '@/utils/profileOrdering';
+import { hybridGetAllProfiles, hybridGetProfile } from '@/services/hybridProfileService';
+import { initializeFirebase } from '@/config/firebase.config';
 
 interface Profile {
   name: string;
@@ -76,24 +78,19 @@ export default function HomeScreen() {
 
   const loadProfiles = async () => {
     try {
+      // Initialize Firebase if configured
+      try {
+        initializeFirebase();
+      } catch (error) {
+        logger.warn('Firebase initialization failed, continuing with local only', {
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+
       // Initialize test accounts once
       await initializeTestAccounts();
       
-      const profileData = await AsyncStorage.getItem('profile');
-      let parsedCurrentProfile: Profile | null = null;
-      if (profileData) {
-        const profile = safeParseJSON(
-          profileData,
-          validateProfileSchema,
-          null
-        );
-        if (profile) {
-          setCurrentProfile(profile);
-          parsedCurrentProfile = profile;
-        }
-      }
-
-      // Get current user email to exclude from list
+      // Get current user email
       const userData = await AsyncStorage.getItem('user');
       const currentUserEmail = userData 
         ? safeParseJSON<{ email: string }>(
@@ -103,53 +100,95 @@ export default function HomeScreen() {
           )?.email || null
         : null;
 
-      // In a real app, you would fetch from an API
-      // For now, we'll create some mock matches based on the current user's profile
-      const allProfiles = await AsyncStorage.getItem('allProfiles');
+      // Load current user's profile (try Firebase first, then local)
+      let parsedCurrentProfile: Profile | null = null;
+      if (currentUserEmail) {
+        try {
+          const profile = await hybridGetProfile(currentUserEmail);
+          if (profile) {
+            setCurrentProfile(profile);
+            parsedCurrentProfile = profile;
+            // Save to local storage for quick access
+            await AsyncStorage.setItem('profile', JSON.stringify(profile));
+            logger.info('Current user profile loaded', { email: currentUserEmail });
+          }
+        } catch (error) {
+          logger.warn('Failed to load current user profile, trying local only', {
+            email: currentUserEmail,
+            error: error instanceof Error ? error.message : String(error)
+          });
+          // Fallback to local storage
+          const profileData = await AsyncStorage.getItem('profile');
+          if (profileData) {
+            const profile = safeParseJSON(
+              profileData,
+              validateProfileSchema,
+              null
+            );
+            if (profile) {
+              setCurrentProfile(profile);
+              parsedCurrentProfile = profile;
+            }
+          }
+        }
+      }
+
+      // Load all profiles (sync from Firebase if available)
       let profilesList: Profile[] = [];
-      
-      if (allProfiles) {
-        const parsed = safeParseJSON<Profile[]>(
-          allProfiles,
-          (data): data is Profile[] => {
-            if (!Array.isArray(data)) return false;
-            return data.every(p => validateProfileSchema(p));
-          },
-          []
-        );
-        profilesList = parsed || [];
-      } else {
-        // Create some sample profiles for demonstration
-        profilesList = [
-          {
-            name: 'Sarah Johnson',
-            expertise: 'Software Development',
-            interest: 'Data Science',
-            expertiseYears: 5,
-            interestYears: 1,
-            email: 'sarah@example.com',
-            phoneNumber: '+1234567890',
-          },
-          {
-            name: 'Michael Chen',
-            expertise: 'Data Science',
-            interest: 'Software Development',
-            expertiseYears: 7,
-            interestYears: 2,
-            email: 'michael@example.com',
-            phoneNumber: '+1234567891',
-          },
-          {
-            name: 'Emily Davis',
-            expertise: 'Marketing',
-            interest: 'Design',
-            expertiseYears: 4,
-            interestYears: 0,
-            email: 'emily@example.com',
-            phoneNumber: '+1234567892',
-          },
-        ];
+      try {
+        profilesList = await hybridGetAllProfiles();
+        // Save synced profiles to local storage for offline access
         await AsyncStorage.setItem('allProfiles', JSON.stringify(profilesList));
+        logger.info('Profiles synced from Firebase and local storage', { count: profilesList.length });
+      } catch (error) {
+        logger.warn('Failed to sync profiles, using local only', {
+          error: error instanceof Error ? error.message : String(error)
+        });
+        // Fallback to local storage
+        const allProfiles = await AsyncStorage.getItem('allProfiles');
+        if (allProfiles) {
+          const parsed = safeParseJSON<Profile[]>(
+            allProfiles,
+            (data): data is Profile[] => {
+              if (!Array.isArray(data)) return false;
+              return data.every(p => validateProfileSchema(p));
+            },
+            []
+          );
+          profilesList = parsed || [];
+        } else {
+          // Create some sample profiles for demonstration
+          profilesList = [
+            {
+              name: 'Sarah Johnson',
+              expertise: 'Software Development',
+              interest: 'Data Science',
+              expertiseYears: 5,
+              interestYears: 1,
+              email: 'sarah@example.com',
+              phoneNumber: '+1234567890',
+            },
+            {
+              name: 'Michael Chen',
+              expertise: 'Data Science',
+              interest: 'Software Development',
+              expertiseYears: 7,
+              interestYears: 2,
+              email: 'michael@example.com',
+              phoneNumber: '+1234567891',
+            },
+            {
+              name: 'Emily Davis',
+              expertise: 'Marketing',
+              interest: 'Design',
+              expertiseYears: 4,
+              interestYears: 0,
+              email: 'emily@example.com',
+              phoneNumber: '+1234567892',
+            },
+          ];
+          await AsyncStorage.setItem('allProfiles', JSON.stringify(profilesList));
+        }
       }
 
       // Add test account profiles (excluding current user)

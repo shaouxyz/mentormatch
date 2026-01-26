@@ -142,56 +142,80 @@ export default function SendRequestScreen() {
 
       try {
         const userData = await AsyncStorage.getItem('user');
-        const profileData = await AsyncStorage.getItem('profile');
-        if (userData && profileData) {
-          const user = safeParseJSON<User>(
-            userData,
-            (data): data is User => {
-              if (typeof data !== 'object' || data === null) return false;
-              const u = data as Record<string, unknown>;
-              return typeof u.email === 'string' && typeof u.id === 'string';
-            },
-            null
-          );
-          const profile = safeParseJSON<Profile>(
-            profileData,
-            (data): data is Profile => {
-              if (typeof data !== 'object' || data === null) return false;
-              const p = data as Record<string, unknown>;
-              return (
-                typeof p.name === 'string' &&
-                typeof p.email === 'string' &&
-                typeof p.expertise === 'string' &&
-                typeof p.interest === 'string' &&
-                typeof p.expertiseYears === 'number' &&
-                typeof p.interestYears === 'number' &&
-                typeof p.phoneNumber === 'string'
-              );
-            },
-            null
-          );
+        if (!userData) {
+          return;
+        }
+        
+        const user = safeParseJSON<User>(
+          userData,
+          (data): data is User => {
+            if (typeof data !== 'object' || data === null) return false;
+            const u = data as Record<string, unknown>;
+            return typeof u.email === 'string' && typeof u.id === 'string';
+          },
+          null
+        );
+        
+        if (!user) {
+          return;
+        }
+        
+        // Try Firebase first using hybridGetProfile
+        let profile: Profile | null = null;
+        try {
+          profile = await hybridGetProfile(user.email);
+        } catch (error) {
+          logger.warn('Failed to load profile from Firebase, trying local storage', {
+            email: user.email,
+            error: error instanceof Error ? error.message : String(error)
+          });
+        }
+        
+        // Fallback to local storage if Firebase failed
+        if (!profile) {
+          const profileData = await AsyncStorage.getItem('profile');
+          if (profileData) {
+            profile = safeParseJSON<Profile>(
+              profileData,
+              (data): data is Profile => {
+                if (typeof data !== 'object' || data === null) return false;
+                const p = data as Record<string, unknown>;
+                return (
+                  typeof p.name === 'string' &&
+                  typeof p.email === 'string' &&
+                  typeof p.expertise === 'string' &&
+                  typeof p.interest === 'string' &&
+                  typeof p.expertiseYears === 'number' &&
+                  typeof p.interestYears === 'number' &&
+                  typeof p.phoneNumber === 'string'
+                );
+              },
+              null
+            );
+          }
+        }
 
-          if (!user || !profile) {
-            return;
-          }
-          const nextUser: CurrentUser = { ...user, ...profile };
-          const key = `${nextUser.email}|${nextUser.id}|${nextUser.name}|${nextUser.phoneNumber}`;
-          if (lastCurrentUserKeyRef.current !== key) {
-            lastCurrentUserKeyRef.current = key;
-            if (cancelled) return;
-            setCurrentUser((prev) => {
-              if (
-                prev &&
-                prev.email === nextUser.email &&
-                prev.id === nextUser.id &&
-                prev.name === nextUser.name &&
-                prev.phoneNumber === nextUser.phoneNumber
-              ) {
-                return prev; // no-op to avoid render loops if this effect re-fires unexpectedly
-              }
-              return nextUser;
-            });
-          }
+        if (!profile) {
+          return;
+        }
+        
+        const nextUser: CurrentUser = { ...user, ...profile };
+        const key = `${nextUser.email}|${nextUser.id}|${nextUser.name}|${nextUser.phoneNumber}`;
+        if (lastCurrentUserKeyRef.current !== key) {
+          lastCurrentUserKeyRef.current = key;
+          if (cancelled) return;
+          setCurrentUser((prev) => {
+            if (
+              prev &&
+              prev.email === nextUser.email &&
+              prev.id === nextUser.id &&
+              prev.name === nextUser.name &&
+              prev.phoneNumber === nextUser.phoneNumber
+            ) {
+              return prev; // no-op to avoid render loops if this effect re-fires unexpectedly
+            }
+            return nextUser;
+          });
         }
       } catch (error) {
         logger.error('Error loading current user', error instanceof Error ? error : new Error(String(error)));
