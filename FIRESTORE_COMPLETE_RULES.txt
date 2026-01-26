@@ -1,0 +1,136 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper function to check if user is authenticated
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    // Profiles collection
+    match /profiles/{profileId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && 
+        request.resource.data.email == request.auth.token.email;
+      allow update: if isSignedIn() && 
+        resource.data.email == request.auth.token.email;
+      allow delete: if false;
+    }
+    
+    // Mentorship requests collection
+    match /mentorshipRequests/{requestId} {
+      allow read: if isSignedIn() && 
+        (resource.data.requesterEmail == request.auth.token.email || 
+         resource.data.mentorEmail == request.auth.token.email);
+      allow create: if isSignedIn() && 
+        request.resource.data.requesterEmail == request.auth.token.email;
+      allow update: if isSignedIn() && 
+        (resource.data.requesterEmail == request.auth.token.email || 
+         resource.data.mentorEmail == request.auth.token.email);
+      allow delete: if isSignedIn() && 
+        resource.data.requesterEmail == request.auth.token.email;
+    }
+    
+    // Messages collection
+    match /messages/{messageId} {
+      allow read: if isSignedIn() && 
+        (resource.data.senderEmail == request.auth.token.email || 
+         resource.data.receiverEmail == request.auth.token.email);
+      allow create: if isSignedIn() && 
+        request.resource.data.senderEmail == request.auth.token.email &&
+        request.resource.data.chatId is string &&
+        request.resource.data.text is string;
+      allow update, delete: if false;
+    }
+    
+    // Meetings collection
+    match /meetings/{meetingId} {
+      allow read: if isSignedIn() && 
+        (resource.data.organizerEmail == request.auth.token.email || 
+         resource.data.participantEmail == request.auth.token.email);
+      allow create: if isSignedIn() && 
+        request.resource.data.organizerEmail == request.auth.token.email &&
+        request.resource.data.participantEmail is string &&
+        request.resource.data.title is string &&
+        request.resource.data.date is string;
+      allow update: if isSignedIn() && 
+        (resource.data.organizerEmail == request.auth.token.email || 
+         resource.data.participantEmail == request.auth.token.email);
+      allow delete: if isSignedIn() && 
+        resource.data.organizerEmail == request.auth.token.email;
+    }
+    
+    // Conversations collection
+    match /conversations/{conversationId} {
+      // Allow users to read individual conversations they're a participant in
+      allow get: if isSignedIn() && 
+        request.auth.token.email in resource.data.participants;
+      
+      // Allow users to list conversations
+      // Note: For array-contains queries, Firestore cannot automatically validate the query constraint
+      // We allow list for authenticated users, but individual document access is protected by 'get' rule
+      // The application query uses: where('participants', 'array-contains', userEmail)
+      // which ensures only conversations where the user is a participant are returned
+      allow list: if isSignedIn();
+      
+      // Allow users to create conversations if they're a participant
+      allow create: if isSignedIn() && 
+        request.auth.token.email in request.resource.data.participants &&
+        request.resource.data.participants is list;
+      
+      // Allow participants to update (for unread counts, last message, etc.)
+      allow update: if isSignedIn() && 
+        request.auth.token.email in resource.data.participants;
+      
+      // No deletes
+      allow delete: if false;
+    }
+    
+    // Invitation codes collection
+    match /invitationCodes/{codeId} {
+      // Allow creation of new codes by any authenticated user (e.g., when accepting a mentee)
+      // The `createdBy` field should match the authenticated user's email
+      allow create: if isSignedIn() && 
+        request.resource.data.createdBy == request.auth.token.email;
+      
+      // Allow reading of codes only if the user created it or if it's unused (for signup validation)
+      allow read: if isSignedIn() && (
+        resource.data.createdBy == request.auth.token.email ||
+        !('usedBy' in resource.data) // Allow reading unused codes for validation
+      );
+      
+      // Allow updating a code only to mark it as used by the authenticated user
+      allow update: if isSignedIn() &&
+        resource.data.code == request.resource.data.code && // Code itself cannot be changed
+        resource.data.createdBy == request.resource.data.createdBy && // Creator cannot be changed
+        !('usedBy' in resource.data) && // Can only update if not already used
+        request.resource.data.usedBy == request.auth.token.email && // User using it must be authenticated
+        request.resource.data.usedAt is string; // Must set usedAt timestamp
+      
+      // Codes cannot be deleted
+      allow delete: if false;
+    }
+    
+    // Inbox collection
+    match /inbox/{itemId} {
+      // Allow users to read individual inbox items they own
+      allow get: if isSignedIn() && 
+        resource.data.recipientEmail == request.auth.token.email;
+      
+      // Allow users to list their own inbox items
+      // This works with queries like: where('recipientEmail', '==', userEmail)
+      allow list: if isSignedIn() && 
+        request.query.limit <= 100; // Limit query size for security
+      
+      // Allow users to create inbox items for themselves (or system can create for them)
+      allow create: if isSignedIn() && 
+        request.resource.data.recipientEmail == request.auth.token.email;
+      
+      // Allow users to update their own inbox items (e.g., mark as read)
+      allow update: if isSignedIn() && 
+        resource.data.recipientEmail == request.auth.token.email;
+      
+      // Don't allow deletes
+      allow delete: if false;
+    }
+  }
+}

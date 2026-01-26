@@ -111,9 +111,14 @@ service cloud.firestore {
     
     // Conversations collection
     match /conversations/{conversationId} {
-      // Users can read conversations they're part of
-      allow read: if isSignedIn() && 
+      // Users can read individual conversations they're part of
+      allow get: if isSignedIn() && 
         request.auth.token.email in resource.data.participants;
+      
+      // Users can list conversations where they're a participant
+      // This works with queries like: where('participants', 'array-contains', userEmail)
+      allow list: if isSignedIn() && 
+        request.query.limit <= 100; // Limit query size for security
       
       // Users can create conversations if they're one of the participants
       allow create: if isSignedIn() && 

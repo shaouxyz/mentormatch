@@ -2608,7 +2608,294 @@ Notes: [Any issues found]
 
 ---
 
-## 24. SIGN-OFF
+## 24. PRIVACY CONTROLS
+
+### 24.1 Profile Privacy
+
+#### Test Case 24.1.1: Hide Contact Info for Unmatched Users
+- **Precondition**: User viewing another user's profile, no accepted connection
+- **Steps**:
+  1. Navigate to view another user's profile
+  2. Observe contact information section
+- **Expected Results**:
+  - ✅ Email and phone NOT displayed
+  - ✅ Lock icon shown
+  - ✅ "Connect to view contact details" message displayed
+  - ✅ Contact information card shows privacy message
+
+#### Test Case 24.1.2: Show Contact Info for Matched Users
+- **Precondition**: User viewing matched mentor/mentee profile
+- **Steps**:
+  1. Accept a mentorship request (or have one accepted)
+  2. Navigate to view that user's profile
+- **Expected Results**:
+  - ✅ Email displayed and clickable
+  - ✅ Phone displayed and clickable
+  - ✅ No lock icon
+  - ✅ Contact information fully visible
+
+#### Test Case 24.1.3: Show Contact Info for Own Profile
+- **Precondition**: User viewing own profile
+- **Steps**:
+  1. Navigate to own profile
+- **Expected Results**:
+  - ✅ Email displayed
+  - ✅ Phone displayed
+  - ✅ Contact information always visible
+  - ✅ No privacy restrictions
+
+#### Test Case 24.1.4: Connection Status Check
+- **Precondition**: User has accepted connections
+- **Steps**:
+  1. View profile of matched user
+  2. View profile of unmatched user
+- **Expected Results**:
+  - ✅ Matched user: contact info visible
+  - ✅ Unmatched user: contact info hidden
+  - ✅ Connection status checked correctly
+
+### 24.2 Connection Utilities
+
+#### Test Case 24.2.1: Check if Users are Matched - True
+- **Precondition**: Accepted mentorship request exists between two users
+- **Steps**:
+  1. Call areUsersMatched(user1, user2)
+- **Expected Results**:
+  - ✅ Returns true
+  - ✅ Checks both directions (requester->mentor and mentor->requester)
+
+#### Test Case 24.2.2: Check if Users are Matched - False
+- **Precondition**: No accepted connection between users
+- **Steps**:
+  1. Call areUsersMatched(user1, user2)
+- **Expected Results**:
+  - ✅ Returns false
+  - ✅ Handles missing requests data gracefully
+
+#### Test Case 24.2.3: Get Matched User Emails
+- **Precondition**: User has multiple accepted connections
+- **Steps**:
+  1. Call getMatchedUserEmails(userEmail)
+- **Expected Results**:
+  - ✅ Returns array of matched user emails
+  - ✅ Includes both mentors and mentees
+  - ✅ No duplicates
+
+---
+
+## 25. INVITATION CODE SYSTEM
+
+### 25.1 Invitation Code Service
+
+#### Test Case 25.1.1: Create Invitation Code
+- **Precondition**: User logged in
+- **Steps**:
+  1. Call createInvitationCode(userEmail)
+- **Expected Results**:
+  - ✅ 8-character code generated
+  - ✅ Code saved locally
+  - ✅ Code saved to Firebase (if configured)
+  - ✅ Code has unique ID
+  - ✅ isUsed = false
+  - ✅ createdBy set correctly
+
+#### Test Case 25.1.2: Validate Invitation Code - Valid
+- **Precondition**: Valid unused code exists
+- **Steps**:
+  1. Call isValidInvitationCode(code)
+- **Expected Results**:
+  - ✅ Returns true
+  - ✅ Checks both local and Firebase
+
+#### Test Case 25.1.3: Validate Invitation Code - Invalid
+- **Precondition**: Code doesn't exist or already used
+- **Steps**:
+  1. Call isValidInvitationCode(invalidCode)
+- **Expected Results**:
+  - ✅ Returns false
+  - ✅ Handles missing code gracefully
+
+#### Test Case 25.1.4: Use Invitation Code - Success
+- **Precondition**: Valid unused code exists
+- **Steps**:
+  1. Call useInvitationCode(code, userEmail)
+- **Expected Results**:
+  - ✅ Returns true
+  - ✅ Code marked as used
+  - ✅ usedBy set to userEmail
+  - ✅ usedAt timestamp set
+  - ✅ Updated in local storage
+  - ✅ Updated in Firebase (if configured)
+
+#### Test Case 25.1.5: Use Invitation Code - Already Used
+- **Precondition**: Code already used
+- **Steps**:
+  1. Try to use same code again
+- **Expected Results**:
+  - ✅ Returns false
+  - ✅ Code remains marked as used
+  - ✅ Error logged
+
+#### Test Case 25.1.6: Use Invitation Code - Not Found
+- **Precondition**: Code doesn't exist
+- **Steps**:
+  1. Try to use non-existent code
+- **Expected Results**:
+  - ✅ Returns false
+  - ✅ Error logged
+
+#### Test Case 25.1.7: Get Unused Invitation Codes
+- **Precondition**: User has multiple codes (some used, some unused)
+- **Steps**:
+  1. Call getUnusedInvitationCodes(userEmail)
+- **Expected Results**:
+  - ✅ Returns only unused codes
+  - ✅ All codes have createdBy = userEmail
+  - ✅ No used codes included
+
+#### Test Case 25.1.8: Generate Multiple Invitation Codes
+- **Precondition**: User logged in
+- **Steps**:
+  1. Call generateMultipleInvitationCodes(100, userEmail)
+- **Expected Results**:
+  - ✅ 100 codes generated
+  - ✅ All codes unique
+  - ✅ All codes saved
+  - ✅ All codes have correct createdBy
+
+### 25.2 Signup with Invitation Code
+
+#### Test Case 25.2.1: Signup with Valid Invitation Code
+- **Precondition**: Valid unused code exists
+- **Steps**:
+  1. Navigate to signup screen
+  2. Enter invitation code
+  3. Enter email and password
+  4. Submit
+- **Expected Results**:
+  - ✅ Code validated
+  - ✅ Code marked as used
+  - ✅ Account created
+  - ✅ Navigates to profile creation
+
+#### Test Case 25.2.2: Signup without Invitation Code
+- **Precondition**: On signup screen
+- **Steps**:
+  1. Leave invitation code empty
+  2. Enter email and password
+  3. Submit
+- **Expected Results**:
+  - ✅ Alert: "Please fill in all fields including invitation code"
+  - ✅ No account created
+  - ✅ No navigation
+
+#### Test Case 25.2.3: Signup with Invalid Invitation Code
+- **Precondition**: Invalid or used code
+- **Steps**:
+  1. Enter invalid code
+  2. Enter email and password
+  3. Submit
+- **Expected Results**:
+  - ✅ Alert: "Invalid or already used invitation code"
+  - ✅ No account created
+  - ✅ Code not marked as used
+
+#### Test Case 25.2.4: Signup with Used Invitation Code
+- **Precondition**: Code already used
+- **Steps**:
+  1. Enter used code
+  2. Enter email and password
+  3. Submit
+- **Expected Results**:
+  - ✅ Alert: "Invalid or already used invitation code"
+  - ✅ No account created
+
+#### Test Case 25.2.5: Invitation Code Input Formatting
+- **Precondition**: On signup screen
+- **Steps**:
+  1. Type code in lowercase
+  2. Type code with spaces
+- **Expected Results**:
+  - ✅ Code auto-converted to uppercase
+  - ✅ Spaces trimmed
+  - ✅ Max length 8 characters
+
+### 25.3 Invitation Code Generation on Accept
+
+#### Test Case 25.3.1: Generate Code When Accepting Mentee
+- **Precondition**: Mentor receives request
+- **Steps**:
+  1. Accept mentorship request
+  2. Check inbox
+- **Expected Results**:
+  - ✅ New invitation code generated
+  - ✅ Code added to mentor's inbox
+  - ✅ Code is unused
+  - ✅ Code createdBy = mentor email
+
+#### Test Case 25.3.2: No Code Generated on Decline
+- **Precondition**: Mentor receives request
+- **Steps**:
+  1. Decline mentorship request
+  2. Check inbox
+- **Expected Results**:
+  - ✅ No invitation code generated
+  - ✅ No inbox item added
+
+#### Test Case 25.3.3: Code Generation Error Handling
+- **Precondition**: Code generation fails
+- **Steps**:
+  1. Mock code generation to fail
+  2. Accept request
+- **Expected Results**:
+  - ✅ Request still accepted
+  - ✅ Error logged
+  - ✅ App continues to work
+  - ✅ No crash
+
+### 25.4 Inbox Service
+
+#### Test Case 25.4.1: Add Invitation Code to Inbox
+- **Precondition**: User logged in
+- **Steps**:
+  1. Call addInvitationCodeToInbox(email, code, createdBy)
+- **Expected Results**:
+  - ✅ Inbox item created
+  - ✅ Type = 'invitation_code'
+  - ✅ Title = 'New Invitation Code'
+  - ✅ invitationCode field set
+  - ✅ Saved locally
+  - ✅ Saved to Firebase (if configured)
+
+#### Test Case 25.4.2: Get Inbox Items
+- **Precondition**: User has inbox items
+- **Steps**:
+  1. Call getInboxItems(userEmail)
+- **Expected Results**:
+  - ✅ Returns all items for user
+  - ✅ Sorted by most recent first
+  - ✅ Includes all item types
+
+#### Test Case 25.4.3: Mark Inbox Item as Read
+- **Precondition**: User has unread items
+- **Steps**:
+  1. Call markInboxItemAsRead(itemId)
+- **Expected Results**:
+  - ✅ Item marked as read
+  - ✅ Updated locally
+  - ✅ Updated in Firebase (if configured)
+
+#### Test Case 25.4.4: Get Unread Count
+- **Precondition**: User has read and unread items
+- **Steps**:
+  1. Call getUnreadInboxCount(userEmail)
+- **Expected Results**:
+  - ✅ Returns correct count
+  - ✅ Only counts unread items
+
+---
+
+## 26. SIGN-OFF
 
 ### Test Completion Criteria
 

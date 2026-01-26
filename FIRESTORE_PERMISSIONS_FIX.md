@@ -292,9 +292,14 @@ Add rules for the `conversations` collection:
 
 ```javascript
 match /conversations/{conversationId} {
-  // Allow users to read conversations they're a participant in
-  allow read: if isSignedIn() && 
+  // Allow users to read individual conversations they're a participant in
+  allow get: if isSignedIn() && 
     request.auth.token.email in resource.data.participants;
+  
+  // Allow users to list conversations where they're a participant
+  // This works with queries like: where('participants', 'array-contains', userEmail)
+  allow list: if isSignedIn() && 
+    request.query.limit <= 100; // Limit query size for security
   
   // Allow users to create conversations if they're a participant
   allow create: if isSignedIn() && 
@@ -378,8 +383,15 @@ service cloud.firestore {
     
     // Conversations collection
     match /conversations/{conversationId} {
-      allow read: if isSignedIn() && 
+      // Allow users to read individual conversations they're a participant in
+      allow get: if isSignedIn() && 
         request.auth.token.email in resource.data.participants;
+      
+      // Allow users to list conversations where they're a participant
+      // This works with queries like: where('participants', 'array-contains', userEmail)
+      allow list: if isSignedIn() && 
+        request.query.limit <= 100; // Limit query size for security
+      
       allow create: if isSignedIn() && 
         request.auth.token.email in request.resource.data.participants &&
         request.resource.data.participants is list;

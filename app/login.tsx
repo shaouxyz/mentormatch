@@ -21,6 +21,8 @@ import { sanitizeEmail } from '@/utils/security';
 import { isRateLimited, resetRateLimit, getRemainingAttempts } from '@/utils/rateLimiter';
 import { startSession } from '@/utils/sessionManager';
 import { hybridSignIn } from '@/services/hybridAuthService';
+import { hybridGetProfile } from '@/services/hybridProfileService';
+import { Profile } from '@/types/types';
 
 /**
  * Login Screen Component
@@ -144,11 +146,26 @@ export default function LoginScreen() {
         createdAt: user.createdAt,
       }));
       
-      // Check if profile exists
-      const profile = await AsyncStorage.getItem('profile');
+      // Check if profile exists (try Firebase first, then local)
+      const profile = await hybridGetProfile(user.email);
       if (profile) {
+        // Save profile locally if retrieved from Firebase
+        await AsyncStorage.setItem('profile', JSON.stringify(profile));
+        
+        // Also add to allProfiles if not already there
+        const allProfilesData = await AsyncStorage.getItem('allProfiles');
+        let allProfiles: Profile[] = allProfilesData ? JSON.parse(allProfilesData) : [];
+        const existingIndex = allProfiles.findIndex((p) => p.email === profile.email);
+        if (existingIndex === -1) {
+          allProfiles.push(profile);
+          await AsyncStorage.setItem('allProfiles', JSON.stringify(allProfiles));
+          logger.info('Profile added to allProfiles after login', { email: user.email });
+        }
+        
+        logger.info('Profile loaded and saved locally after login', { email: user.email });
         router.replace('/(tabs)/home');
       } else {
+        logger.info('No profile found, redirecting to profile creation', { email: user.email });
         router.replace('/profile/create');
       }
     } catch (error) {

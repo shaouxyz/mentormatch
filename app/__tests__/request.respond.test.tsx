@@ -3,6 +3,8 @@ import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import RespondRequestScreen from '../request/respond';
 import * as expoRouter from 'expo-router';
+import * as invitationCodeService from '@/services/invitationCodeService';
+import * as inboxService from '@/services/inboxService';
 
 // Mock useLocalSearchParams
 const mockParams = { request: '' };
@@ -12,6 +14,15 @@ jest.spyOn(expoRouter, 'useLocalSearchParams').mockImplementation(() => mockPara
 
 // Get mock router (from global mock in jest.setup.js)
 const mockRouter = expoRouter.useRouter();
+
+// Mock invitation code and inbox services
+jest.mock('@/services/invitationCodeService', () => ({
+  createInvitationCode: jest.fn(),
+}));
+
+jest.mock('@/services/inboxService', () => ({
+  addInvitationCodeToInbox: jest.fn(),
+}));
 
 describe('RespondRequestScreen', () => {
   const mockRequest = {
@@ -36,6 +47,16 @@ describe('RespondRequestScreen', () => {
     AsyncStorage.clear();
     jest.clearAllMocks();
     mockParams.request = JSON.stringify(mockRequest);
+    // Set up user data for invitation code generation
+    await AsyncStorage.setItem('user', JSON.stringify({ email: 'mentor@example.com' }));
+    (invitationCodeService.createInvitationCode as jest.Mock).mockResolvedValue({
+      id: 'code1',
+      code: 'ABC12345',
+      createdBy: 'mentor@example.com',
+      isUsed: false,
+      createdAt: '2026-01-20T10:00:00Z',
+    });
+    (inboxService.addInvitationCodeToInbox as jest.Mock).mockResolvedValue(undefined);
   });
 
   it('should render loading state when request is not loaded', () => {
@@ -101,6 +122,64 @@ describe('RespondRequestScreen', () => {
       const requests = JSON.parse(requestsData || '[]');
       expect(requests[0]?.status).toBe('accepted');
       expect(requests[0]?.respondedAt).toBeTruthy();
+    }, { timeout: 3000 });
+
+    expect(mockRouter.back).toHaveBeenCalled();
+  });
+
+  it('should generate invitation code when accepting request', async () => {
+    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([mockRequest]));
+
+    const { getByText } = render(<RespondRequestScreen />);
+
+    await waitForScreenReady(getByText);
+
+    fireEvent.press(getByText('Accept'));
+
+    await waitFor(() => {
+      expect(invitationCodeService.createInvitationCode).toHaveBeenCalledWith('mentor@example.com');
+      expect(inboxService.addInvitationCodeToInbox).toHaveBeenCalledWith(
+        'mentor@example.com',
+        'ABC12345',
+        'mentor@example.com'
+      );
+    }, { timeout: 3000 });
+  });
+
+  it('should not generate invitation code when declining request', async () => {
+    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([mockRequest]));
+
+    const { getByText } = render(<RespondRequestScreen />);
+
+    await waitForScreenReady(getByText);
+
+    fireEvent.press(getByText('Decline'));
+
+    await waitFor(async () => {
+      const requestsData = await AsyncStorage.getItem('mentorshipRequests');
+      const requests = JSON.parse(requestsData || '[]');
+      expect(requests[0]?.status).toBe('declined');
+    }, { timeout: 3000 });
+
+    expect(invitationCodeService.createInvitationCode).not.toHaveBeenCalled();
+    expect(inboxService.addInvitationCodeToInbox).not.toHaveBeenCalled();
+  });
+
+  it('should handle invitation code generation error gracefully', async () => {
+    (invitationCodeService.createInvitationCode as jest.Mock).mockRejectedValue(new Error('Code generation failed'));
+    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([mockRequest]));
+
+    const { getByText } = render(<RespondRequestScreen />);
+
+    await waitForScreenReady(getByText);
+
+    fireEvent.press(getByText('Accept'));
+
+    await waitFor(async () => {
+      const requestsData = await AsyncStorage.getItem('mentorshipRequests');
+      const requests = JSON.parse(requestsData || '[]');
+      // Request should still be accepted even if code generation fails
+      expect(requests[0]?.status).toBe('accepted');
     }, { timeout: 3000 });
 
     expect(mockRouter.back).toHaveBeenCalled();

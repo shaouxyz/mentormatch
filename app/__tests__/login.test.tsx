@@ -5,12 +5,18 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import LoginScreen from '../login';
 import * as expoRouter from 'expo-router';
 import { initializeTestAccounts } from '../../utils/testAccounts';
+import * as hybridProfileService from '@/services/hybridProfileService';
 
 // Get mock router from expo-router mock
 const mockRouter = expoRouter.useRouter();
 
 // Mock Alert
 jest.spyOn(Alert, 'alert');
+
+// Mock hybrid profile service
+jest.mock('@/services/hybridProfileService', () => ({
+  hybridGetProfile: jest.fn(),
+}));
 
 describe('LoginScreen', () => {
   beforeEach(async () => {
@@ -91,6 +97,19 @@ describe('LoginScreen', () => {
   });
 
   it('should successfully login with regular user account', async () => {
+    const profile = {
+      name: 'Regular User',
+      email: 'regular@example.com',
+      expertise: 'Test',
+      interest: 'Test',
+      expertiseYears: 5,
+      interestYears: 2,
+      phoneNumber: '+1234567890'
+    };
+
+    // Mock hybridGetProfile to return the profile
+    (hybridProfileService.hybridGetProfile as jest.Mock).mockResolvedValue(profile);
+    
     // Create a regular user account with hashed password
     const { hashPassword } = require('../../utils/security');
     const passwordHash = await hashPassword('password123');
@@ -102,18 +121,6 @@ describe('LoginScreen', () => {
       createdAt: new Date().toISOString(),
     }];
     await AsyncStorage.setItem('users', JSON.stringify(users));
-    
-    const profile = {
-      name: 'Regular User',
-      email: 'regular@example.com',
-      expertise: 'Test',
-      interest: 'Test',
-      expertiseYears: 5,
-      interestYears: 2,
-      phoneNumber: '+1234567890'
-    };
-    // Login checks for 'profile' key after setting current user
-    await AsyncStorage.setItem('profile', JSON.stringify(profile));
 
     const { getByText, getByPlaceholderText } = render(<LoginScreen />);
 
@@ -122,11 +129,13 @@ describe('LoginScreen', () => {
     fireEvent.press(getByText('Log In'));
 
     await waitFor(() => {
+      expect(hybridProfileService.hybridGetProfile).toHaveBeenCalledWith('regular@example.com');
       expect(mockRouter.replace).toHaveBeenCalledWith('/(tabs)/home');
     }, { timeout: 3000 });
   });
 
   it('should navigate to profile creation if user has no profile', async () => {
+    (hybridProfileService.hybridGetProfile as jest.Mock).mockResolvedValue(null);
     const { hashPassword } = require('../../utils/security');
     const passwordHash = await hashPassword('password123');
     
@@ -145,8 +154,138 @@ describe('LoginScreen', () => {
     fireEvent.press(getByText('Log In'));
 
     await waitFor(() => {
+      expect(hybridProfileService.hybridGetProfile).toHaveBeenCalledWith('noprofile@example.com');
       expect(mockRouter.replace).toHaveBeenCalledWith('/profile/create');
     });
+  });
+
+  it('should load profile from Firestore and save locally on login', async () => {
+    const firestoreProfile = {
+      name: 'Firestore User',
+      email: 'firestore@example.com',
+      expertise: 'Software Development',
+      interest: 'Data Science',
+      expertiseYears: 5,
+      interestYears: 2,
+      phoneNumber: '+1234567890',
+      location: 'New York',
+    };
+
+    (hybridProfileService.hybridGetProfile as jest.Mock).mockResolvedValue(firestoreProfile);
+    const { hashPassword } = require('../../utils/security');
+    const passwordHash = await hashPassword('password123');
+    
+    const users = [{
+      email: 'firestore@example.com',
+      passwordHash: passwordHash,
+      id: '789',
+      createdAt: new Date().toISOString(),
+    }];
+    await AsyncStorage.setItem('users', JSON.stringify(users));
+
+    const { getByText, getByPlaceholderText } = render(<LoginScreen />);
+
+    fireEvent.changeText(getByPlaceholderText('Enter your email'), 'firestore@example.com');
+    fireEvent.changeText(getByPlaceholderText('Enter your password'), 'password123');
+    fireEvent.press(getByText('Log In'));
+
+    await waitFor(() => {
+      expect(hybridProfileService.hybridGetProfile).toHaveBeenCalledWith('firestore@example.com');
+      expect(mockRouter.replace).toHaveBeenCalledWith('/(tabs)/home');
+    });
+
+    // Verify profile was saved locally
+    const savedProfile = await AsyncStorage.getItem('profile');
+    expect(savedProfile).toBeTruthy();
+    const parsedProfile = JSON.parse(savedProfile || '{}');
+    expect(parsedProfile.email).toBe('firestore@example.com');
+    expect(parsedProfile.name).toBe('Firestore User');
+  });
+
+  it('should add profile to allProfiles when loaded from Firestore', async () => {
+    const firestoreProfile = {
+      name: 'Firestore User',
+      email: 'firestore2@example.com',
+      expertise: 'Software Development',
+      interest: 'Data Science',
+      expertiseYears: 5,
+      interestYears: 2,
+      phoneNumber: '+1234567890',
+    };
+
+    (hybridProfileService.hybridGetProfile as jest.Mock).mockResolvedValue(firestoreProfile);
+    const { hashPassword } = require('../../utils/security');
+    const passwordHash = await hashPassword('password123');
+    
+    const users = [{
+      email: 'firestore2@example.com',
+      passwordHash: passwordHash,
+      id: '790',
+      createdAt: new Date().toISOString(),
+    }];
+    await AsyncStorage.setItem('users', JSON.stringify(users));
+
+    const { getByText, getByPlaceholderText } = render(<LoginScreen />);
+
+    fireEvent.changeText(getByPlaceholderText('Enter your email'), 'firestore2@example.com');
+    fireEvent.changeText(getByPlaceholderText('Enter your password'), 'password123');
+    fireEvent.press(getByText('Log In'));
+
+    await waitFor(() => {
+      expect(mockRouter.replace).toHaveBeenCalledWith('/(tabs)/home');
+    });
+
+    // Verify profile was added to allProfiles
+    const allProfilesData = await AsyncStorage.getItem('allProfiles');
+    expect(allProfilesData).toBeTruthy();
+    const allProfiles = JSON.parse(allProfilesData || '[]');
+    const foundProfile = allProfiles.find((p: any) => p.email === 'firestore2@example.com');
+    expect(foundProfile).toBeTruthy();
+    expect(foundProfile.name).toBe('Firestore User');
+  });
+
+  it('should use local profile if Firestore check fails but local exists', async () => {
+    const localProfile = {
+      name: 'Local User',
+      email: 'local@example.com',
+      expertise: 'Software Development',
+      interest: 'Data Science',
+      expertiseYears: 5,
+      interestYears: 2,
+      phoneNumber: '+1234567890',
+    };
+
+    // Mock hybridGetProfile to return local profile (simulating Firestore failure but local success)
+    (hybridProfileService.hybridGetProfile as jest.Mock).mockResolvedValue(localProfile);
+    
+    const { hashPassword } = require('../../utils/security');
+    const passwordHash = await hashPassword('password123');
+    
+    const users = [{
+      email: 'local@example.com',
+      passwordHash: passwordHash,
+      id: '791',
+      createdAt: new Date().toISOString(),
+    }];
+    await AsyncStorage.setItem('users', JSON.stringify(users));
+
+    const { getByText, getByPlaceholderText } = render(<LoginScreen />);
+
+    fireEvent.changeText(getByPlaceholderText('Enter your email'), 'local@example.com');
+    fireEvent.changeText(getByPlaceholderText('Enter your password'), 'password123');
+    fireEvent.press(getByText('Log In'));
+
+    await waitFor(() => {
+      expect(hybridProfileService.hybridGetProfile).toHaveBeenCalledWith('local@example.com');
+      // Should navigate to home since profile exists
+      expect(mockRouter.replace).toHaveBeenCalledWith('/(tabs)/home');
+    });
+
+    // Verify profile was saved locally
+    const savedProfile = await AsyncStorage.getItem('profile');
+    expect(savedProfile).toBeTruthy();
+    const parsedProfile = JSON.parse(savedProfile || '{}');
+    expect(parsedProfile.email).toBe('local@example.com');
   });
 
   it('should show error for non-existent account', async () => {

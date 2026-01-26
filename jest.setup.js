@@ -43,7 +43,7 @@ jest.mock('./services/hybridAuthService', () => {
   };
 });
 
-// Mock hybrid profile service to use local only
+// Mock hybrid profile service to use local only (but can be overridden in tests)
 jest.mock('./services/hybridProfileService', () => {
   const AsyncStorage = require('@react-native-async-storage/async-storage');
   return {
@@ -74,6 +74,7 @@ jest.mock('./services/hybridProfileService', () => {
       }
     }),
     hybridGetProfile: jest.fn(async (email) => {
+      // Default implementation: check local storage
       const profileData = await AsyncStorage.getItem('profile');
       if (profileData) {
         const profile = JSON.parse(profileData);
@@ -215,6 +216,30 @@ jest.mock('./services/hybridMessageService', () => ({
     const emails = [email1, email2].sort();
     return emails.join('_');
   }),
+}));
+
+// Mock Invitation Code Service
+jest.mock('./services/invitationCodeService', () => ({
+  createInvitationCode: jest.fn(),
+  useInvitationCode: jest.fn(),
+  isValidInvitationCode: jest.fn(),
+  getUnusedInvitationCodes: jest.fn(() => Promise.resolve([])),
+  generateMultipleInvitationCodes: jest.fn(),
+}));
+
+// Mock Inbox Service
+jest.mock('./services/inboxService', () => ({
+  addInboxItem: jest.fn(),
+  getInboxItems: jest.fn(() => Promise.resolve([])),
+  markInboxItemAsRead: jest.fn(),
+  getUnreadInboxCount: jest.fn(() => Promise.resolve(0)),
+  addInvitationCodeToInbox: jest.fn(),
+}));
+
+// Mock Connection Utils
+jest.mock('./utils/connectionUtils', () => ({
+  areUsersMatched: jest.fn(() => Promise.resolve(false)),
+  getMatchedUserEmails: jest.fn(() => Promise.resolve([])),
 }));
 
 // Suppress console warnings in tests
