@@ -534,33 +534,35 @@
 
 ## 10. Action Plan
 
-### Phase 1: Critical Gaps (Week 1)
-1. Add tests for `app/index.tsx` (Welcome Screen)
-2. Add tests for `app/messages/chat.tsx` (Chat Screen)
-3. Add tests for `app/(tabs)/profile.tsx` (Profile Tab)
-4. Add tests for `utils/sessionManager.ts`
-5. Add tests for `utils/security.ts`
+### Phase 1: Critical Gaps (Week 1-2)
+1. Add tests for `app/index.tsx` (Welcome Screen) - Target: 100%
+2. Add tests for `app/messages/chat.tsx` (Chat Screen) - Target: 100%
+3. Add tests for `app/(tabs)/profile.tsx` (Profile Tab) - Target: 100%
+4. Add tests for `utils/sessionManager.ts` - Target: 100%
+5. Add tests for `utils/security.ts` - Target: 100%
 
-**Expected Coverage Increase**: +5-8%
+**Expected Coverage Increase**: +10-15%
 
-### Phase 2: High Priority (Week 2)
-1. Add tests for `utils/errorHandler.ts`
-2. Add tests for `utils/schemaValidation.ts`
-3. Improve tests for `app/login.tsx`
-4. Improve tests for `app/profile/view.tsx`
+### Phase 2: High Priority (Week 3-4)
+1. Add tests for `utils/errorHandler.ts` - Target: 100%
+2. Add tests for `utils/schemaValidation.ts` - Target: 100%
+3. Improve tests for `app/login.tsx` to 100%
+4. Improve tests for `app/profile/view.tsx` to 100%
 5. Add error scenario tests
+6. Improve all partially tested modules to 100%
 
-**Expected Coverage Increase**: +5-7%
+**Expected Coverage Increase**: +15-20%
 
-### Phase 3: Integration & Edge Cases (Week 3-4)
+### Phase 3: Integration & Edge Cases (Week 5-6)
 1. Add integration tests
 2. Add edge case tests
 3. Add error scenario tests
 4. Add performance tests
+5. Achieve 100% coverage for all modules
 
-**Expected Coverage Increase**: +3-5%
+**Expected Coverage Increase**: +10-15%
 
-### Target: 100% Coverage (All Metrics)
+### Target: 100% Coverage (All Metrics) - 6 Weeks Timeline
 
 ---
 
