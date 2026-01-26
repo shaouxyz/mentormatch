@@ -519,7 +519,7 @@ describe('HomeScreen (Discover)', () => {
     });
   });
 
-  it.skip('should exclude current user even when profile is loaded from Firebase', async () => {
+  it('should exclude current user even when profile is loaded from Firebase', async () => {
     const userProfile = {
       name: 'Current User',
       expertise: 'Software Development',
@@ -567,6 +567,11 @@ describe('HomeScreen (Discover)', () => {
     await waitFor(() => {
       // Current user should not appear in the list even though it's in allProfiles
       expect(queryByText('Current User')).toBeNull();
+    }, { timeout: 3000 });
+    
+    await waitFor(() => {
+      // Other user should appear
+      expect(getByText('Other User')).toBeTruthy();
     }, { timeout: 3000 });
   });
 
