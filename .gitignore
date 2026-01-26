@@ -21,6 +21,8 @@ google-services.json
 GoogleService-Info.plist
 firebase-debug.log
 firestore-debug.log
+serviceAccountKey.json
+*.serviceAccountKey.json
 
 # IDE
 .vscode/
