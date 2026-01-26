@@ -298,7 +298,7 @@ export default function HomeScreen() {
             <Text style={styles.profileName}>{item.name}</Text>
             {isGoodMatch && (
               <View style={styles.matchBadge}>
-                <Ionicons name="heart" size={14} color="#ef4444" />
+                <Ionicons name="school" size={14} color="#8b5cf6" />
                 <Text style={styles.matchText}>Good Match</Text>
               </View>
             )}
@@ -521,8 +521,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   goodMatchCard: {
-    borderWidth: 2,
-    borderColor: '#ef4444',
+    // Good match is indicated by the badge only, no border needed
   },
   profileHeader: {
     flexDirection: 'row',
@@ -555,7 +554,7 @@ const styles = StyleSheet.create({
   matchBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fef2f2',
+    backgroundColor: '#f5f3ff',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
@@ -564,7 +563,7 @@ const styles = StyleSheet.create({
   matchText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#ef4444',
+    color: '#8b5cf6',
     marginLeft: 4,
   },
   details: {
