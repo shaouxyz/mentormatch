@@ -191,6 +191,11 @@ export default function HomeScreen() {
         }
       }
 
+      // Exclude current user's profile from the list
+      if (currentUserEmail) {
+        profilesList = profilesList.filter((profile) => profile.email !== currentUserEmail);
+      }
+
       // Add test account profiles (excluding current user)
       const testProfiles: Profile[] = TEST_ACCOUNTS
         .filter((account) => account.email !== currentUserEmail && account.profile)

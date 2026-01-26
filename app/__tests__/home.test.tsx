@@ -310,13 +310,138 @@ describe('HomeScreen (Discover)', () => {
     await AsyncStorage.setItem('user', JSON.stringify({ email: 'current@example.com' }));
     await AsyncStorage.setItem('profile', JSON.stringify(userProfile));
     await AsyncStorage.setItem('allProfiles', JSON.stringify(allProfiles));
+    // Mock hybridGetProfile to return current user's profile
+    (hybridProfileService.hybridGetProfile as jest.Mock).mockResolvedValue(userProfile);
+    // Mock hybridGetAllProfiles to return all profiles
+    (hybridProfileService.hybridGetAllProfiles as jest.Mock).mockResolvedValue(allProfiles);
 
-    const { queryByText } = render(<HomeScreen />);
+    const { queryByText, getByText } = render(<HomeScreen />);
+
+    await waitFor(() => {
+      // Wait for loading to complete
+      expect(queryByText('Loading...')).toBeNull();
+    }, { timeout: 3000 });
+
+    await waitFor(() => {
+      // Wait for loading to complete
+      expect(queryByText('Loading...')).toBeNull();
+    }, { timeout: 3000 });
 
     await waitFor(() => {
       // Current user should not appear in the list
       expect(queryByText('Current User')).toBeNull();
+    }, { timeout: 3000 });
+  });
+
+  it('should exclude current user from Firebase-synced profiles', async () => {
+    const userProfile = {
+      name: 'Current User',
+      expertise: 'Software Development',
+      interest: 'Data Science',
+      expertiseYears: 5,
+      interestYears: 2,
+      email: 'current@example.com',
+      phoneNumber: '+1234567890',
+    };
+
+    const firebaseProfiles = [
+      {
+        name: 'Firebase User 1',
+        expertise: 'Marketing',
+        interest: 'Design',
+        expertiseYears: 3,
+        interestYears: 1,
+        email: 'firebase1@example.com',
+        phoneNumber: '+1234567890',
+      },
+      {
+        name: 'Current User',
+        expertise: 'Software Development',
+        interest: 'Data Science',
+        expertiseYears: 5,
+        interestYears: 2,
+        email: 'current@example.com',
+        phoneNumber: '+1234567890',
+      },
+      {
+        name: 'Firebase User 2',
+        expertise: 'Data Science',
+        interest: 'Software Development',
+        expertiseYears: 5,
+        interestYears: 2,
+        email: 'firebase2@example.com',
+        phoneNumber: '+1234567891',
+      },
+    ];
+
+    await AsyncStorage.setItem('user', JSON.stringify({ email: 'current@example.com' }));
+    await AsyncStorage.setItem('profile', JSON.stringify(userProfile));
+    // Mock hybridGetAllProfiles to return profiles including current user
+    (hybridProfileService.hybridGetAllProfiles as jest.Mock).mockResolvedValue(firebaseProfiles);
+
+    const { queryByText, getByText } = render(<HomeScreen />);
+
+    await waitFor(() => {
+      // Current user should not appear in the list
+      expect(queryByText('Current User')).toBeNull();
+    }, { timeout: 3000 });
+    
+    await waitFor(() => {
+      // Other Firebase profiles should appear
+      expect(getByText('Firebase User 1')).toBeTruthy();
+      expect(getByText('Firebase User 2')).toBeTruthy();
     });
+  });
+
+  it('should exclude current user even when profile is loaded from Firebase', async () => {
+    const userProfile = {
+      name: 'Current User',
+      expertise: 'Software Development',
+      interest: 'Data Science',
+      expertiseYears: 5,
+      interestYears: 2,
+      email: 'current@example.com',
+      phoneNumber: '+1234567890',
+    };
+
+    const allProfiles = [
+      {
+        name: 'Other User',
+        expertise: 'Marketing',
+        interest: 'Design',
+        expertiseYears: 3,
+        interestYears: 1,
+        email: 'other@example.com',
+        phoneNumber: '+1234567890',
+      },
+      {
+        name: 'Current User',
+        expertise: 'Software Development',
+        interest: 'Data Science',
+        expertiseYears: 5,
+        interestYears: 2,
+        email: 'current@example.com',
+        phoneNumber: '+1234567890',
+      },
+    ];
+
+    await AsyncStorage.setItem('user', JSON.stringify({ email: 'current@example.com' }));
+    // Mock hybridGetProfile to return current user's profile
+    (hybridProfileService.hybridGetProfile as jest.Mock).mockResolvedValue(userProfile);
+    // Mock hybridGetAllProfiles to return all profiles including current user
+    (hybridProfileService.hybridGetAllProfiles as jest.Mock).mockResolvedValue(allProfiles);
+
+    const { queryByText, getByText } = render(<HomeScreen />);
+
+    await waitFor(() => {
+      // Wait for loading to complete
+      expect(queryByText('Loading...')).toBeNull();
+    }, { timeout: 3000 });
+
+    await waitFor(() => {
+      // Current user should not appear in the list even though it's in allProfiles
+      expect(queryByText('Current User')).toBeNull();
+    }, { timeout: 3000 });
   });
 
   it('should navigate to profile view when profile card is pressed', async () => {
