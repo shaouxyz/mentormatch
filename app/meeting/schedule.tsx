@@ -93,15 +93,25 @@ export default function ScheduleMeetingScreen() {
         date: meetingDateTime.toISOString(),
         time: meetingDateTime.toISOString(),
         duration: parseInt(duration, 10),
-        location: sanitizeTextField(location),
+        location: locationType === 'in-person' ? sanitizeTextField(location) : (locationType === 'phone' ? sanitizeTextField(location) : ''),
         locationType,
-        meetingLink: meetingLink ? sanitizeTextField(meetingLink) : undefined,
-        status: 'pending',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        meetingLink: locationType === 'virtual' ? sanitizeTextField(meetingLink) : undefined,
       };
 
-      await hybridCreateMeeting(meeting);
+      logger.info('Creating meeting request', { 
+        organizerEmail: user.email, 
+        participantEmail,
+        title: meeting.title,
+        locationType 
+      });
+
+      const createdMeeting = await hybridCreateMeeting(meeting);
+      
+      logger.info('Meeting request created successfully', { 
+        meetingId: createdMeeting.id,
+        organizerEmail: user.email,
+        participantEmail 
+      });
 
       Alert.alert(
         'Success',

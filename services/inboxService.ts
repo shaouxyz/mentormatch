@@ -62,35 +62,66 @@ export async function addInboxItem(item: Omit<InboxItem, 'id' | 'read' | 'create
       createdAt: new Date().toISOString(),
     };
 
+    logger.info('Adding inbox item', { 
+      recipientEmail: item.recipientEmail, 
+      type: item.type,
+      hasInvitationCode: !!item.invitationCode
+    });
+
     if (isFirebaseConfigured()) {
       try {
         const db = getFirebaseFirestore();
         const inboxRef = collection(db, INBOX_COLLECTION);
         const docRef = doc(inboxRef);
         
-        await setDoc(docRef, {
-          ...inboxItem,
-          id: docRef.id,
-        });
+        // Prepare data for Firestore (exclude the local id, use docRef.id)
+        const firestoreData: any = {
+          recipientEmail: inboxItem.recipientEmail,
+          type: inboxItem.type,
+          title: inboxItem.title,
+          message: inboxItem.message,
+          read: inboxItem.read,
+          createdAt: inboxItem.createdAt,
+        };
+        
+        // Add invitationCode if present
+        if (inboxItem.invitationCode) {
+          firestoreData.invitationCode = inboxItem.invitationCode;
+        }
+        
+        await setDoc(docRef, firestoreData);
         
         inboxItem.id = docRef.id;
-        logger.info('Inbox item added to Firestore', { itemId: docRef.id, recipientEmail: item.recipientEmail });
-      } catch (firebaseError) {
-        logger.warn('Failed to add inbox item to Firestore, using local only', {
-          error: firebaseError instanceof Error ? firebaseError.message : String(firebaseError),
+        logger.info('Inbox item added to Firestore successfully', { 
+          itemId: docRef.id, 
+          recipientEmail: item.recipientEmail,
+          type: item.type
         });
+      } catch (firebaseError) {
+        logger.error('Failed to add inbox item to Firestore', {
+          error: firebaseError instanceof Error ? firebaseError.message : String(firebaseError),
+          stack: firebaseError instanceof Error ? firebaseError.stack : undefined,
+          recipientEmail: item.recipientEmail,
+          type: item.type
+        });
+        // Continue to save locally even if Firestore fails
       }
     }
 
-    // Save locally
+    // Save locally (always save locally for offline access)
     const localItems = await getLocalInboxItems();
     localItems.push(inboxItem);
     await saveLocalInboxItems(localItems);
 
-    logger.info('Inbox item added', { recipientEmail: item.recipientEmail, type: item.type });
+    logger.info('Inbox item saved locally', { recipientEmail: item.recipientEmail, type: item.type });
     return inboxItem;
   } catch (error) {
-    logger.error('Error adding inbox item', error instanceof Error ? error : new Error(String(error)));
+    logger.error('Error adding inbox item', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      recipientEmail: item.recipientEmail,
+      type: item.type
+    });
     throw error;
   }
 }

@@ -130,25 +130,42 @@ export default function RespondRequestScreen() {
       if (status === 'accepted') {
         try {
           const userData = await AsyncStorage.getItem('user');
-          if (userData) {
+          if (!userData) {
+            logger.warn('No user data found when accepting mentee, cannot generate invitation code');
+          } else {
             const user = safeParseJSON<{ email: string }>(
               userData,
               (data): data is { email: string } => typeof data === 'object' && data !== null && 'email' in data && typeof (data as { email: unknown }).email === 'string',
               null
             );
-            if (user) {
+            if (!user || !user.email) {
+              logger.warn('Invalid user data when accepting mentee, cannot generate invitation code', { userData });
+            } else {
+              logger.info('Generating invitation code for mentor after accepting mentee', { mentorEmail: user.email });
+              
+              // Create invitation code
               const invitationCode = await createInvitationCode(user.email);
+              logger.info('Invitation code created', { 
+                mentorEmail: user.email, 
+                code: invitationCode.code,
+                codeId: invitationCode.id
+              });
+              
+              // Add to inbox
               await addInvitationCodeToInbox(user.email, invitationCode.code, user.email);
-              logger.info('Invitation code generated and added to inbox', { 
+              logger.info('Invitation code added to inbox successfully', { 
                 mentorEmail: user.email, 
                 code: invitationCode.code 
               });
             }
           }
         } catch (error) {
-          // Don't fail the accept if invitation code generation fails
-          logger.error('Error generating invitation code after accepting mentee', 
-            error instanceof Error ? error : new Error(String(error)));
+          // Log error but don't fail the accept - invitation code is a bonus feature
+          logger.error('Error generating invitation code after accepting mentee', {
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined
+          });
+          // Still show success to user, but log the error for debugging
         }
       }
       

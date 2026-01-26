@@ -344,4 +344,106 @@ describe('ScheduleMeetingScreen', () => {
       );
     });
   });
+
+  it('should create virtual meeting with empty location', async () => {
+    const { getByPlaceholderText, getByLabelText } = render(<ScheduleMeetingScreen />);
+
+    const titleInput = getByPlaceholderText('e.g., Introduction Call');
+    fireEvent.changeText(titleInput, 'Virtual Meeting');
+
+    const linkInput = getByPlaceholderText('e.g., https://zoom.us/j/...');
+    fireEvent.changeText(linkInput, 'https://zoom.us/j/123456');
+
+    const sendButton = getByLabelText('Send meeting request');
+    fireEvent.press(sendButton);
+
+    await waitFor(() => {
+      expect(mockHybridCreateMeeting).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Virtual Meeting',
+          locationType: 'virtual',
+          location: '', // Empty location for virtual meetings
+          meetingLink: 'https://zoom.us/j/123456',
+        })
+      );
+    });
+  });
+
+  it('should create in-person meeting with location', async () => {
+    const { getByPlaceholderText, getByLabelText } = render(<ScheduleMeetingScreen />);
+
+    const titleInput = getByPlaceholderText('e.g., Introduction Call');
+    fireEvent.changeText(titleInput, 'Coffee Meeting');
+
+    const inPersonButton = getByLabelText('In-person meeting');
+    fireEvent.press(inPersonButton);
+
+    const locationInput = getByPlaceholderText('e.g., Coffee Shop, 123 Main St');
+    fireEvent.changeText(locationInput, 'Starbucks, 123 Main St');
+
+    const sendButton = getByLabelText('Send meeting request');
+    fireEvent.press(sendButton);
+
+    await waitFor(() => {
+      expect(mockHybridCreateMeeting).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Coffee Meeting',
+          locationType: 'in-person',
+          location: 'Starbucks, 123 Main St',
+          meetingLink: undefined,
+        })
+      );
+    });
+  });
+
+  it('should create phone meeting with phone number in location', async () => {
+    const { getByPlaceholderText, getByLabelText } = render(<ScheduleMeetingScreen />);
+
+    const titleInput = getByPlaceholderText('e.g., Introduction Call');
+    fireEvent.changeText(titleInput, 'Phone Call');
+
+    const phoneButton = getByLabelText('Phone call');
+    fireEvent.press(phoneButton);
+
+    const phoneInput = getByPlaceholderText('Optional: Your phone number');
+    fireEvent.changeText(phoneInput, '555-1234');
+
+    const sendButton = getByLabelText('Send meeting request');
+    fireEvent.press(sendButton);
+
+    await waitFor(() => {
+      expect(mockHybridCreateMeeting).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Phone Call',
+          locationType: 'phone',
+          location: '555-1234',
+          meetingLink: undefined,
+        })
+      );
+    });
+  });
+
+  it('should include organizer and participant emails correctly', async () => {
+    const { getByPlaceholderText, getByLabelText } = render(<ScheduleMeetingScreen />);
+
+    const titleInput = getByPlaceholderText('e.g., Introduction Call');
+    fireEvent.changeText(titleInput, 'Test Meeting');
+
+    const linkInput = getByPlaceholderText('e.g., https://zoom.us/j/...');
+    fireEvent.changeText(linkInput, 'https://zoom.us/j/123456');
+
+    const sendButton = getByLabelText('Send meeting request');
+    fireEvent.press(sendButton);
+
+    await waitFor(() => {
+      expect(mockHybridCreateMeeting).toHaveBeenCalledWith(
+        expect.objectContaining({
+          organizerEmail: 'test@example.com',
+          organizerName: 'Test User',
+          participantEmail: 'mentor@example.com',
+          participantName: 'John Mentor',
+        })
+      );
+    });
+  });
 });

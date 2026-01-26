@@ -32,22 +32,61 @@ export async function createMeetingRequest(meeting: Omit<Meeting, 'id'>): Promis
     const db = getFirebaseFirestore();
     const meetingsRef = collection(db, MEETINGS_COLLECTION);
     
-    const docRef = await addDoc(meetingsRef, {
-      ...meeting,
+    // Prepare meeting data for Firestore
+    const meetingData: any = {
+      organizerEmail: meeting.organizerEmail,
+      organizerName: meeting.organizerName,
+      participantEmail: meeting.participantEmail,
+      participantName: meeting.participantName,
+      title: meeting.title,
+      date: meeting.date,
+      time: meeting.time,
+      duration: meeting.duration,
+      location: meeting.location || '',
+      locationType: meeting.locationType,
       status: 'pending',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+    };
+    
+    // Add optional fields if present
+    if (meeting.description) {
+      meetingData.description = meeting.description;
+    }
+    if (meeting.meetingLink) {
+      meetingData.meetingLink = meeting.meetingLink;
+    }
+    
+    logger.info('Creating meeting request in Firestore', {
+      organizerEmail: meeting.organizerEmail,
+      participantEmail: meeting.participantEmail,
+      title: meeting.title,
+      locationType: meeting.locationType
     });
+    
+    const docRef = await addDoc(meetingsRef, meetingData);
     
     const newMeeting: Meeting = {
       id: docRef.id,
       ...meeting,
+      status: 'pending',
+      createdAt: meetingData.createdAt,
+      updatedAt: meetingData.updatedAt,
     };
     
-    logger.info('Meeting request created in Firestore', { meetingId: docRef.id });
+    logger.info('Meeting request created in Firestore successfully', { 
+      meetingId: docRef.id,
+      organizerEmail: meeting.organizerEmail,
+      participantEmail: meeting.participantEmail
+    });
     return newMeeting;
   } catch (error) {
-    logger.error('Error creating meeting request in Firestore', error instanceof Error ? error : new Error(String(error)));
+    logger.error('Error creating meeting request in Firestore', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      organizerEmail: meeting.organizerEmail,
+      participantEmail: meeting.participantEmail
+    });
     throw error;
   }
 }

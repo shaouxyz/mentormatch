@@ -185,6 +185,96 @@ describe('RespondRequestScreen', () => {
     expect(mockRouter.back).toHaveBeenCalled();
   });
 
+  it('should handle missing user data when accepting', async () => {
+    await AsyncStorage.removeItem('user');
+    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([mockRequest]));
+
+    const { getByText } = render(<RespondRequestScreen />);
+
+    await waitForScreenReady(getByText);
+
+    fireEvent.press(getByText('Accept'));
+
+    await waitFor(async () => {
+      const requestsData = await AsyncStorage.getItem('mentorshipRequests');
+      const requests = JSON.parse(requestsData || '[]');
+      // Request should still be accepted even if user data is missing
+      expect(requests[0]?.status).toBe('accepted');
+    }, { timeout: 3000 });
+
+    // Should not attempt to create invitation code
+    expect(invitationCodeService.createInvitationCode).not.toHaveBeenCalled();
+    expect(mockRouter.back).toHaveBeenCalled();
+  });
+
+  it('should handle invalid user data when accepting', async () => {
+    await AsyncStorage.setItem('user', JSON.stringify({ invalid: 'data' }));
+    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([mockRequest]));
+
+    const { getByText } = render(<RespondRequestScreen />);
+
+    await waitForScreenReady(getByText);
+
+    fireEvent.press(getByText('Accept'));
+
+    await waitFor(async () => {
+      const requestsData = await AsyncStorage.getItem('mentorshipRequests');
+      const requests = JSON.parse(requestsData || '[]');
+      // Request should still be accepted even if user data is invalid
+      expect(requests[0]?.status).toBe('accepted');
+    }, { timeout: 3000 });
+
+    // Should not attempt to create invitation code
+    expect(invitationCodeService.createInvitationCode).not.toHaveBeenCalled();
+    expect(mockRouter.back).toHaveBeenCalled();
+  });
+
+  it('should handle inbox addition error gracefully', async () => {
+    (inboxService.addInvitationCodeToInbox as jest.Mock).mockRejectedValue(new Error('Inbox addition failed'));
+    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([mockRequest]));
+
+    const { getByText } = render(<RespondRequestScreen />);
+
+    await waitForScreenReady(getByText);
+
+    fireEvent.press(getByText('Accept'));
+
+    await waitFor(async () => {
+      const requestsData = await AsyncStorage.getItem('mentorshipRequests');
+      const requests = JSON.parse(requestsData || '[]');
+      // Request should still be accepted even if inbox addition fails
+      expect(requests[0]?.status).toBe('accepted');
+    }, { timeout: 3000 });
+
+    // Invitation code should still be created
+    expect(invitationCodeService.createInvitationCode).toHaveBeenCalled();
+    expect(mockRouter.back).toHaveBeenCalled();
+  });
+
+  it('should successfully add invitation code to inbox when accepting', async () => {
+    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([mockRequest]));
+
+    const { getByText } = render(<RespondRequestScreen />);
+
+    await waitForScreenReady(getByText);
+
+    fireEvent.press(getByText('Accept'));
+
+    await waitFor(() => {
+      expect(invitationCodeService.createInvitationCode).toHaveBeenCalledWith('mentor@example.com');
+      expect(inboxService.addInvitationCodeToInbox).toHaveBeenCalledWith(
+        'mentor@example.com',
+        'ABC12345',
+        'mentor@example.com'
+      );
+    }, { timeout: 3000 });
+
+    // Verify the order: code creation first, then inbox addition
+    const createCallOrder = (invitationCodeService.createInvitationCode as jest.Mock).mock.invocationCallOrder[0];
+    const inboxCallOrder = (inboxService.addInvitationCodeToInbox as jest.Mock).mock.invocationCallOrder[0];
+    expect(createCallOrder).toBeLessThan(inboxCallOrder);
+  });
+
   it('should accept request with response note', async () => {
     await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([mockRequest]));
 
