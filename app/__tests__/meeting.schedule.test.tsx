@@ -8,9 +8,14 @@ import { Alert, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ScheduleMeetingScreen from '../meeting/schedule';
 import { hybridCreateMeeting } from '@/services/hybridMeetingService';
+import * as meetingNotificationService from '@/services/meetingNotificationService';
 
 // Mock dependencies
 jest.mock('@/services/hybridMeetingService');
+jest.mock('@/services/meetingNotificationService', () => ({
+  scheduleMeetingNotifications: jest.fn(),
+  cancelMeetingNotifications: jest.fn(),
+}));
 
 const mockRouterInstance = {
   back: jest.fn(),
@@ -533,6 +538,107 @@ describe('ScheduleMeetingScreen', () => {
         alertCall[2][0].onPress();
         expect(mockRouterInstance.back).toHaveBeenCalled();
       }
+    });
+
+    it('should schedule notifications when meeting is already accepted', async () => {
+      const acceptedMeeting = {
+        id: 'meeting123',
+        organizerEmail: 'test@example.com',
+        organizerName: 'Test User',
+        participantEmail: 'mentor@example.com',
+        participantName: 'John Mentor',
+        title: 'Test Meeting',
+        date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+        time: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+        duration: 60,
+        location: '',
+        locationType: 'virtual' as const,
+        meetingLink: 'https://zoom.us/j/123456',
+        status: 'accepted' as const,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      mockHybridCreateMeeting.mockResolvedValue(acceptedMeeting);
+
+      const { getByPlaceholderText, getByLabelText } = render(<ScheduleMeetingScreen />);
+
+      const titleInput = getByPlaceholderText('e.g., Introduction Call');
+      fireEvent.changeText(titleInput, 'Test Meeting');
+
+      const linkInput = getByPlaceholderText('e.g., https://zoom.us/j/...');
+      fireEvent.changeText(linkInput, 'https://zoom.us/j/123456');
+
+      const sendButton = getByLabelText('Send meeting request');
+      fireEvent.press(sendButton);
+
+      await waitFor(() => {
+        expect(meetingNotificationService.scheduleMeetingNotifications).toHaveBeenCalledWith(
+          expect.objectContaining({
+            id: 'meeting123',
+            status: 'accepted',
+          })
+        );
+      });
+    });
+
+    it('should not schedule notifications when meeting is pending', async () => {
+      const { getByPlaceholderText, getByLabelText } = render(<ScheduleMeetingScreen />);
+
+      const titleInput = getByPlaceholderText('e.g., Introduction Call');
+      fireEvent.changeText(titleInput, 'Test Meeting');
+
+      const linkInput = getByPlaceholderText('e.g., https://zoom.us/j/...');
+      fireEvent.changeText(linkInput, 'https://zoom.us/j/123456');
+
+      const sendButton = getByLabelText('Send meeting request');
+      fireEvent.press(sendButton);
+
+      await waitFor(() => {
+        expect(meetingNotificationService.scheduleMeetingNotifications).not.toHaveBeenCalled();
+      });
+    });
+
+    it('should handle notification scheduling errors gracefully', async () => {
+      const acceptedMeeting = {
+        id: 'meeting123',
+        organizerEmail: 'test@example.com',
+        organizerName: 'Test User',
+        participantEmail: 'mentor@example.com',
+        participantName: 'John Mentor',
+        title: 'Test Meeting',
+        date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+        time: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+        duration: 60,
+        location: '',
+        locationType: 'virtual' as const,
+        meetingLink: 'https://zoom.us/j/123456',
+        status: 'accepted' as const,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      mockHybridCreateMeeting.mockResolvedValue(acceptedMeeting);
+      (meetingNotificationService.scheduleMeetingNotifications as jest.Mock).mockRejectedValue(
+        new Error('Notification error')
+      );
+
+      const { getByPlaceholderText, getByLabelText } = render(<ScheduleMeetingScreen />);
+
+      const titleInput = getByPlaceholderText('e.g., Introduction Call');
+      fireEvent.changeText(titleInput, 'Test Meeting');
+
+      const linkInput = getByPlaceholderText('e.g., https://zoom.us/j/...');
+      fireEvent.changeText(linkInput, 'https://zoom.us/j/123456');
+
+      const sendButton = getByLabelText('Send meeting request');
+      fireEvent.press(sendButton);
+
+      // Should still show success alert even if notifications fail
+      await waitFor(() => {
+        const alertCalls = (Alert.alert as jest.Mock).mock.calls;
+        const successCall = alertCalls.find((call: any[]) => call[0] === 'Success');
+        expect(successCall).toBeTruthy();
+        expect(successCall[1]).toContain('Meeting request sent');
+      });
     });
   });
 });

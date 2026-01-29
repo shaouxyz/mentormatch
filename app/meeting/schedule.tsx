@@ -21,6 +21,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { hybridCreateMeeting } from '@/services/hybridMeetingService';
+import { scheduleMeetingNotifications } from '@/services/meetingNotificationService';
 import { Meeting } from '@/types/types';
 import { logger } from '@/utils/logger';
 import { sanitizeTextField } from '@/utils/security';
@@ -112,6 +113,19 @@ export default function ScheduleMeetingScreen() {
         organizerEmail: user.email,
         participantEmail 
       });
+
+      // Schedule notifications if meeting is already accepted (shouldn't happen for new meetings, but handle it)
+      if (createdMeeting.status === 'accepted') {
+        try {
+          await scheduleMeetingNotifications(createdMeeting);
+        } catch (notificationError) {
+          logger.warn('Failed to schedule notifications for meeting', {
+            error: notificationError instanceof Error ? notificationError.message : String(notificationError),
+            meetingId: createdMeeting.id,
+          });
+          // Don't fail the meeting creation if notifications fail
+        }
+      }
 
       Alert.alert(
         'Success',

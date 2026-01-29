@@ -18,6 +18,7 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { hybridGetMeeting, hybridUpdateMeeting } from '@/services/hybridMeetingService';
+import { scheduleMeetingNotifications, cancelMeetingNotifications } from '@/services/meetingNotificationService';
 import { Meeting } from '@/types/types';
 import { logger } from '@/utils/logger';
 import { sanitizeTextField } from '@/utils/security';
@@ -62,11 +63,40 @@ export default function MeetingResponseScreen() {
     try {
       setResponding(true);
 
-      await hybridUpdateMeeting(meetingId, {
+      const updateData = {
         status: accepted ? 'accepted' : 'declined',
         responseNote: responseNote ? sanitizeTextField(responseNote) : undefined,
         respondedAt: new Date().toISOString(),
-      });
+      };
+      await hybridUpdateMeeting(meetingId, updateData);
+
+      // Schedule notifications if accepted, cancel if declined
+      if (accepted) {
+        try {
+          const meetingWithUpdate: Meeting = {
+            ...meeting,
+            ...updateData,
+            status: 'accepted',
+          };
+          await scheduleMeetingNotifications(meetingWithUpdate);
+        } catch (notificationError) {
+          logger.warn('Failed to schedule notifications for accepted meeting', {
+            error: notificationError instanceof Error ? notificationError.message : String(notificationError),
+            meetingId,
+          });
+          // Don't fail the response if notifications fail
+        }
+      } else {
+        try {
+          await cancelMeetingNotifications(meetingId);
+        } catch (notificationError) {
+          logger.warn('Failed to cancel notifications for declined meeting', {
+            error: notificationError instanceof Error ? notificationError.message : String(notificationError),
+            meetingId,
+          });
+          // Don't fail the response if notification cancellation fails
+        }
+      }
 
       Alert.alert(
         'Success',

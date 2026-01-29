@@ -21,6 +21,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Calendar from 'expo-calendar';
 import { hybridGetUpcomingMeetings } from '@/services/hybridMeetingService';
+import { scheduleNotificationsForMeetings } from '@/services/meetingNotificationService';
 import { Meeting } from '@/types/types';
 import { logger } from '@/utils/logger';
 
@@ -51,6 +52,17 @@ export default function UpcomingMeetingsScreen() {
       setCurrentUserEmail(user.email);
       const upcomingMeetings = await hybridGetUpcomingMeetings(user.email);
       setMeetings(upcomingMeetings);
+      
+      // Schedule notifications for accepted meetings (in case they were missed)
+      try {
+        await scheduleNotificationsForMeetings(upcomingMeetings);
+      } catch (notificationError) {
+        logger.warn('Failed to schedule notifications for upcoming meetings', {
+          error: notificationError instanceof Error ? notificationError.message : String(notificationError),
+        });
+        // Don't fail the meeting load if notifications fail
+      }
+      
       logger.info('Upcoming meetings loaded', { count: upcomingMeetings.length });
     } catch (error) {
       logger.error('Error loading upcoming meetings', error instanceof Error ? error : new Error(String(error)));

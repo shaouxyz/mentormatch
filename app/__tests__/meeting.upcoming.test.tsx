@@ -9,10 +9,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Calendar from 'expo-calendar';
 import UpcomingMeetingsScreen from '../meeting/upcoming';
 import { hybridGetUpcomingMeetings } from '@/services/hybridMeetingService';
+import * as meetingNotificationService from '@/services/meetingNotificationService';
 import { Meeting } from '@/types/types';
 
 // Mock dependencies
 jest.mock('@/services/hybridMeetingService');
+jest.mock('@/services/meetingNotificationService', () => ({
+  scheduleNotificationsForMeetings: jest.fn(),
+}));
 jest.mock('expo-linking');
 
 const mockRouterInstance = {

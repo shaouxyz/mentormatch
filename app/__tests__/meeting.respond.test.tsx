@@ -7,10 +7,15 @@ import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 import MeetingResponseScreen from '../meeting/respond';
 import { hybridGetMeeting, hybridUpdateMeeting } from '@/services/hybridMeetingService';
+import * as meetingNotificationService from '@/services/meetingNotificationService';
 import { Meeting } from '@/types/types';
 
 // Mock dependencies
 jest.mock('@/services/hybridMeetingService');
+jest.mock('@/services/meetingNotificationService', () => ({
+  scheduleMeetingNotifications: jest.fn(),
+  cancelMeetingNotifications: jest.fn(),
+}));
 
 const mockRouterInstance = {
   back: jest.fn(),
