@@ -5,6 +5,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import SignupScreen from '../signup';
 import * as expoRouter from 'expo-router';
 import * as invitationCodeService from '@/services/invitationCodeService';
+import * as validation from '@/utils/validation';
+import { ErrorHandler } from '@/utils/errorHandler';
 
 // Get mock router from expo-router mock
 const mockRouter = expoRouter.useRouter();
@@ -237,6 +239,8 @@ describe('SignupScreen', () => {
   it('should handle AsyncStorage errors gracefully', async () => {
     (invitationCodeService.isValidInvitationCode as jest.Mock).mockResolvedValue(true);
     (invitationCodeService.useInvitationCode as jest.Mock).mockResolvedValue(true);
+    // Spy on ErrorHandler to ensure it is called with generic error message
+    const handleErrorSpy = jest.spyOn(ErrorHandler, 'handleError');
     // Mock AsyncStorage to throw error
     const originalSetItem = AsyncStorage.setItem;
     AsyncStorage.setItem = jest.fn(() => Promise.reject(new Error('Storage error')));
@@ -250,15 +254,116 @@ describe('SignupScreen', () => {
     fireEvent.press(getByText('Sign Up'));
 
     await waitFor(() => {
-      // Alert.alert is called with title, message, and options (buttons)
-      expect(Alert.alert).toHaveBeenCalledWith(
-        'Error',
+      expect(handleErrorSpy).toHaveBeenCalledWith(
+        expect.any(Error),
         'Failed to create account. Please try again.',
-        expect.any(Array)
+        expect.objectContaining({ email: 'test@example.com' }),
       );
     });
 
     AsyncStorage.setItem = originalSetItem;
+    handleErrorSpy.mockRestore();
+  });
+
+  it('should fall back to default password error message when validation error is empty', async () => {
+    (invitationCodeService.isValidInvitationCode as jest.Mock).mockResolvedValue(true);
+    const validatePasswordSpy = jest.spyOn(validation, 'validatePassword').mockReturnValue({
+      isValid: false,
+      error: '',
+    } as any);
+
+    const { getByText, getByPlaceholderText } = render(<SignupScreen />);
+
+    fireEvent.changeText(getByPlaceholderText('Enter invitation code'), 'ABC12345');
+    fireEvent.changeText(getByPlaceholderText('Enter your email'), 'test@example.com');
+    fireEvent.changeText(getByPlaceholderText('Enter your password'), '12345');
+    fireEvent.changeText(getByPlaceholderText('Confirm your password'), '12345');
+    fireEvent.press(getByText('Sign Up'));
+
+    await waitFor(() => {
+      expect(Alert.alert).toHaveBeenCalledWith('Error', 'Password must be at least 6 characters');
+    });
+
+    validatePasswordSpy.mockRestore();
+  });
+
+  it('should fall back to default email error message when validation error is empty', async () => {
+    (invitationCodeService.isValidInvitationCode as jest.Mock).mockResolvedValue(true);
+    const validateEmailSpy = jest.spyOn(validation, 'validateEmail').mockReturnValue({
+      isValid: false,
+      error: '',
+    } as any);
+
+    const { getByText, getByPlaceholderText } = render(<SignupScreen />);
+
+    fireEvent.changeText(getByPlaceholderText('Enter invitation code'), 'ABC12345');
+    fireEvent.changeText(getByPlaceholderText('Enter your email'), 'invalid-email');
+    fireEvent.changeText(getByPlaceholderText('Enter your password'), 'password123');
+    fireEvent.changeText(getByPlaceholderText('Confirm your password'), 'password123');
+    fireEvent.press(getByText('Sign Up'));
+
+    await waitFor(() => {
+      expect(Alert.alert).toHaveBeenCalledWith('Error', 'Please enter a valid email address');
+    });
+
+    validateEmailSpy.mockRestore();
+  });
+
+  it('should surface specific error message when account already exists', async () => {
+    (invitationCodeService.isValidInvitationCode as jest.Mock).mockResolvedValue(true);
+    (invitationCodeService.useInvitationCode as jest.Mock).mockResolvedValue(true);
+
+    // Spy on ErrorHandler and force AsyncStorage error with "already exists" message
+    const handleErrorSpy = jest.spyOn(ErrorHandler, 'handleError').mockImplementation(() => {});
+    const originalSetItem = AsyncStorage.setItem;
+    AsyncStorage.setItem = jest.fn(() => Promise.reject(new Error('User already exists')));
+
+    const { getByText, getByPlaceholderText } = render(<SignupScreen />);
+
+    fireEvent.changeText(getByPlaceholderText('Enter invitation code'), 'ABC12345');
+    fireEvent.changeText(getByPlaceholderText('Enter your email'), 'existing@example.com');
+    fireEvent.changeText(getByPlaceholderText('Enter your password'), 'password123');
+    fireEvent.changeText(getByPlaceholderText('Confirm your password'), 'password123');
+    fireEvent.press(getByText('Sign Up'));
+
+    await waitFor(() => {
+      expect(handleErrorSpy).toHaveBeenCalledWith(
+        expect.any(Error),
+        'User already exists',
+        expect.objectContaining({ email: 'existing@example.com' }),
+      );
+    });
+
+    AsyncStorage.setItem = originalSetItem;
+    handleErrorSpy.mockRestore();
+  });
+
+  it('should fall back to generic error message when non-Error is thrown', async () => {
+    (invitationCodeService.isValidInvitationCode as jest.Mock).mockResolvedValue(true);
+    (invitationCodeService.useInvitationCode as jest.Mock).mockResolvedValue(true);
+
+    const handleErrorSpy = jest.spyOn(ErrorHandler, 'handleError').mockImplementation(() => {});
+    const originalSetItem = AsyncStorage.setItem;
+    AsyncStorage.setItem = jest.fn(() => Promise.reject('some error' as any));
+
+    const { getByText, getByPlaceholderText } = render(<SignupScreen />);
+
+    fireEvent.changeText(getByPlaceholderText('Enter invitation code'), 'ABC12345');
+    fireEvent.changeText(getByPlaceholderText('Enter your email'), 'error@example.com');
+    fireEvent.changeText(getByPlaceholderText('Enter your password'), 'password123');
+    fireEvent.changeText(getByPlaceholderText('Confirm your password'), 'password123');
+    fireEvent.press(getByText('Sign Up'));
+
+    await waitFor(() => {
+      expect(handleErrorSpy).toHaveBeenCalledWith(
+        'some error',
+        'Failed to create account. Please try again.',
+        expect.objectContaining({ email: 'error@example.com' }),
+      );
+    });
+
+    AsyncStorage.setItem = originalSetItem;
+    handleErrorSpy.mockRestore();
   });
 
   it('should navigate to login screen', () => {

@@ -92,6 +92,21 @@ export function validateEmail(email: string): ValidationResult {
   }
   
   const trimmedEmail = email.trim().toLowerCase();
+
+  // Additional checks for common issues (run early so they're always enforceable)
+  if (
+    trimmedEmail.startsWith('.') ||
+    trimmedEmail.startsWith('@') ||
+    trimmedEmail.endsWith('.') ||
+    trimmedEmail.endsWith('@')
+  ) {
+    return { isValid: false, error: ERROR_MESSAGES.INVALID_EMAIL };
+  }
+
+  // Check for consecutive dots (local or domain)
+  if (trimmedEmail.includes('..')) {
+    return { isValid: false, error: ERROR_MESSAGES.INVALID_EMAIL };
+  }
   
   // Basic structure check
   if (!trimmedEmail.includes('@') || !trimmedEmail.includes('.')) {
@@ -133,17 +148,6 @@ export function validateEmail(email: string): ValidationResult {
   const enhancedEmailRegex = /^[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i;
   
   if (!enhancedEmailRegex.test(trimmedEmail)) {
-    return { isValid: false, error: ERROR_MESSAGES.INVALID_EMAIL };
-  }
-  
-  // Additional checks for common issues
-  if (trimmedEmail.startsWith('.') || trimmedEmail.startsWith('@') || 
-      trimmedEmail.endsWith('.') || trimmedEmail.endsWith('@')) {
-    return { isValid: false, error: ERROR_MESSAGES.INVALID_EMAIL };
-  }
-  
-  // Check for consecutive dots
-  if (trimmedEmail.includes('..') || domainPart.includes('..')) {
     return { isValid: false, error: ERROR_MESSAGES.INVALID_EMAIL };
   }
   

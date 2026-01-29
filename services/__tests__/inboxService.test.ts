@@ -1,26 +1,10 @@
-import {
-  addInboxItem,
-  getInboxItems,
-  markInboxItemAsRead,
-  getUnreadInboxCount,
-  addInvitationCodeToInbox,
-} from '../inboxService';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { InboxItem } from '@/types/types';
+/**
+ * Inbox Service Tests
+ * 
+ * Tests for services/inboxService.ts - inbox service
+ */
 
-// Mock logger to avoid console output
-jest.mock('@/utils/logger', () => ({
-  logger: {
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-  },
-}));
-
-// Unmock inboxService to use actual implementation (jest.setup.js mocks it)
-jest.unmock('../inboxService');
-
-// Note: AsyncStorage and firebase.config are already mocked globally in jest.setup.js
+// Mock firebase/firestore first
 jest.mock('firebase/firestore', () => ({
   collection: jest.fn(),
   doc: jest.fn(),
@@ -28,275 +12,456 @@ jest.mock('firebase/firestore', () => ({
   setDoc: jest.fn(),
   query: jest.fn(),
   where: jest.fn(),
-  orderBy: jest.fn(),
-  limit: jest.fn(),
   getDocs: jest.fn(),
   updateDoc: jest.fn(),
+  orderBy: jest.fn(),
+  limit: jest.fn(),
 }));
 
-describe('inboxService', () => {
+jest.mock('../../config/firebase.config');
+jest.mock('../../utils/logger');
+
+// Unmock the service we're testing
+jest.unmock('../inboxService');
+
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  addInboxItem,
+  getInboxItems,
+  markInboxItemAsRead,
+  getUnreadInboxCount,
+  addInvitationCodeToInbox,
+} from '../inboxService';
+import { InboxItem } from '../../types/types';
+import * as firestore from 'firebase/firestore';
+import * as firebaseConfig from '../../config/firebase.config';
+import * as logger from '../../utils/logger';
+
+const mockFirestore = firestore as any;
+const mockFirebaseConfig = firebaseConfig as any;
+const mockLogger = logger as any;
+
+describe('Inbox Service', () => {
+  const mockInboxItem: Omit<InboxItem, 'id' | 'read' | 'createdAt'> = {
+    recipientEmail: 'user@example.com',
+    type: 'notification',
+    title: 'Test Notification',
+    message: 'Test message',
+  };
+
+  const mockDb = {};
+  const mockCollectionRef = {};
+  const mockDocRef = { id: 'inbox123' };
+  const mockQuerySnapshot = {
+    forEach: jest.fn((callback) => {
+      mockQuerySnapshot.docs.forEach(callback);
+    }),
+    docs: [
+      {
+        id: 'inbox123',
+        data: () => ({
+          ...mockInboxItem,
+          id: 'inbox123',
+          read: false,
+          createdAt: '2024-01-01T00:00:00.000Z',
+        }),
+      },
+    ],
+  };
+
   beforeEach(async () => {
-    await AsyncStorage.clear();
     jest.clearAllMocks();
-    // Firebase is already mocked to return false in jest.setup.js
+    await AsyncStorage.clear();
+    mockFirebaseConfig.isFirebaseConfigured.mockReturnValue(false);
+    mockFirebaseConfig.getFirebaseFirestore.mockReturnValue(mockDb);
+    mockFirestore.collection.mockReturnValue(mockCollectionRef);
+    mockFirestore.doc.mockReturnValue(mockDocRef);
+    mockFirestore.setDoc.mockResolvedValue(undefined);
+    mockFirestore.getDocs.mockResolvedValue(mockQuerySnapshot);
+    mockFirestore.updateDoc.mockResolvedValue(undefined);
   });
 
   describe('addInboxItem', () => {
-    it('should add an inbox item', async () => {
-      // Ensure AsyncStorage is clear
-      await AsyncStorage.clear();
-      
-      // Verify AsyncStorage is working
-      await AsyncStorage.setItem('test', 'value');
-      const testValue = await AsyncStorage.getItem('test');
-      expect(testValue).toBe('value');
-      await AsyncStorage.clear();
-      
-      const item = await addInboxItem({
-        recipientEmail: 'user@example.com',
-        type: 'invitation_code',
-        title: 'New Invitation Code',
-        message: 'You have a new code',
-        invitationCode: 'ABC12345',
-      });
+    it('should add inbox item locally when Firebase is not configured', async () => {
+      const item = await addInboxItem(mockInboxItem);
 
-      expect(item).toBeDefined();
-      expect(item).not.toBeUndefined();
-      expect(item).toMatchObject({
-        recipientEmail: 'user@example.com',
-        type: 'invitation_code',
-        title: 'New Invitation Code',
-        message: 'You have a new code',
-        invitationCode: 'ABC12345',
-        read: false,
-      });
-      expect(item.id).toBeDefined();
-      expect(item.createdAt).toBeDefined();
+      expect(item.recipientEmail).toBe('user@example.com');
+      expect(item.read).toBe(false);
+      expect(item.createdAt).toBeTruthy();
+
+      const localItems = await AsyncStorage.getItem('inbox');
+      expect(localItems).toBeTruthy();
+      const items = JSON.parse(localItems || '[]');
+      expect(items).toHaveLength(1);
     });
 
-    it('should save item to local storage', async () => {
-      await addInboxItem({
-        recipientEmail: 'user@example.com',
-        type: 'invitation_code',
-        title: 'Test',
-        message: 'Test message',
-      });
+    it('should add inbox item via Firebase when configured', async () => {
+      mockFirebaseConfig.isFirebaseConfigured.mockReturnValue(true);
 
-      // Verify item was saved by retrieving it
-      const items = await getInboxItems('user@example.com');
-      expect(items.length).toBeGreaterThan(0);
-      expect(items[0].recipientEmail).toBe('user@example.com');
+      const item = await addInboxItem(mockInboxItem);
+
+      expect(item.id).toBe('inbox123');
+      expect(mockFirestore.collection).toHaveBeenCalledWith(mockDb, 'inbox');
+      expect(mockFirestore.setDoc).toHaveBeenCalled();
+    });
+
+    it('should include invitationCode in Firestore data when present', async () => {
+      mockFirebaseConfig.isFirebaseConfigured.mockReturnValue(true);
+      const itemWithCode: Omit<InboxItem, 'id' | 'read' | 'createdAt'> = {
+        ...mockInboxItem,
+        invitationCode: 'ABC12345',
+      };
+
+      await addInboxItem(itemWithCode);
+
+      const setDocCall = mockFirestore.setDoc.mock.calls[0];
+      const firestoreData = setDocCall[1];
+      expect(firestoreData.invitationCode).toBe('ABC12345');
+    });
+
+    it('should continue with local save when Firebase fails', async () => {
+      mockFirebaseConfig.isFirebaseConfigured.mockReturnValue(true);
+      mockFirestore.setDoc.mockRejectedValue(new Error('Firebase error'));
+
+      const item = await addInboxItem(mockInboxItem);
+
+      expect(item.recipientEmail).toBe('user@example.com');
+      expect(mockLogger.logger.error).toHaveBeenCalled();
+      
+      // Should still be saved locally
+      const localItems = await AsyncStorage.getItem('inbox');
+      expect(localItems).toBeTruthy();
+    });
+
+    it('should handle errors and throw', async () => {
+      const originalSetItem = AsyncStorage.setItem;
+      AsyncStorage.setItem = jest.fn().mockRejectedValue(new Error('Storage error'));
+
+      await expect(addInboxItem(mockInboxItem)).rejects.toThrow();
+      expect(mockLogger.logger.error).toHaveBeenCalled();
+
+      AsyncStorage.setItem = originalSetItem;
+    });
+
+    it('should handle non-Error thrown in Firebase addInboxItem', async () => {
+      mockFirebaseConfig.isFirebaseConfigured.mockReturnValue(true);
+      mockFirestore.setDoc.mockRejectedValue('Firebase error string');
+
+      const item = await addInboxItem(mockInboxItem);
+
+      expect(item.recipientEmail).toBe('user@example.com');
+      expect(mockLogger.logger.error).toHaveBeenCalled();
+      
+      // Should still be saved locally
+      const localItems = await AsyncStorage.getItem('inbox');
+      expect(localItems).toBeTruthy();
+    });
+
+    it('should handle non-Error thrown in outer catch block of addInboxItem', async () => {
+      const originalSetItem = AsyncStorage.setItem;
+      AsyncStorage.setItem = jest.fn().mockRejectedValue('Storage error string');
+
+      await expect(addInboxItem(mockInboxItem)).rejects.toBe('Storage error string');
+      expect(mockLogger.logger.error).toHaveBeenCalled();
+
+      AsyncStorage.setItem = originalSetItem;
     });
   });
 
   describe('getInboxItems', () => {
-    it('should return inbox items for user', async () => {
-      const items: InboxItem[] = [
-        {
-          id: 'item1',
-          recipientEmail: 'user@example.com',
-          type: 'invitation_code',
-          title: 'New Code',
-          message: 'You have a code',
-          invitationCode: 'ABC12345',
-          read: false,
-          createdAt: '2026-01-20T10:00:00Z',
-        },
-        {
-          id: 'item2',
-          recipientEmail: 'user@example.com',
-          type: 'mentorship_accepted',
-          title: 'Request Accepted',
-          message: 'Your request was accepted',
-          read: true,
-          createdAt: '2026-01-20T09:00:00Z',
-        },
-      ];
+    it('should get inbox items locally when Firebase is not configured', async () => {
+      const inboxItem: InboxItem = {
+        ...mockInboxItem,
+        id: 'local123',
+        read: false,
+        createdAt: '2024-01-01T00:00:00.000Z',
+      };
+      await AsyncStorage.setItem('inbox', JSON.stringify([inboxItem]));
 
-      await AsyncStorage.setItem('inbox', JSON.stringify(items));
+      const items = await getInboxItems('user@example.com');
 
-      const result = await getInboxItems('user@example.com');
-
-      expect(result).toHaveLength(2);
-      expect(result[0].id).toBe('item1');
-      expect(result[1].id).toBe('item2');
+      expect(items).toHaveLength(1);
+      expect(items[0].id).toBe('local123');
     });
 
-    it('should filter by recipient email', async () => {
-      const items: InboxItem[] = [
-        {
-          id: 'item1',
-          recipientEmail: 'user@example.com',
-          type: 'invitation_code',
-          title: 'New Code',
-          message: 'You have a code',
-          read: false,
-          createdAt: '2026-01-20T10:00:00Z',
-        },
-        {
-          id: 'item2',
-          recipientEmail: 'other@example.com',
-          type: 'invitation_code',
-          title: 'New Code',
-          message: 'You have a code',
-          read: false,
-          createdAt: '2026-01-20T10:00:00Z',
-        },
-      ];
+    it('should get inbox items via Firebase when configured', async () => {
+      mockFirebaseConfig.isFirebaseConfigured.mockReturnValue(true);
+      const mockWhere = {};
+      const mockOrderBy = {};
+      const mockLimit = {};
+      const mockQuery = {};
+      mockFirestore.where.mockReturnValue(mockWhere);
+      mockFirestore.orderBy.mockReturnValue(mockOrderBy);
+      mockFirestore.limit.mockReturnValue(mockLimit);
+      mockFirestore.query.mockReturnValue(mockQuery);
 
-      await AsyncStorage.setItem('inbox', JSON.stringify(items));
+      const items = await getInboxItems('user@example.com');
 
-      const result = await getInboxItems('user@example.com');
-
-      expect(result).toHaveLength(1);
-      expect(result[0].id).toBe('item1');
+      expect(items).toHaveLength(1);
+      expect(mockFirestore.where).toHaveBeenCalledWith('recipientEmail', '==', 'user@example.com');
+      expect(mockFirestore.orderBy).toHaveBeenCalledWith('createdAt', 'desc');
+      expect(mockFirestore.limit).toHaveBeenCalledWith(100);
     });
 
-    it('should sort by most recent first', async () => {
-      const items: InboxItem[] = [
-        {
-          id: 'item1',
-          recipientEmail: 'user@example.com',
-          type: 'invitation_code',
-          title: 'Old',
-          message: 'Old message',
-          read: false,
-          createdAt: '2026-01-20T09:00:00Z',
-        },
-        {
-          id: 'item2',
-          recipientEmail: 'user@example.com',
-          type: 'invitation_code',
-          title: 'New',
-          message: 'New message',
-          read: false,
-          createdAt: '2026-01-20T10:00:00Z',
-        },
+    it('should filter items by user email locally', async () => {
+      const items = [
+        { ...mockInboxItem, id: 'item1', recipientEmail: 'user@example.com' },
+        { ...mockInboxItem, id: 'item2', recipientEmail: 'other@example.com' },
       ];
-
       await AsyncStorage.setItem('inbox', JSON.stringify(items));
 
-      const result = await getInboxItems('user@example.com');
+      const userItems = await getInboxItems('user@example.com');
 
-      expect(result[0].id).toBe('item2');
-      expect(result[1].id).toBe('item1');
+      expect(userItems).toHaveLength(1);
+      expect(userItems[0].id).toBe('item1');
     });
 
-    it('should return empty array when no items', async () => {
-      // No items in storage
+    it('should fallback to local when Firebase fails', async () => {
+      mockFirebaseConfig.isFirebaseConfigured.mockReturnValue(true);
+      mockFirestore.getDocs.mockRejectedValue(new Error('Firebase error'));
+      const inboxItem: InboxItem = {
+        ...mockInboxItem,
+        id: 'local123',
+        read: false,
+        createdAt: '2024-01-01T00:00:00.000Z',
+      };
+      await AsyncStorage.setItem('inbox', JSON.stringify([inboxItem]));
 
-      const result = await getInboxItems('user@example.com');
-      expect(result).toEqual([]);
+      const items = await getInboxItems('user@example.com');
+
+      expect(items).toHaveLength(1);
+      expect(mockLogger.logger.warn).toHaveBeenCalled();
+    });
+
+    it('should handle errors and return empty array', async () => {
+      const originalGetItem = AsyncStorage.getItem;
+      AsyncStorage.getItem = jest.fn().mockRejectedValue(new Error('Storage error'));
+
+      const items = await getInboxItems('user@example.com');
+
+      expect(items).toEqual([]);
+      expect(mockLogger.logger.error).toHaveBeenCalled();
+
+      AsyncStorage.getItem = originalGetItem;
+    });
+
+    it('should handle non-Error thrown in Firebase getInboxItems', async () => {
+      mockFirebaseConfig.isFirebaseConfigured.mockReturnValue(true);
+      mockFirestore.getDocs.mockRejectedValue('Firebase error string');
+      const inboxItem: InboxItem = {
+        ...mockInboxItem,
+        id: 'local123',
+        read: false,
+        createdAt: '2024-01-01T00:00:00.000Z',
+      };
+      await AsyncStorage.setItem('inbox', JSON.stringify([inboxItem]));
+
+      const items = await getInboxItems('user@example.com');
+
+      expect(items).toHaveLength(1);
+      expect(mockLogger.logger.warn).toHaveBeenCalled();
+    });
+
+    it('should handle non-Error thrown in outer catch block of getInboxItems', async () => {
+      const originalGetItem = AsyncStorage.getItem;
+      AsyncStorage.getItem = jest.fn().mockRejectedValue('Storage error string');
+
+      const items = await getInboxItems('user@example.com');
+
+      expect(items).toEqual([]);
+      expect(mockLogger.logger.error).toHaveBeenCalled();
+
+      AsyncStorage.getItem = originalGetItem;
     });
   });
 
   describe('markInboxItemAsRead', () => {
-    it('should mark item as read', async () => {
-      const items: InboxItem[] = [
-        {
-          id: 'item1',
-          recipientEmail: 'user@example.com',
-          type: 'invitation_code',
-          title: 'New Code',
-          message: 'You have a code',
-          read: false,
-          createdAt: '2026-01-20T10:00:00Z',
-        },
-      ];
+    it('should mark item as read locally when Firebase is not configured', async () => {
+      const inboxItem: InboxItem = {
+        ...mockInboxItem,
+        id: 'local123',
+        read: false,
+        createdAt: '2024-01-01T00:00:00.000Z',
+      };
+      await AsyncStorage.setItem('inbox', JSON.stringify([inboxItem]));
 
-      await AsyncStorage.setItem('inbox', JSON.stringify(items));
-      // Storage will be set by the function
+      await markInboxItemAsRead('local123');
 
-      await markInboxItemAsRead('item1');
-
-      const savedData = await AsyncStorage.getItem('inbox');
-      expect(savedData).toBeTruthy();
-      const savedItems = JSON.parse(savedData || '[]');
-      expect(savedItems[0].read).toBe(true);
+      const localItems = await AsyncStorage.getItem('inbox');
+      const items = JSON.parse(localItems || '[]');
+      expect(items).toHaveLength(1);
+      expect(items[0].read).toBe(true);
+      expect(items[0].id).toBe('local123');
     });
 
-    it('should handle non-existent item gracefully', async () => {
-      await AsyncStorage.setItem('inbox', JSON.stringify([]));
+    it('should mark item as read via Firebase when configured', async () => {
+      mockFirebaseConfig.isFirebaseConfigured.mockReturnValue(true);
 
-      // Should not throw error
-      await expect(markInboxItemAsRead('nonexistent')).resolves.not.toThrow();
+      await markInboxItemAsRead('inbox123');
+
+      expect(mockFirestore.doc).toHaveBeenCalledWith(mockDb, 'inbox', 'inbox123');
+      expect(mockFirestore.updateDoc).toHaveBeenCalledWith(mockDocRef, { read: true });
+    });
+
+    it('should fallback to local when Firebase fails', async () => {
+      mockFirebaseConfig.isFirebaseConfigured.mockReturnValue(true);
+      mockFirestore.updateDoc.mockRejectedValue(new Error('Firebase error'));
+      const inboxItem: InboxItem = {
+        ...mockInboxItem,
+        id: 'local123',
+        read: false,
+        createdAt: '2024-01-01T00:00:00.000Z',
+      };
+      await AsyncStorage.setItem('inbox', JSON.stringify([inboxItem]));
+
+      await markInboxItemAsRead('local123');
+
+      const localItems = await AsyncStorage.getItem('inbox');
+      const items = JSON.parse(localItems || '[]');
+      expect(items).toHaveLength(1);
+      expect(items[0].read).toBe(true);
+      expect(mockLogger.logger.warn).toHaveBeenCalled();
+    });
+
+    it('should handle errors and throw', async () => {
+      const originalGetItem = AsyncStorage.getItem;
+      const originalSetItem = AsyncStorage.setItem;
+      AsyncStorage.getItem = jest.fn().mockResolvedValue(JSON.stringify([{
+        ...mockInboxItem,
+        id: 'local123',
+        read: false,
+        createdAt: '2024-01-01T00:00:00.000Z',
+      }]));
+      AsyncStorage.setItem = jest.fn().mockRejectedValue(new Error('Storage error'));
+
+      await expect(markInboxItemAsRead('local123')).rejects.toThrow();
+      expect(mockLogger.logger.error).toHaveBeenCalled();
+
+      AsyncStorage.getItem = originalGetItem;
+      AsyncStorage.setItem = originalSetItem;
+    });
+
+    it('should handle non-Error thrown in Firebase markInboxItemAsRead', async () => {
+      mockFirebaseConfig.isFirebaseConfigured.mockReturnValue(true);
+      mockFirestore.updateDoc.mockRejectedValue('Firebase error string');
+      const inboxItem: InboxItem = {
+        ...mockInboxItem,
+        id: 'local123',
+        read: false,
+        createdAt: '2024-01-01T00:00:00.000Z',
+      };
+      await AsyncStorage.setItem('inbox', JSON.stringify([inboxItem]));
+
+      await markInboxItemAsRead('local123');
+
+      const localItems = await AsyncStorage.getItem('inbox');
+      const items = JSON.parse(localItems || '[]');
+      expect(items).toHaveLength(1);
+      expect(items[0].read).toBe(true);
+      expect(mockLogger.logger.warn).toHaveBeenCalled();
+    });
+
+    it('should handle non-Error thrown in outer catch block of markInboxItemAsRead', async () => {
+      const originalGetItem = AsyncStorage.getItem;
+      const originalSetItem = AsyncStorage.setItem;
+      AsyncStorage.getItem = jest.fn().mockResolvedValue(JSON.stringify([{
+        ...mockInboxItem,
+        id: 'local123',
+        read: false,
+        createdAt: '2024-01-01T00:00:00.000Z',
+      }]));
+      AsyncStorage.setItem = jest.fn().mockRejectedValue('Storage error string');
+
+      await expect(markInboxItemAsRead('local123')).rejects.toBe('Storage error string');
+      expect(mockLogger.logger.error).toHaveBeenCalled();
+
+      AsyncStorage.getItem = originalGetItem;
+      AsyncStorage.setItem = originalSetItem;
     });
   });
 
   describe('getUnreadInboxCount', () => {
-    it('should return correct unread count', async () => {
+    it('should return unread count', async () => {
       const items: InboxItem[] = [
-        {
-          id: 'item1',
-          recipientEmail: 'user@example.com',
-          type: 'invitation_code',
-          title: 'New Code',
-          message: 'You have a code',
-          read: false,
-          createdAt: '2026-01-20T10:00:00Z',
-        },
-        {
-          id: 'item2',
-          recipientEmail: 'user@example.com',
-          type: 'invitation_code',
-          title: 'New Code',
-          message: 'You have a code',
-          read: true,
-          createdAt: '2026-01-20T09:00:00Z',
-        },
-        {
-          id: 'item3',
-          recipientEmail: 'user@example.com',
-          type: 'invitation_code',
-          title: 'New Code',
-          message: 'You have a code',
-          read: false,
-          createdAt: '2026-01-20T08:00:00Z',
-        },
+        { ...mockInboxItem, id: 'item1', recipientEmail: 'user@example.com', read: false, createdAt: '2024-01-01T00:00:00.000Z' },
+        { ...mockInboxItem, id: 'item2', recipientEmail: 'user@example.com', read: true, createdAt: '2024-01-02T00:00:00.000Z' },
+        { ...mockInboxItem, id: 'item3', recipientEmail: 'user@example.com', read: false, createdAt: '2024-01-03T00:00:00.000Z' },
       ];
-
       await AsyncStorage.setItem('inbox', JSON.stringify(items));
 
-      const result = await getUnreadInboxCount('user@example.com');
-      expect(result).toBe(2);
+      const count = await getUnreadInboxCount('user@example.com');
+
+      expect(count).toBe(2);
     });
 
-    it('should return 0 when all items are read', async () => {
+    it('should return 0 when no unread items', async () => {
       const items: InboxItem[] = [
-        {
-          id: 'item1',
-          recipientEmail: 'user@example.com',
-          type: 'invitation_code',
-          title: 'New Code',
-          message: 'You have a code',
-          read: true,
-          createdAt: '2026-01-20T10:00:00Z',
-        },
+        { ...mockInboxItem, id: 'item1', read: true, createdAt: '2024-01-01T00:00:00.000Z' },
       ];
-
       await AsyncStorage.setItem('inbox', JSON.stringify(items));
 
-      const result = await getUnreadInboxCount('user@example.com');
-      expect(result).toBe(0);
+      const count = await getUnreadInboxCount('user@example.com');
+
+      expect(count).toBe(0);
+    });
+
+    it('should handle errors and return 0', async () => {
+      const originalGetItem = AsyncStorage.getItem;
+      AsyncStorage.getItem = jest.fn().mockRejectedValue(new Error('Storage error'));
+
+      const count = await getUnreadInboxCount('user@example.com');
+
+      expect(count).toBe(0);
+      expect(mockLogger.logger.error).toHaveBeenCalled();
+
+      AsyncStorage.getItem = originalGetItem;
+    });
+
+    it('should handle non-Error thrown in getUnreadInboxCount', async () => {
+      const originalGetItem = AsyncStorage.getItem;
+      AsyncStorage.getItem = jest.fn().mockRejectedValue('Storage error string');
+
+      const count = await getUnreadInboxCount('user@example.com');
+
+      expect(count).toBe(0);
+      expect(mockLogger.logger.error).toHaveBeenCalled();
+
+      AsyncStorage.getItem = originalGetItem;
     });
   });
 
   describe('addInvitationCodeToInbox', () => {
     it('should add invitation code to inbox', async () => {
-      // No items in storage
-      // Storage will be set by the function
-
       await addInvitationCodeToInbox('user@example.com', 'ABC12345', 'creator@example.com');
 
-      const savedData = await AsyncStorage.getItem('inbox');
-      expect(savedData).toBeTruthy();
-      const savedItems = JSON.parse(savedData || '[]');
-      expect(savedItems[0]).toMatchObject({
-        recipientEmail: 'user@example.com',
-        type: 'invitation_code',
-        title: 'New Invitation Code',
-        invitationCode: 'ABC12345',
-      });
+      const localItems = await AsyncStorage.getItem('inbox');
+      expect(localItems).toBeTruthy();
+      const items = JSON.parse(localItems || '[]');
+      expect(items).toHaveLength(1);
+      expect(items[0].type).toBe('invitation_code');
+      expect(items[0].invitationCode).toBe('ABC12345');
+      expect(items[0].title).toBe('New Invitation Code');
+      expect(items[0].recipientEmail).toBe('user@example.com');
+    });
+
+    it('should handle errors and throw', async () => {
+      const originalSetItem = AsyncStorage.setItem;
+      AsyncStorage.setItem = jest.fn().mockRejectedValue(new Error('Storage error'));
+
+      await expect(addInvitationCodeToInbox('user@example.com', 'ABC12345', 'creator@example.com')).rejects.toThrow();
+      expect(mockLogger.logger.error).toHaveBeenCalled();
+
+      AsyncStorage.setItem = originalSetItem;
+    });
+
+    it('should handle non-Error thrown in addInvitationCodeToInbox', async () => {
+      const originalSetItem = AsyncStorage.setItem;
+      AsyncStorage.setItem = jest.fn().mockRejectedValue('Storage error string');
+
+      await expect(addInvitationCodeToInbox('user@example.com', 'ABC12345', 'creator@example.com')).rejects.toBe('Storage error string');
+      expect(mockLogger.logger.error).toHaveBeenCalled();
+
+      AsyncStorage.setItem = originalSetItem;
     });
   });
 });

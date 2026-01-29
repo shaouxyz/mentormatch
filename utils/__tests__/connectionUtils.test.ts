@@ -142,6 +142,52 @@ describe('connectionUtils', () => {
       // Restore original
       AsyncStorage.getItem = originalGetItem;
     });
+
+    it('should handle invalid JSON data gracefully', async () => {
+      await AsyncStorage.setItem('mentorshipRequests', 'invalid-json');
+
+      const result = await areUsersMatched('user1@example.com', 'user2@example.com');
+      expect(result).toBe(false);
+    });
+
+    it('should handle empty array in storage', async () => {
+      await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([]));
+
+      const result = await areUsersMatched('user1@example.com', 'user2@example.com');
+      expect(result).toBe(false);
+    });
+
+    it('should handle multiple accepted requests between same users', async () => {
+      const requests: MentorshipRequest[] = [
+        {
+          id: 'req1',
+          requesterEmail: 'user1@example.com',
+          requesterName: 'User 1',
+          mentorEmail: 'user2@example.com',
+          mentorName: 'User 2',
+          note: 'First request',
+          status: 'accepted',
+          createdAt: '2026-01-20T10:00:00Z',
+          respondedAt: '2026-01-20T11:00:00Z',
+        },
+        {
+          id: 'req2',
+          requesterEmail: 'user1@example.com',
+          requesterName: 'User 1',
+          mentorEmail: 'user2@example.com',
+          mentorName: 'User 2',
+          note: 'Second request',
+          status: 'accepted',
+          createdAt: '2026-01-21T10:00:00Z',
+          respondedAt: '2026-01-21T11:00:00Z',
+        },
+      ];
+
+      await AsyncStorage.setItem('mentorshipRequests', JSON.stringify(requests));
+
+      const result = await areUsersMatched('user1@example.com', 'user2@example.com');
+      expect(result).toBe(true);
+    });
   });
 
   describe('getMatchedUserEmails', () => {
@@ -268,6 +314,81 @@ describe('connectionUtils', () => {
 
       // Restore original
       AsyncStorage.getItem = originalGetItem;
+    });
+
+    it('should handle invalid JSON data gracefully', async () => {
+      await AsyncStorage.setItem('mentorshipRequests', 'invalid-json');
+
+      const result = await getMatchedUserEmails('user1@example.com');
+      expect(result).toEqual([]);
+    });
+
+    it('should handle empty array in storage', async () => {
+      await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([]));
+
+      const result = await getMatchedUserEmails('user1@example.com');
+      expect(result).toEqual([]);
+    });
+
+    it('should handle duplicate matches (same user appears multiple times)', async () => {
+      const requests: MentorshipRequest[] = [
+        {
+          id: 'req1',
+          requesterEmail: 'user1@example.com',
+          requesterName: 'User 1',
+          mentorEmail: 'user2@example.com',
+          mentorName: 'User 2',
+          note: 'Test note',
+          status: 'accepted',
+          createdAt: '2026-01-20T10:00:00Z',
+          respondedAt: '2026-01-20T11:00:00Z',
+        },
+        {
+          id: 'req2',
+          requesterEmail: 'user1@example.com',
+          requesterName: 'User 1',
+          mentorEmail: 'user2@example.com',
+          mentorName: 'User 2',
+          note: 'Duplicate request',
+          status: 'accepted',
+          createdAt: '2026-01-21T10:00:00Z',
+          respondedAt: '2026-01-21T11:00:00Z',
+        },
+      ];
+
+      await AsyncStorage.setItem('mentorshipRequests', JSON.stringify(requests));
+
+      const result = await getMatchedUserEmails('user1@example.com');
+      // Should only appear once (Set deduplication)
+      expect(result).toEqual(['user2@example.com']);
+    });
+
+    it('should handle case-insensitive email matching', async () => {
+      const requests: MentorshipRequest[] = [
+        {
+          id: 'req1',
+          requesterEmail: 'USER1@EXAMPLE.COM',
+          requesterName: 'User 1',
+          mentorEmail: 'user2@example.com',
+          mentorName: 'User 2',
+          note: 'Test note',
+          status: 'accepted',
+          createdAt: '2026-01-20T10:00:00Z',
+          respondedAt: '2026-01-20T11:00:00Z',
+        },
+      ];
+
+      await AsyncStorage.setItem('mentorshipRequests', JSON.stringify(requests));
+
+      // Note: The function does exact string matching, so case matters
+      // This test verifies the actual behavior
+      const result1 = await getMatchedUserEmails('user1@example.com');
+      const result2 = await getMatchedUserEmails('USER1@EXAMPLE.COM');
+      
+      // Exact match works
+      expect(result2).toEqual(['user2@example.com']);
+      // Case mismatch doesn't match (this is current behavior)
+      expect(result1).toEqual([]);
     });
   });
 });

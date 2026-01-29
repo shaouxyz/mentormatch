@@ -2,7 +2,7 @@
  * Tests for validation utility functions
  */
 
-import { validateProfile, validateEmail, validatePassword } from '../validation';
+import { validateProfile, validateEmail, validatePassword, sanitizeInput } from '../validation';
 
 describe('Validation Utils', () => {
   describe('validateEmail', () => {
@@ -26,6 +26,14 @@ describe('Validation Utils', () => {
       expect(validateEmail('a@b.c').isValid).toBe(false); // TLD too short
       expect(validateEmail('test..test@example.com').isValid).toBe(false); // Double dot is invalid
       expect(validateEmail('test @example.com').isValid).toBe(false); // Space in email
+      expect(validateEmail('local.part@domain').isValid).toBe(false); // Missing dot in domain
+      expect(validateEmail('too.many@ats@example.com').isValid).toBe(false); // Multiple @
+
+      const longLocal = `${'a'.repeat(65)}@example.com`;
+      expect(validateEmail(longLocal).isValid).toBe(false); // Local part too long
+
+      const longDomain = `user@${'a'.repeat(256)}.com`;
+      expect(validateEmail(longDomain).isValid).toBe(false); // Domain part too long
     });
 
     it('should return error message for invalid emails', () => {
@@ -66,6 +74,18 @@ describe('Validation Utils', () => {
       expect(result.isValid).toBe(false);
       expect(result.error).toBeDefined();
       expect(result.error).toContain('6 characters');
+    });
+
+    it('should return error message when password is missing', () => {
+      const result = validatePassword('');
+      expect(result.isValid).toBe(false);
+      expect(result.error).toBeDefined();
+    });
+
+    it('should return error message when passwords do not match', () => {
+      const result = validatePassword('password123', 'different');
+      expect(result.isValid).toBe(false);
+      expect(result.error).toBeDefined();
     });
   });
 
@@ -156,8 +176,15 @@ describe('Validation Utils', () => {
       expect(result.isValid).toBe(true);
     });
 
-    it('should reject years exceeding maximum', () => {
+    it('should reject expertise years exceeding maximum', () => {
       const profile = { ...validProfile, expertiseYears: '101' };
+      const result = validateProfile(profile);
+      expect(result.isValid).toBe(false);
+      expect(result.error).toContain('100');
+    });
+
+    it('should reject interest years exceeding maximum', () => {
+      const profile = { ...validProfile, interestYears: '101' };
       const result = validateProfile(profile);
       expect(result.isValid).toBe(false);
       expect(result.error).toContain('100');
@@ -203,6 +230,17 @@ describe('Validation Utils', () => {
       const result = validateProfile(profile);
       expect(result.isValid).toBe(false);
       expect(result.error).toContain('200');
+    });
+  });
+
+  describe('sanitizeInput', () => {
+    it('should trim whitespace and remove angle brackets', () => {
+      expect(sanitizeInput('  <test>  ')).toBe('test');
+      expect(sanitizeInput('<hello>world</hello>')).toBe('helloworld/hello');
+    });
+
+    it('should handle empty string', () => {
+      expect(sanitizeInput('')).toBe('');
     });
   });
 });

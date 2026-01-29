@@ -57,8 +57,11 @@ export async function getUserByEmail(email: string): Promise<User | null> {
  * Create a new user account
  */
 export async function createUser(email: string, password: string): Promise<User> {
-  // Check if user already exists
-  const existingUser = await getUserByEmail(email);
+  // Normalize email before checking for duplicates
+  const normalizedEmail = email.trim().toLowerCase();
+  
+  // Check if user already exists (using normalized email)
+  const existingUser = await getUserByEmail(normalizedEmail);
   if (existingUser) {
     throw new Error('User with this email already exists');
   }
@@ -67,7 +70,7 @@ export async function createUser(email: string, password: string): Promise<User>
   const passwordHash = await hashPassword(password);
 
   const user: User = {
-    email: email.trim().toLowerCase(),
+    email: normalizedEmail,
     passwordHash,
     id: Date.now().toString(),
     createdAt: new Date().toISOString(),

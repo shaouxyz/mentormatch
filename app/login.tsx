@@ -22,6 +22,8 @@ import { isRateLimited, resetRateLimit, getRemainingAttempts } from '@/utils/rat
 import { startSession } from '@/utils/sessionManager';
 import { hybridSignIn } from '@/services/hybridAuthService';
 import { hybridGetProfile } from '@/services/hybridProfileService';
+import { getCurrentFirebaseUser } from '@/services/firebaseAuthService';
+import { createFirebaseProfile } from '@/services/firebaseProfileService';
 import { Profile } from '@/types/types';
 import { safeParseJSON, validateProfileSchema } from '@/utils/schemaValidation';
 
@@ -163,15 +165,16 @@ export default function LoginScreen() {
             logger.info('Found local profile but not in Firestore, attempting to sync', { email: user.email });
             // Try to sync local profile to Firestore
             try {
-              const { getCurrentFirebaseUser } = await import('@/services/firebaseAuthService');
-              const { createFirebaseProfile } = await import('@/services/firebaseProfileService');
-              
               const currentUser = getCurrentFirebaseUser();
               if (currentUser && currentUser.email === user.email) {
                 await createFirebaseProfile(localProfile);
                 logger.info('Profile synced to Firestore successfully', { email: user.email });
                 // Profile was synced, now try to get it again
                 profile = await hybridGetProfile(user.email);
+                // If Firestore read still returns null, fall back to local profile so user can continue
+                if (!profile) {
+                  profile = localProfile;
+                }
               } else {
                 logger.warn('User not authenticated in Firebase, cannot sync profile', {
                   email: user.email,

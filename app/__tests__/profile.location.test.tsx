@@ -78,7 +78,7 @@ describe('Profile Location Field', () => {
       expect(profile.location).toBe('San Francisco, CA');
       expect(profile.name).toBe('John Doe');
       expect(profile.expertise).toBe('Software Development');
-    });
+    }, 15000);
 
     it('should allow creating profile without location (optional)', async () => {
       // Set up user

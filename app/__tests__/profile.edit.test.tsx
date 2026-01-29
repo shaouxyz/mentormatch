@@ -26,11 +26,33 @@ jest.mock('expo-status-bar', () => ({
   StatusBar: () => null,
 }));
 
+// Mock ErrorHandler (match app/profile/edit.tsx import path)
+jest.mock('@/utils/errorHandler', () => ({
+  ErrorHandler: {
+    handleError: jest.fn(),
+    handleStorageError: jest.fn(),
+  },
+}));
+
+// Mock schemaValidation (match app/profile/edit.tsx import path)
+jest.mock('@/utils/schemaValidation', () => {
+  const actual = jest.requireActual('../../utils/schemaValidation');
+  return {
+    ...actual,
+    validateProfileSchema: jest.fn(actual.validateProfileSchema),
+  };
+});
+
 describe('Edit Profile Screen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     AsyncStorage.clear();
     jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    
+    // Reset validateProfileSchema mock to use actual implementation by default
+    const schemaValidation = require('@/utils/schemaValidation');
+    const actualValidate = jest.requireActual('../../utils/schemaValidation').validateProfileSchema;
+    (schemaValidation.validateProfileSchema as jest.Mock).mockImplementation(actualValidate);
   });
 
   describe('Load Existing Profile', () => {
@@ -402,6 +424,123 @@ describe('Edit Profile Screen', () => {
       const allProfiles = JSON.parse(allProfilesData!);
       expect(allProfiles).toHaveLength(1);
       expect(allProfiles[0].name).toBe('Jane Doe');
+    });
+  });
+
+  describe('Error Handling', () => {
+    it('should handle profile loading error gracefully', async () => {
+      await AsyncStorage.setItem('user', JSON.stringify({
+        email: 'test@example.com',
+        passwordHash: 'hash123',
+        id: '123',
+      }));
+      
+      // Set invalid profile JSON
+      await AsyncStorage.setItem('profile', 'invalid-json');
+
+      const { getByText } = render(<EditProfileScreen />);
+
+      // Should handle error and still render form (with empty fields)
+      await waitFor(() => {
+        expect(getByText('Edit Profile')).toBeTruthy();
+      });
+    });
+
+    it('should handle profile validation failure', async () => {
+      await AsyncStorage.setItem('user', JSON.stringify({
+        email: 'test@example.com',
+        passwordHash: 'hash123',
+        id: '123',
+      }));
+      
+      await AsyncStorage.setItem('profile', JSON.stringify({
+        name: 'John Doe',
+        expertise: 'Engineering',
+        interest: 'Design',
+        expertiseYears: 5,
+        interestYears: 2,
+        email: 'test@example.com',
+        phoneNumber: '555-1234',
+      }));
+
+      // Mock validateProfileSchema to return false AFTER form validation passes
+      const { ErrorHandler } = require('@/utils/errorHandler');
+      const schemaValidation = require('@/utils/schemaValidation');
+      const mockValidate = schemaValidation.validateProfileSchema as jest.Mock;
+      
+      // Setup: first call returns true (for loadProfile), then false (for handleSave)
+      mockValidate
+        .mockReturnValueOnce(true) // For loadProfile
+        .mockReturnValueOnce(false); // For handleSave - force failure
+
+      const { getByDisplayValue, getByLabelText } = render(<EditProfileScreen />);
+
+      await waitFor(() => {
+        expect(getByDisplayValue('John Doe')).toBeTruthy();
+      });
+
+      // Verify the first call happened (loadProfile)
+      expect(mockValidate).toHaveBeenCalledTimes(1);
+
+      // Clear Alert mock to only check for new calls
+      (Alert.alert as jest.Mock).mockClear();
+      (ErrorHandler.handleError as jest.Mock).mockClear();
+
+      // Try to save - press the actual button (not the inner Text node)
+      fireEvent.press(getByLabelText('Save changes button'));
+
+      // Wait for the validation to fail and ErrorHandler to be called
+      // Note: validateProfileSchema is called synchronously, so ErrorHandler should be called immediately
+      await waitFor(() => {
+        // Verify validateProfileSchema was called again (for handleSave)
+        expect(mockValidate).toHaveBeenCalledTimes(2);
+        // Should call ErrorHandler.handleError which shows Alert
+        expect(ErrorHandler.handleError).toHaveBeenCalledWith(
+          expect.any(Error),
+          'Profile data validation failed'
+        );
+      }, { timeout: 3000 });
+    });
+
+    it('should handle storage error when updating profile', async () => {
+      await AsyncStorage.setItem('user', JSON.stringify({
+        email: 'test@example.com',
+        passwordHash: 'hash123',
+        id: '123',
+      }));
+      
+      await AsyncStorage.setItem('profile', JSON.stringify({
+        name: 'John Doe',
+        expertise: 'Engineering',
+        interest: 'Design',
+        expertiseYears: 5,
+        interestYears: 2,
+        email: 'test@example.com',
+        phoneNumber: '555-1234',
+      }));
+
+      const { ErrorHandler } = require('@/utils/errorHandler');
+
+      // Mock hybridUpdateProfile to throw error (only for this test)
+      const hybridProfileService = require('@/services/hybridProfileService');
+      jest.spyOn(hybridProfileService, 'hybridUpdateProfile').mockRejectedValue(new Error('Storage error'));
+
+      const { getByDisplayValue, getByLabelText } = render(<EditProfileScreen />);
+
+      await waitFor(() => {
+        expect(getByDisplayValue('John Doe')).toBeTruthy();
+      });
+
+      // Try to save
+      fireEvent.press(getByLabelText('Save changes button'));
+
+      await waitFor(() => {
+        // Should handle error gracefully via ErrorHandler
+        expect(ErrorHandler.handleStorageError).toHaveBeenCalledWith(
+          expect.any(Error),
+          'update profile'
+        );
+      });
     });
   });
 });

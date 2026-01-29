@@ -4,9 +4,13 @@ import { Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CreateProfileScreen from '../profile/create';
 import * as expoRouter from 'expo-router';
+import * as logger from '@/utils/logger';
+import * as ErrorHandler from '@/utils/errorHandler';
 
 // Get mock router from expo-router mock
 const mockRouter = expoRouter.useRouter();
+const mockLogger = logger.logger as jest.Mocked<typeof logger.logger>;
+const mockErrorHandler = ErrorHandler.ErrorHandler as jest.Mocked<typeof ErrorHandler.ErrorHandler>;
 
 jest.spyOn(Alert, 'alert');
 
@@ -16,6 +20,10 @@ describe('CreateProfileScreen', () => {
     jest.clearAllMocks();
     // Set up user for profile creation
     await AsyncStorage.setItem('user', JSON.stringify({ email: 'test@example.com' }));
+    mockLogger.error = jest.fn();
+    mockLogger.warn = jest.fn();
+    mockLogger.info = jest.fn();
+    mockErrorHandler.handleError = jest.fn();
   });
 
   it('should render all form fields', () => {
@@ -330,5 +338,57 @@ describe('CreateProfileScreen', () => {
       const emailInput = getByPlaceholderText('Enter your email');
       expect(emailInput.props.value).toBe('autofill@example.com');
     });
+  });
+
+  it('should handle error loading user email', async () => {
+    // Make AsyncStorage.getItem throw an error
+    const originalGetItem = AsyncStorage.getItem;
+    AsyncStorage.getItem = jest.fn().mockImplementation((key) => {
+      if (key === 'user') {
+        return Promise.reject(new Error('Storage error'));
+      }
+      return originalGetItem(key);
+    });
+
+    render(<CreateProfileScreen />);
+
+    await waitFor(() => {
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Error loading user email',
+        expect.any(Error)
+      );
+    }, { timeout: 3000 });
+
+    // Restore
+    AsyncStorage.getItem = originalGetItem;
+  });
+
+  it('should handle profile validation failure', async () => {
+    const { getByText, getByPlaceholderText } = render(<CreateProfileScreen />);
+
+    // Fill form with data that will fail schema validation
+    // We'll need to mock validateProfileSchema to return false
+    const schemaValidation = require('../../utils/schemaValidation');
+    const originalValidate = schemaValidation.validateProfileSchema;
+    schemaValidation.validateProfileSchema = jest.fn().mockReturnValue(false);
+
+    fireEvent.changeText(getByPlaceholderText('Enter your full name'), 'John Doe');
+    fireEvent.changeText(getByPlaceholderText('e.g., Software Development, Marketing, Design'), 'Software Development');
+    fireEvent.changeText(getByPlaceholderText('Enter years of expertise experience'), '5');
+    fireEvent.changeText(getByPlaceholderText('e.g., Data Science, Business Strategy, Photography'), 'Data Science');
+    fireEvent.changeText(getByPlaceholderText('Enter years of interest experience'), '2');
+    fireEvent.changeText(getByPlaceholderText('Enter your email'), 'john@example.com');
+    fireEvent.changeText(getByPlaceholderText('Enter your phone number'), '+1234567890');
+    fireEvent.press(getByText('Save Profile'));
+
+    await waitFor(() => {
+      expect(mockErrorHandler.handleError).toHaveBeenCalledWith(
+        expect.any(Error),
+        'Profile data validation failed'
+      );
+    }, { timeout: 3000 });
+
+    // Restore
+    schemaValidation.validateProfileSchema = originalValidate;
   });
 });

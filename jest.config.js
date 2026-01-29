@@ -7,6 +7,7 @@ module.exports = {
   collectCoverageFrom: [
     'app/**/*.{ts,tsx}',
     'utils/**/*.{ts,tsx}',
+    'services/**/*.{ts,tsx}',
     '!app/**/*.d.ts',
     '!app/_layout.tsx',
     '!app/(tabs)/_layout.tsx',

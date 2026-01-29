@@ -88,6 +88,35 @@ describe('Hybrid Auth Service', () => {
       expect(result).toEqual(mockUser);
     });
 
+    it('should handle non-Error thrown in Firebase signup sync', async () => {
+      const mockUser = {
+        email: 'test@example.com',
+        id: '123',
+        passwordHash: 'hash123',
+        createdAt: new Date().toISOString(),
+      };
+
+      (firebaseConfig.isFirebaseConfigured as jest.Mock).mockReturnValue(true);
+      (createUser as jest.Mock).mockResolvedValue(mockUser);
+      (firebaseAuthService.firebaseSignUp as jest.Mock).mockRejectedValue(
+        'Firebase error string'
+      );
+
+      const result = await hybridSignUp('test@example.com', 'password123');
+
+      expect(createUser).toHaveBeenCalledWith('test@example.com', 'password123');
+      expect(result).toEqual(mockUser);
+    });
+
+    it('should handle non-Error thrown in outer catch block of signup', async () => {
+      (firebaseConfig.isFirebaseConfigured as jest.Mock).mockReturnValue(false);
+      (createUser as jest.Mock).mockRejectedValue('User creation error string');
+
+      await expect(hybridSignUp('test@example.com', 'password123')).rejects.toBe(
+        'User creation error string'
+      );
+    });
+
     it('should throw error if local user creation fails', async () => {
       (firebaseConfig.isFirebaseConfigured as jest.Mock).mockReturnValue(false);
       (createUser as jest.Mock).mockRejectedValue(new Error('User already exists'));
@@ -168,6 +197,156 @@ describe('Hybrid Auth Service', () => {
       await expect(hybridSignIn('test@example.com', 'wrong')).rejects.toThrow(
         'Invalid credentials'
       );
+    });
+
+    it('should create local user when Firebase auth succeeds but local auth fails', async () => {
+      const mockUser = {
+        email: 'test@example.com',
+        id: '123',
+        passwordHash: 'hash123',
+      };
+
+      (firebaseConfig.isFirebaseConfigured as jest.Mock).mockReturnValue(true);
+      (firebaseAuthService.firebaseSignIn as jest.Mock).mockResolvedValue({
+        user: { uid: 'firebase123', email: 'test@example.com' },
+      });
+      (authenticateUser as jest.Mock).mockRejectedValue(new Error('Local auth failed'));
+      (createUser as jest.Mock).mockResolvedValue(mockUser);
+
+      const result = await hybridSignIn('test@example.com', 'password123');
+
+      expect(firebaseAuthService.firebaseSignIn).toHaveBeenCalledWith('test@example.com', 'password123');
+      expect(authenticateUser).toHaveBeenCalledWith('test@example.com', 'password123');
+      expect(createUser).toHaveBeenCalledWith('test@example.com', 'password123');
+      expect(result).toEqual(mockUser);
+    });
+
+    it('should create Firebase account when user exists locally but not in Firebase', async () => {
+      const mockUser = {
+        email: 'test@example.com',
+        id: '123',
+        passwordHash: 'hash123',
+      };
+
+      (firebaseConfig.isFirebaseConfigured as jest.Mock).mockReturnValue(true);
+      (firebaseAuthService.firebaseSignIn as jest.Mock).mockRejectedValue({
+        code: 'auth/user-not-found',
+        message: 'User not found',
+      });
+      (authenticateUser as jest.Mock).mockResolvedValue(mockUser);
+      (firebaseAuthService.firebaseSignUp as jest.Mock).mockResolvedValue({
+        user: { uid: 'firebase123', email: 'test@example.com' },
+      });
+
+      const result = await hybridSignIn('test@example.com', 'password123');
+
+      expect(firebaseAuthService.firebaseSignIn).toHaveBeenCalledWith('test@example.com', 'password123');
+      expect(authenticateUser).toHaveBeenCalledWith('test@example.com', 'password123');
+      expect(firebaseAuthService.firebaseSignUp).toHaveBeenCalledWith('test@example.com', 'password123');
+      expect(result).toEqual(mockUser);
+    });
+
+    it('should create Firebase account when user exists locally but Firebase returns invalid-credential', async () => {
+      const mockUser = {
+        email: 'test@example.com',
+        id: '123',
+        passwordHash: 'hash123',
+      };
+
+      (firebaseConfig.isFirebaseConfigured as jest.Mock).mockReturnValue(true);
+      (firebaseAuthService.firebaseSignIn as jest.Mock).mockRejectedValue({
+        code: 'auth/invalid-credential',
+        message: 'Invalid credential',
+      });
+      (authenticateUser as jest.Mock).mockResolvedValue(mockUser);
+      (firebaseAuthService.firebaseSignUp as jest.Mock).mockResolvedValue({
+        user: { uid: 'firebase123', email: 'test@example.com' },
+      });
+
+      const result = await hybridSignIn('test@example.com', 'password123');
+
+      expect(firebaseAuthService.firebaseSignIn).toHaveBeenCalledWith('test@example.com', 'password123');
+      expect(authenticateUser).toHaveBeenCalledWith('test@example.com', 'password123');
+      expect(firebaseAuthService.firebaseSignUp).toHaveBeenCalledWith('test@example.com', 'password123');
+      expect(result).toEqual(mockUser);
+    });
+
+    it('should continue with local auth when Firebase account creation fails for existing local user', async () => {
+      const mockUser = {
+        email: 'test@example.com',
+        id: '123',
+        passwordHash: 'hash123',
+      };
+
+      (firebaseConfig.isFirebaseConfigured as jest.Mock).mockReturnValue(true);
+      (firebaseAuthService.firebaseSignIn as jest.Mock).mockRejectedValue({
+        code: 'auth/user-not-found',
+        message: 'User not found',
+      });
+      (authenticateUser as jest.Mock).mockResolvedValue(mockUser);
+      (firebaseAuthService.firebaseSignUp as jest.Mock).mockRejectedValue({
+        code: 'auth/email-already-in-use',
+        message: 'Email already in use',
+      });
+
+      const result = await hybridSignIn('test@example.com', 'password123');
+
+      expect(firebaseAuthService.firebaseSignIn).toHaveBeenCalledWith('test@example.com', 'password123');
+      expect(authenticateUser).toHaveBeenCalledWith('test@example.com', 'password123');
+      expect(firebaseAuthService.firebaseSignUp).toHaveBeenCalledWith('test@example.com', 'password123');
+      expect(result).toEqual(mockUser);
+    });
+
+    it('should handle non-Error thrown when creating Firebase account for existing local user', async () => {
+      const mockUser = {
+        email: 'test@example.com',
+        id: '123',
+        passwordHash: 'hash123',
+      };
+
+      (firebaseConfig.isFirebaseConfigured as jest.Mock).mockReturnValue(true);
+      (firebaseAuthService.firebaseSignIn as jest.Mock).mockRejectedValue({
+        code: 'auth/user-not-found',
+        message: 'User not found',
+      });
+      (authenticateUser as jest.Mock).mockResolvedValue(mockUser);
+      (firebaseAuthService.firebaseSignUp as jest.Mock).mockRejectedValue('Firebase signup error string');
+
+      const result = await hybridSignIn('test@example.com', 'password123');
+
+      expect(firebaseAuthService.firebaseSignIn).toHaveBeenCalledWith('test@example.com', 'password123');
+      expect(authenticateUser).toHaveBeenCalledWith('test@example.com', 'password123');
+      expect(firebaseAuthService.firebaseSignUp).toHaveBeenCalledWith('test@example.com', 'password123');
+      expect(result).toEqual(mockUser);
+    });
+
+    it('should throw local error when both Firebase and local authentication fail', async () => {
+      (firebaseConfig.isFirebaseConfigured as jest.Mock).mockReturnValue(true);
+      (firebaseAuthService.firebaseSignIn as jest.Mock).mockRejectedValue({
+        code: 'auth/wrong-password',
+        message: 'Wrong password',
+      });
+      (authenticateUser as jest.Mock).mockRejectedValue(new Error('Invalid credentials'));
+
+      await expect(hybridSignIn('test@example.com', 'wrong')).rejects.toThrow('Invalid credentials');
+    });
+
+    it('should handle non-Error thrown when both Firebase and local authentication fail', async () => {
+      (firebaseConfig.isFirebaseConfigured as jest.Mock).mockReturnValue(true);
+      (firebaseAuthService.firebaseSignIn as jest.Mock).mockRejectedValue({
+        code: 'auth/wrong-password',
+        message: 'Wrong password',
+      });
+      (authenticateUser as jest.Mock).mockRejectedValue('Invalid credentials string');
+
+      await expect(hybridSignIn('test@example.com', 'wrong')).rejects.toBe('Invalid credentials string');
+    });
+
+    it('should handle non-Error thrown in outer catch block of signin', async () => {
+      (firebaseConfig.isFirebaseConfigured as jest.Mock).mockReturnValue(false);
+      (authenticateUser as jest.Mock).mockRejectedValue('Authentication error string');
+
+      await expect(hybridSignIn('test@example.com', 'password123')).rejects.toBe('Authentication error string');
     });
   });
 

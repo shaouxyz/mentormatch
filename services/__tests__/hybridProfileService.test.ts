@@ -101,6 +101,26 @@ describe('Hybrid Profile Service', () => {
       expect(firebaseProfileService.createFirebaseProfile).toHaveBeenCalled();
     });
 
+    it('should handle non-Error thrown in Firebase sync', async () => {
+      (firebaseConfig.isFirebaseConfigured as jest.Mock).mockReturnValue(true);
+      (firebaseProfileService.createFirebaseProfile as jest.Mock).mockRejectedValue(
+        'Firebase error string'
+      );
+
+      await hybridCreateProfile(mockProfile);
+
+      const savedProfile = await AsyncStorage.getItem('profile');
+      expect(savedProfile).toBeTruthy();
+      expect(JSON.parse(savedProfile!)).toEqual(mockProfile);
+    });
+
+    it('should handle non-Error thrown in outer catch block', async () => {
+      (firebaseConfig.isFirebaseConfigured as jest.Mock).mockReturnValue(false);
+      jest.spyOn(AsyncStorage, 'setItem').mockRejectedValueOnce('Storage error string');
+
+      await expect(hybridCreateProfile(mockProfile)).rejects.toBe('Storage error string');
+    });
+
     it('should remove existing profile with same email before adding', async () => {
       (firebaseConfig.isFirebaseConfigured as jest.Mock).mockReturnValue(false);
 
@@ -113,6 +133,34 @@ describe('Hybrid Profile Service', () => {
       const profiles = JSON.parse(allProfiles!);
       expect(profiles).toHaveLength(1);
       expect(profiles[0].name).toBe('John Doe');
+    });
+
+    it('should skip Firebase sync when user is not authenticated', async () => {
+      (firebaseConfig.isFirebaseConfigured as jest.Mock).mockReturnValue(true);
+      (firebaseAuthService.getCurrentFirebaseUser as jest.Mock).mockReturnValue(null);
+
+      await hybridCreateProfile(mockProfile);
+
+      expect(firebaseProfileService.createFirebaseProfile).not.toHaveBeenCalled();
+    });
+
+    it('should skip Firebase sync when user email does not match profile email', async () => {
+      (firebaseConfig.isFirebaseConfigured as jest.Mock).mockReturnValue(true);
+      (firebaseAuthService.getCurrentFirebaseUser as jest.Mock).mockReturnValue({
+        uid: 'test-uid',
+        email: 'different@example.com',
+      });
+
+      await hybridCreateProfile(mockProfile);
+
+      expect(firebaseProfileService.createFirebaseProfile).not.toHaveBeenCalled();
+    });
+
+    it('should throw error if local save fails', async () => {
+      (firebaseConfig.isFirebaseConfigured as jest.Mock).mockReturnValue(false);
+      jest.spyOn(AsyncStorage, 'setItem').mockRejectedValueOnce(new Error('Storage error'));
+
+      await expect(hybridCreateProfile(mockProfile)).rejects.toThrow('Storage error');
     });
   });
 
@@ -176,12 +224,70 @@ describe('Hybrid Profile Service', () => {
       expect(firebaseProfileService.updateFirebaseProfile).toHaveBeenCalled();
     });
 
+    it('should handle non-Error thrown in Firebase update sync', async () => {
+      (firebaseConfig.isFirebaseConfigured as jest.Mock).mockReturnValue(true);
+      (firebaseProfileService.updateFirebaseProfile as jest.Mock).mockRejectedValue(
+        'Firebase error string'
+      );
+
+      const updates = { name: 'Jane Doe' };
+      await hybridUpdateProfile(mockProfile.email, updates);
+
+      const savedProfile = await AsyncStorage.getItem('profile');
+      const profile = JSON.parse(savedProfile!);
+      expect(profile.name).toBe('Jane Doe');
+    });
+
+    it('should handle non-Error thrown in outer catch block of update', async () => {
+      jest.spyOn(AsyncStorage, 'getItem').mockRejectedValueOnce('Storage error string');
+
+      await expect(
+        hybridUpdateProfile(mockProfile.email, { name: 'Test' })
+      ).rejects.toBe('Storage error string');
+    });
+
     it('should throw error if profile not found', async () => {
       await AsyncStorage.clear();
 
       await expect(
         hybridUpdateProfile('notfound@example.com', { name: 'Test' })
       ).rejects.toThrow('Profile not found');
+    });
+
+    it('should skip Firebase sync when user is not authenticated', async () => {
+      (firebaseConfig.isFirebaseConfigured as jest.Mock).mockReturnValue(true);
+      (firebaseAuthService.getCurrentFirebaseUser as jest.Mock).mockReturnValue(null);
+
+      const updates = { name: 'Jane Doe' };
+      await hybridUpdateProfile(mockProfile.email, updates);
+
+      expect(firebaseProfileService.updateFirebaseProfile).not.toHaveBeenCalled();
+    });
+
+    it('should skip Firebase sync when user email does not match profile email', async () => {
+      (firebaseConfig.isFirebaseConfigured as jest.Mock).mockReturnValue(true);
+      (firebaseAuthService.getCurrentFirebaseUser as jest.Mock).mockReturnValue({
+        uid: 'test-uid',
+        email: 'different@example.com',
+      });
+
+      const updates = { name: 'Jane Doe' };
+      await hybridUpdateProfile(mockProfile.email, updates);
+
+      expect(firebaseProfileService.updateFirebaseProfile).not.toHaveBeenCalled();
+    });
+
+    it('should update profile even if not in allProfiles', async () => {
+      (firebaseConfig.isFirebaseConfigured as jest.Mock).mockReturnValue(false);
+      await AsyncStorage.setItem('profile', JSON.stringify(mockProfile));
+      await AsyncStorage.removeItem('allProfiles');
+
+      const updates = { name: 'Jane Doe' };
+      await hybridUpdateProfile(mockProfile.email, updates);
+
+      const savedProfile = await AsyncStorage.getItem('profile');
+      const profile = JSON.parse(savedProfile!);
+      expect(profile.name).toBe('Jane Doe');
     });
   });
 
@@ -213,6 +319,26 @@ describe('Hybrid Profile Service', () => {
       expect(result).toEqual(mockProfile);
     });
 
+    it('should handle non-Error thrown in Firebase getProfile', async () => {
+      (firebaseConfig.isFirebaseConfigured as jest.Mock).mockReturnValue(true);
+      (firebaseProfileService.getFirebaseProfile as jest.Mock).mockRejectedValue(
+        'Firebase error string'
+      );
+
+      await AsyncStorage.setItem('profile', JSON.stringify(mockProfile));
+
+      const result = await hybridGetProfile(mockProfile.email);
+
+      expect(result).toEqual(mockProfile);
+    });
+
+    it('should handle non-Error thrown in outer catch block of getProfile', async () => {
+      (firebaseConfig.isFirebaseConfigured as jest.Mock).mockReturnValue(false);
+      jest.spyOn(AsyncStorage, 'getItem').mockRejectedValueOnce('Storage error string');
+
+      await expect(hybridGetProfile(mockProfile.email)).rejects.toBe('Storage error string');
+    });
+
     it('should get profile from local storage when Firebase not configured', async () => {
       (firebaseConfig.isFirebaseConfigured as jest.Mock).mockReturnValue(false);
       await AsyncStorage.setItem('profile', JSON.stringify(mockProfile));
@@ -238,6 +364,23 @@ describe('Hybrid Profile Service', () => {
       const result = await hybridGetProfile('notfound@example.com');
 
       expect(result).toBeNull();
+    });
+
+    it('should return null if profile email does not match requested email', async () => {
+      (firebaseConfig.isFirebaseConfigured as jest.Mock).mockReturnValue(false);
+      const differentProfile = { ...mockProfile, email: 'different@example.com' };
+      await AsyncStorage.setItem('profile', JSON.stringify(differentProfile));
+
+      const result = await hybridGetProfile(mockProfile.email);
+
+      expect(result).toBeNull();
+    });
+
+    it('should throw error if local storage read fails', async () => {
+      (firebaseConfig.isFirebaseConfigured as jest.Mock).mockReturnValue(false);
+      jest.spyOn(AsyncStorage, 'getItem').mockRejectedValueOnce(new Error('Storage error'));
+
+      await expect(hybridGetProfile(mockProfile.email)).rejects.toThrow('Storage error');
     });
   });
 
@@ -302,6 +445,27 @@ describe('Hybrid Profile Service', () => {
 
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual(mockProfile);
+    });
+
+    it('should handle non-Error thrown in Firebase getAllProfiles', async () => {
+      (firebaseConfig.isFirebaseConfigured as jest.Mock).mockReturnValue(true);
+      (firebaseProfileService.getAllFirebaseProfiles as jest.Mock).mockRejectedValue(
+        'Firebase error string'
+      );
+
+      await AsyncStorage.setItem('allProfiles', JSON.stringify([mockProfile]));
+
+      const result = await hybridGetAllProfiles();
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual(mockProfile);
+    });
+
+    it('should handle non-Error thrown in outer catch block of getAllProfiles', async () => {
+      (firebaseConfig.isFirebaseConfigured as jest.Mock).mockReturnValue(false);
+      jest.spyOn(AsyncStorage, 'getItem').mockRejectedValueOnce('Storage error string');
+
+      await expect(hybridGetAllProfiles()).rejects.toBe('Storage error string');
     });
 
     it('should return empty array if no profiles exist', async () => {

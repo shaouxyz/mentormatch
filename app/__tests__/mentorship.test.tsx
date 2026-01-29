@@ -3,9 +3,11 @@ import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import MentorshipScreen from '../(tabs)/mentorship';
 import * as expoRouter from 'expo-router';
+import * as logger from '@/utils/logger';
 
 // Get mock router (from global mock in jest.setup.js)
 const mockRouter = expoRouter.useRouter();
+const mockLogger = logger.logger as jest.Mocked<typeof logger.logger>;
 
 describe('MentorshipScreen', () => {
   const mockUser = {
@@ -60,6 +62,9 @@ describe('MentorshipScreen', () => {
       phoneNumber: '+1234567890'
     }));
     await AsyncStorage.setItem('allProfiles', JSON.stringify([]));
+    mockLogger.error = jest.fn();
+    mockLogger.warn = jest.fn();
+    mockLogger.info = jest.fn();
   });
 
   it('should render mentors and mentees sections', async () => {
@@ -317,11 +322,25 @@ describe('MentorshipScreen', () => {
 
   it('should handle user not logged in', async () => {
     await AsyncStorage.removeItem('user');
+    await AsyncStorage.removeItem('mentorshipRequests');
 
     const { getByText } = render(<MentorshipScreen />);
 
     await waitForScreenReady(getByText);
 
+    expect(getByText('No mentees yet')).toBeTruthy();
+  });
+
+  it('should handle missing mentorshipRequests when user not logged in', async () => {
+    await AsyncStorage.removeItem('user');
+    await AsyncStorage.removeItem('mentorshipRequests');
+
+    const { getByText } = render(<MentorshipScreen />);
+
+    await waitForScreenReady(getByText);
+
+    // Should show empty states
+    expect(getByText('No mentors yet')).toBeTruthy();
     expect(getByText('No mentees yet')).toBeTruthy();
   });
 
@@ -423,6 +442,253 @@ describe('MentorshipScreen', () => {
     await waitFor(() => {
       expect(getByText('Mentee 1')).toBeTruthy();
       expect(getByText('Mentee 2')).toBeTruthy();
+    }, { timeout: 3000 });
+  });
+
+  it('should navigate to chat when message button is pressed for mentor', async () => {
+    const acceptedRequest = createRequest({
+      requesterEmail: 'user@example.com',
+      requesterName: 'Current User',
+      mentorEmail: 'mentor@example.com',
+      mentorName: 'Mentor User',
+      status: 'accepted',
+      respondedAt: new Date().toISOString(),
+    });
+
+    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([acceptedRequest]));
+
+    const { getByText } = render(<MentorshipScreen />);
+
+    await waitForScreenReady(getByText);
+
+    await waitFor(() => {
+      expect(getByText('Mentor User')).toBeTruthy();
+    }, { timeout: 3000 });
+
+    const messageButton = getByText('Message');
+    fireEvent.press(messageButton);
+
+    await waitFor(() => {
+      expect(mockRouter.push).toHaveBeenCalledWith({
+        pathname: '/messages/chat',
+        params: expect.objectContaining({
+          participantEmail: 'mentor@example.com',
+          participantName: 'Mentor User',
+        }),
+      });
+    });
+  });
+
+  it('should navigate to chat when message button is pressed for mentee', async () => {
+    const acceptedRequest = createRequest({
+      requesterEmail: 'mentee@example.com',
+      requesterName: 'Mentee User',
+      mentorEmail: 'user@example.com',
+      mentorName: 'Current User',
+      status: 'accepted',
+      respondedAt: new Date().toISOString(),
+    });
+
+    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([acceptedRequest]));
+
+    const { getByText } = render(<MentorshipScreen />);
+
+    await waitForScreenReady(getByText);
+
+    await waitFor(() => {
+      expect(getByText('Mentee User')).toBeTruthy();
+    }, { timeout: 3000 });
+
+    const messageButton = getByText('Message');
+    fireEvent.press(messageButton);
+
+    await waitFor(() => {
+      expect(mockRouter.push).toHaveBeenCalledWith({
+        pathname: '/messages/chat',
+        params: expect.objectContaining({
+          participantEmail: 'mentee@example.com',
+          participantName: 'Mentee User',
+        }),
+      });
+    });
+  });
+
+  it('should navigate to schedule meeting when schedule button is pressed for mentor', async () => {
+    const acceptedRequest = createRequest({
+      requesterEmail: 'user@example.com',
+      requesterName: 'Current User',
+      mentorEmail: 'mentor@example.com',
+      mentorName: 'Mentor User',
+      status: 'accepted',
+      respondedAt: new Date().toISOString(),
+    });
+
+    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([acceptedRequest]));
+
+    const { getByText } = render(<MentorshipScreen />);
+
+    await waitForScreenReady(getByText);
+
+    await waitFor(() => {
+      expect(getByText('Mentor User')).toBeTruthy();
+    }, { timeout: 3000 });
+
+    const scheduleButton = getByText('Schedule');
+    fireEvent.press(scheduleButton);
+
+    await waitFor(() => {
+      expect(mockRouter.push).toHaveBeenCalledWith({
+        pathname: '/meeting/schedule',
+        params: {
+          participantEmail: 'mentor@example.com',
+          participantName: 'Mentor User',
+        },
+      });
+    });
+  });
+
+  it('should navigate to schedule meeting when schedule button is pressed for mentee', async () => {
+    const acceptedRequest = createRequest({
+      requesterEmail: 'mentee@example.com',
+      requesterName: 'Mentee User',
+      mentorEmail: 'user@example.com',
+      mentorName: 'Current User',
+      status: 'accepted',
+      respondedAt: new Date().toISOString(),
+    });
+
+    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([acceptedRequest]));
+
+    const { getByText } = render(<MentorshipScreen />);
+
+    await waitForScreenReady(getByText);
+
+    await waitFor(() => {
+      expect(getByText('Mentee User')).toBeTruthy();
+    }, { timeout: 3000 });
+
+    const scheduleButton = getByText('Schedule');
+    fireEvent.press(scheduleButton);
+
+    await waitFor(() => {
+      expect(mockRouter.push).toHaveBeenCalledWith({
+        pathname: '/meeting/schedule',
+        params: {
+          participantEmail: 'mentee@example.com',
+          participantName: 'Mentee User',
+        },
+      });
+    });
+  });
+
+  it('should load mentor profile from test profiles when not in allProfiles', async () => {
+    const acceptedRequest = createRequest({
+      requesterEmail: 'user@example.com',
+      requesterName: 'Current User',
+      mentorEmail: 'mentor@example.com',
+      mentorName: 'Mentor User',
+      status: 'accepted',
+      respondedAt: new Date().toISOString(),
+    });
+
+    const testMentorProfile = {
+      name: 'Mentor User',
+      email: 'mentor@example.com',
+      expertise: 'Software Development',
+      interest: 'Data Science',
+      expertiseYears: 5,
+      interestYears: 2,
+      phoneNumber: '+1234567890',
+    };
+
+    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([acceptedRequest]));
+    await AsyncStorage.setItem('allProfiles', JSON.stringify([])); // No profiles in allProfiles
+    await AsyncStorage.setItem('testProfile_mentor@example.com', JSON.stringify(testMentorProfile));
+
+    const { getByText } = render(<MentorshipScreen />);
+
+    await waitForScreenReady(getByText);
+
+    await waitFor(() => {
+      expect(getByText('Mentor User')).toBeTruthy();
+    }, { timeout: 3000 });
+  });
+
+  it('should load mentee profile from test profiles when not in allProfiles', async () => {
+    const acceptedRequest = createRequest({
+      requesterEmail: 'mentee@example.com',
+      requesterName: 'Mentee User',
+      mentorEmail: 'user@example.com',
+      mentorName: 'Current User',
+      status: 'accepted',
+      respondedAt: new Date().toISOString(),
+    });
+
+    const testMenteeProfile = {
+      name: 'Mentee User',
+      email: 'mentee@example.com',
+      expertise: 'Data Science',
+      interest: 'Software Development',
+      expertiseYears: 2,
+      interestYears: 1,
+      phoneNumber: '+1234567891',
+    };
+
+    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([acceptedRequest]));
+    await AsyncStorage.setItem('allProfiles', JSON.stringify([])); // No profiles in allProfiles
+    await AsyncStorage.setItem('testProfile_mentee@example.com', JSON.stringify(testMenteeProfile));
+
+    const { getByText } = render(<MentorshipScreen />);
+
+    await waitForScreenReady(getByText);
+
+    await waitFor(() => {
+      expect(getByText('Mentee User')).toBeTruthy();
+    }, { timeout: 3000 });
+  });
+
+  it('should handle error in loadConnections', async () => {
+    // Make AsyncStorage.getItem throw an error
+    const originalGetItem = AsyncStorage.getItem;
+    AsyncStorage.getItem = jest.fn().mockRejectedValueOnce(new Error('Storage error'));
+
+    render(<MentorshipScreen />);
+
+    await waitFor(() => {
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Error loading connections',
+        expect.any(Error)
+      );
+    }, { timeout: 3000 });
+
+    // Restore
+    AsyncStorage.getItem = originalGetItem;
+  });
+
+  it('should reload connections when screen is focused', async () => {
+    const acceptedRequest = createRequest({
+      requesterEmail: 'user@example.com',
+      mentorEmail: 'mentor@example.com',
+      status: 'accepted',
+      respondedAt: new Date().toISOString(),
+    });
+
+    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([acceptedRequest]));
+
+    const { getByText } = render(<MentorshipScreen />);
+
+    await waitForScreenReady(getByText);
+
+    // Mock useFocusEffect to call the callback
+    const mockUseFocusEffect = require('expo-router').useFocusEffect;
+    if (mockUseFocusEffect && typeof mockUseFocusEffect.mockImplementation === 'function') {
+      mockUseFocusEffect.mockImplementation((callback: () => void) => {
+        callback();
+      });
+    }
+
+    await waitFor(() => {
+      expect(getByText('Mentor User')).toBeTruthy();
     }, { timeout: 3000 });
   });
 });

@@ -5,6 +5,8 @@ import RespondRequestScreen from '../request/respond';
 import * as expoRouter from 'expo-router';
 import * as invitationCodeService from '@/services/invitationCodeService';
 import * as inboxService from '@/services/inboxService';
+import * as logger from '@/utils/logger';
+import * as ErrorHandler from '@/utils/errorHandler';
 
 // Mock useLocalSearchParams
 const mockParams = { request: '' };
@@ -14,6 +16,8 @@ jest.spyOn(expoRouter, 'useLocalSearchParams').mockImplementation(() => mockPara
 
 // Get mock router (from global mock in jest.setup.js)
 const mockRouter = expoRouter.useRouter();
+const mockLogger = logger.logger as jest.Mocked<typeof logger.logger>;
+const mockErrorHandler = ErrorHandler.ErrorHandler as jest.Mocked<typeof ErrorHandler.ErrorHandler>;
 
 // Mock invitation code and inbox services
 jest.mock('@/services/invitationCodeService', () => ({
@@ -57,6 +61,11 @@ describe('RespondRequestScreen', () => {
       createdAt: '2026-01-20T10:00:00Z',
     });
     (inboxService.addInvitationCodeToInbox as jest.Mock).mockResolvedValue(undefined);
+    mockLogger.error = jest.fn();
+    mockLogger.warn = jest.fn();
+    mockLogger.info = jest.fn();
+    mockErrorHandler.handleError = jest.fn();
+    mockErrorHandler.handleStorageError = jest.fn();
   });
 
   it('should render loading state when request is not loaded', () => {
@@ -411,12 +420,82 @@ describe('RespondRequestScreen', () => {
   });
 
   it('should navigate back when back button is pressed', async () => {
+    const { getByLabelText, getByText } = render(<RespondRequestScreen />);
+
+    await waitForScreenReady(getByText);
+
+    await waitFor(() => {
+      const backButton = getByLabelText('Back button');
+      fireEvent.press(backButton);
+      expect(mockRouter.back).toHaveBeenCalled();
+    });
+  });
+
+  it('should handle invalid request data', async () => {
+    mockParams.request = 'invalid-json';
+
     render(<RespondRequestScreen />);
 
     await waitFor(() => {
-      // Find back button (Ionicons arrow-back)
-      // Since we can't easily test Ionicons, we'll test navigation via router
-      expect(mockRouter.back).toBeDefined();
+      expect(mockErrorHandler.handleError).toHaveBeenCalledWith(
+        expect.any(Error),
+        'Failed to load request.'
+      );
+    }, { timeout: 3000 });
+  });
+
+  it('should handle error parsing request', async () => {
+    // Make safeParseJSON throw an error by providing invalid JSON
+    mockParams.request = 'invalid-json-that-causes-error';
+
+    render(<RespondRequestScreen />);
+
+    await waitFor(() => {
+      // The error might be caught and logged
+      expect(mockLogger.error).toHaveBeenCalled();
+    }, { timeout: 3000 });
+  });
+
+  it('should not update request when params unchanged', async () => {
+    const { rerender, getByText } = render(<RespondRequestScreen />);
+
+    await waitForScreenReady(getByText);
+
+    // Re-render with same params
+    rerender(<RespondRequestScreen />);
+
+    // Should not cause issues
+    await waitFor(() => {
+      expect(getByText('Requester User')).toBeTruthy();
     });
+  });
+
+  it('should handle storage error in handleRespond', async () => {
+    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([mockRequest]));
+    
+    // Make AsyncStorage.setItem throw an error
+    const originalSetItem = AsyncStorage.setItem;
+    AsyncStorage.setItem = jest.fn().mockImplementation((key, value) => {
+      if (key === 'mentorshipRequests') {
+        return Promise.reject(new Error('Storage error'));
+      }
+      return originalSetItem(key, value);
+    });
+
+    const { getByText } = render(<RespondRequestScreen />);
+
+    await waitForScreenReady(getByText);
+
+    fireEvent.press(getByText('Accept'));
+
+    await waitFor(() => {
+      expect(mockErrorHandler.handleStorageError).toHaveBeenCalledWith(
+        expect.any(Error),
+        'respond to request'
+      );
+    }, { timeout: 3000 });
+
+    // Restore
+    AsyncStorage.setItem = originalSetItem;
   });
 });

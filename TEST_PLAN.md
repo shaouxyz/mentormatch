@@ -14,6 +14,8 @@
 - ✅ Edge cases and error scenarios
 - ✅ Data persistence
 - ✅ Navigation flows
+- ✅ Non-Error exception handling (strings, objects, etc.)
+- ✅ 100% code coverage target (statements, branches, functions, lines)
 
 ---
 
