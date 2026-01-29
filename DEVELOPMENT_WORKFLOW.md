@@ -28,29 +28,46 @@ Tests:       X passed, X total
 
 Whenever you make any code change (fix a bug, add a feature, refactor, etc.), follow this sequence:
 
-### 1. Add Tests
-- Write tests for the change you made
-- If fixing a bug, add a test that reproduces the bug and verifies the fix
-- If adding a feature, add tests that verify the feature works correctly
+### 0. Update the Test Plan (MANDATORY)
+- **Before writing tests**, update the test plan to reflect the change:
+  - Add/modify relevant cases in `TEST_PLAN.md`
+  - If the change touches a full user flow, also update `TEST_PLAN_E2E_USER_JOURNEY.md`
+- For a **bug fix**, add a test plan case that describes:
+  - Repro steps (pre-fix)
+  - Expected behavior (post-fix)
+  - Any regression scope (areas likely impacted)
+- For a **feature**, add cases for:
+  - Happy path
+  - Validation & error states
+  - Permissions (Firebase/Calendar/Notifications) where applicable
+  - Offline/local fallback behavior (if relevant)
+
+### 1. Write Tests for the Change (MANDATORY)
+- Write tests that cover the exact behavior you changed
+- If fixing a bug, add a test that **fails before** the fix and **passes after** the fix
+- If adding/modifying a feature, add tests that verify:
+  - User-visible behavior
+  - Edge cases
+  - Error handling (including non-`Error` throws/rejections)
 - **Never skip tests** - If a test is flaky, fix it instead of skipping
 
-### 2. Run Tests for the Change
+### 2. Run Focused Tests First (MANDATORY)
 ```bash
 npm test -- <path-to-test-file>
 ```
 
-### 3. Fix Test Failures
+### 3. Fix Failures Immediately (MANDATORY)
 - **MANDATORY**: If tests fail, you MUST fix them before proceeding
 - Update tests if needed
 - Re-run the tests until they pass
 - **DO NOT skip failing tests**
 
-### 4. Run All Tests
+### 4. Run Full Regression (MANDATORY)
 ```bash
 npm test
 ```
 
-### 5. Fix Any Failures
+### 5. Fix Any Regression Failures (MANDATORY)
 - **MANDATORY**: If ANY tests fail, you MUST fix them
 - Re-run all tests
 - Repeat until **ALL tests pass with 0 failures and 0 skipped**

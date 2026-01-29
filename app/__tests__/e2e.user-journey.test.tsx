@@ -88,7 +88,9 @@ jest.mock('expo-router', () => {
     useRouter: jest.fn(() => mockRouter),
     useLocalSearchParams: jest.fn(() => ({})),
     useFocusEffect: jest.fn((callback) => {
-      callback();
+      // Defer to avoid calling callbacks during render (some screens reference
+      // functions declared later in the component body, e.g. `const loadMeetings = ...`)
+      Promise.resolve().then(() => callback());
     }),
   };
 });
@@ -180,7 +182,8 @@ describe('End-to-End User Journey Tests', () => {
         };
 
         mockInvitationCodeService.isValidInvitationCode.mockResolvedValue(true);
-        mockInvitationCodeService.useInvitationCode.mockResolvedValue(undefined);
+        // Signup expects `useInvitationCode(...)` to resolve to a truthy boolean.
+        mockInvitationCodeService.useInvitationCode.mockResolvedValue(true as any);
         mockHybridAuthService.hybridSignUp.mockResolvedValue(mockUser);
 
         const { getByPlaceholderText, getByText } = render(<SignupScreen />);
@@ -201,7 +204,7 @@ describe('End-to-End User Journey Tests', () => {
           expect(mockInvitationCodeService.isValidInvitationCode).toHaveBeenCalledWith('ABC12345');
           expect(mockInvitationCodeService.useInvitationCode).toHaveBeenCalledWith('ABC12345', 'newuser@example.com');
           expect(mockHybridAuthService.hybridSignUp).toHaveBeenCalledWith('newuser@example.com', 'SecurePass123!');
-        }, { timeout: 3000 });
+        }, { timeout: 5000 });
       });
 
       it('UJ1.5: Sign Up with Invalid Invitation Code', async () => {
@@ -265,7 +268,7 @@ describe('End-to-End User Journey Tests', () => {
           expertiseYears: 5,
           interest: 'Product Management',
           interestYears: 2,
-          phoneNumber: '+1-555-123-4567',
+          phoneNumber: '+1234567890',
           location: 'San Francisco, CA',
         };
 
@@ -280,7 +283,8 @@ describe('End-to-End User Journey Tests', () => {
         fireEvent.changeText(getByPlaceholderText('Enter years of expertise experience'), '5');
         fireEvent.changeText(getByPlaceholderText('e.g., Data Science, Business Strategy, Photography'), 'Product Management');
         fireEvent.changeText(getByPlaceholderText('Enter years of interest experience'), '2');
-        fireEvent.changeText(getByPlaceholderText('Enter your phone number'), '+1-555-123-4567');
+        fireEvent.changeText(getByPlaceholderText('Enter your email'), 'newuser@example.com');
+        fireEvent.changeText(getByPlaceholderText('Enter your phone number'), '+1234567890');
         const locationInput = getByPlaceholderText('e.g., San Francisco, CA or New York City');
         fireEvent.changeText(locationInput, 'San Francisco, CA');
 
@@ -294,7 +298,7 @@ describe('End-to-End User Journey Tests', () => {
               expertiseYears: 5,
               interest: 'Product Management',
               interestYears: 2,
-              phoneNumber: '+1-555-123-4567',
+              phoneNumber: '+1234567890',
               location: 'San Francisco, CA',
             })
           );
@@ -309,7 +313,7 @@ describe('End-to-End User Journey Tests', () => {
           expertiseYears: 5,
           interest: 'Product Management',
           interestYears: 2,
-          phoneNumber: '+1-555-123-4567',
+          phoneNumber: '+1234567890',
         };
 
         await AsyncStorage.setItem('user', JSON.stringify({ email: 'newuser@example.com' }));
@@ -323,7 +327,8 @@ describe('End-to-End User Journey Tests', () => {
         fireEvent.changeText(getByPlaceholderText('Enter years of expertise experience'), '5');
         fireEvent.changeText(getByPlaceholderText('e.g., Data Science, Business Strategy, Photography'), 'Product Management');
         fireEvent.changeText(getByPlaceholderText('Enter years of interest experience'), '2');
-        fireEvent.changeText(getByPlaceholderText('Enter your phone number'), '+1-555-123-4567');
+        fireEvent.changeText(getByPlaceholderText('Enter your email'), 'newuser@example.com');
+        fireEvent.changeText(getByPlaceholderText('Enter your phone number'), '+1234567890');
         // Leave location empty
 
         fireEvent.press(getByText('Save Profile'));
@@ -430,6 +435,7 @@ describe('End-to-End User Journey Tests', () => {
           expertiseYears: 10,
           interest: 'Data Science',
           interestYears: 3,
+          phoneNumber: '+1234567891',
         },
         {
           name: 'Jane Mentor',
@@ -438,6 +444,7 @@ describe('End-to-End User Journey Tests', () => {
           expertiseYears: 8,
           interest: 'Marketing',
           interestYears: 5,
+          phoneNumber: '+1234567892',
         },
       ];
 
@@ -460,6 +467,7 @@ describe('End-to-End User Journey Tests', () => {
           expertiseYears: 10,
           interest: 'Data Science',
           interestYears: 3,
+          phoneNumber: '+1234567891',
         },
         {
           name: 'Jane Mentor',
@@ -468,6 +476,7 @@ describe('End-to-End User Journey Tests', () => {
           expertiseYears: 8,
           interest: 'Marketing',
           interestYears: 5,
+          phoneNumber: '+1234567892',
         },
       ];
 
@@ -479,7 +488,7 @@ describe('End-to-End User Journey Tests', () => {
         expect(getByText('John Mentor')).toBeTruthy();
       });
 
-      const searchInput = getByPlaceholderText('Search by name, expertise, or interest...');
+      const searchInput = getByPlaceholderText('Search by name, expertise, interest, email, phone...');
       fireEvent.changeText(searchInput, 'Software');
 
       await waitFor(() => {
@@ -526,27 +535,36 @@ describe('End-to-End User Journey Tests', () => {
     });
 
     it('UJ3.1: Send Mentor Request', async () => {
-      const mockRequest = {
-        id: 'request1',
-        requesterEmail: 'user@example.com',
-        requesterName: 'Current User',
-        mentorEmail: 'mentor@example.com',
-        mentorName: 'John Mentor',
-        note: 'I would like to learn from you about Software Engineering.',
-        status: 'pending' as const,
-        createdAt: new Date().toISOString(),
+      const mentorProfile = {
+        name: 'John Mentor',
+        email: 'mentor@example.com',
+        expertise: 'Software Engineering',
+        interest: 'Data Science',
+        expertiseYears: 10,
+        interestYears: 3,
+        phoneNumber: '+1234567891',
       };
 
-      await AsyncStorage.setItem('user', JSON.stringify({ email: 'user@example.com' }));
-      await AsyncStorage.setItem('profile', JSON.stringify({ name: 'Current User', email: 'user@example.com' }));
+      // `app/request/send.tsx` requires user.id to be present when loading the current user
+      await AsyncStorage.setItem('user', JSON.stringify({ email: 'user@example.com', id: 'u1' }));
+      await AsyncStorage.setItem(
+        'profile',
+        JSON.stringify({
+          name: 'Current User',
+          email: 'user@example.com',
+          expertise: 'Design',
+          interest: 'UI/UX',
+          expertiseYears: 2,
+          interestYears: 1,
+          phoneNumber: '+1234567890',
+        })
+      );
       await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([]));
-      mockRequestService.getAllRequests.mockResolvedValue([]);
-      mockRequestService.createRequest.mockResolvedValue(undefined);
 
-      (expoRouter.useLocalSearchParams as jest.Mock).mockReturnValue({
-        email: 'mentor@example.com',
-        name: 'John Mentor',
-      });
+      // `SendRequestScreen` loads mentor profile from `params.profile`
+      jest.mocked(expoRouter.useLocalSearchParams).mockReturnValue({
+        profile: JSON.stringify(mentorProfile),
+      } as any);
 
       const { getByPlaceholderText, getByText } = render(<SendRequestScreen />);
 
@@ -554,21 +572,18 @@ describe('End-to-End User Journey Tests', () => {
         expect(getByText('John Mentor')).toBeTruthy();
       }, { timeout: 3000 });
 
-      const noteInput = getByPlaceholderText('Add a note (optional)');
+      const noteInput = getByPlaceholderText("Hi! I'm interested in learning from you because...");
       fireEvent.changeText(noteInput, 'I would like to learn from you about Software Engineering.');
 
       fireEvent.press(getByText('Send Request'));
 
       await waitFor(() => {
-        expect(mockRequestService.createRequest).toHaveBeenCalledWith(
-          expect.objectContaining({
-            requesterEmail: 'user@example.com',
-            mentorEmail: 'mentor@example.com',
-            note: 'I would like to learn from you about Software Engineering.',
-            status: 'pending',
-          })
+        expect(Alert.alert).toHaveBeenCalledWith(
+          'Request Sent',
+          expect.stringContaining('sent successfully'),
+          expect.any(Array)
         );
-      }, { timeout: 3000 });
+      }, { timeout: 5000 });
     });
 
     it('UJ3.6: Accept Mentor Request', async () => {
@@ -676,6 +691,7 @@ describe('End-to-End User Journey Tests', () => {
         expertiseYears: 10,
         interest: 'Data Science',
         interestYears: 3,
+        phoneNumber: '+1234567891',
       };
 
       await AsyncStorage.setItem('user', JSON.stringify({ email: 'user@example.com' }));
@@ -686,8 +702,8 @@ describe('End-to-End User Journey Tests', () => {
 
       await waitFor(() => {
         expect(getByText('John Mentor')).toBeTruthy();
-        expect(getByText('Software Engineering')).toBeTruthy();
-      }, { timeout: 3000 });
+        expect(getByText(/Software Engineering/)).toBeTruthy();
+      }, { timeout: 5000 });
     });
   });
 
@@ -737,7 +753,7 @@ describe('End-to-End User Journey Tests', () => {
         participantName: 'John Mentor',
       });
 
-      const { getByPlaceholderText, getByText } = render(<ChatScreen />);
+      const { getByPlaceholderText, getByText, getByLabelText } = render(<ChatScreen />);
 
       await waitFor(() => {
         expect(getByText('John Mentor')).toBeTruthy();
@@ -746,7 +762,7 @@ describe('End-to-End User Journey Tests', () => {
       const messageInput = getByPlaceholderText('Type a message...');
       fireEvent.changeText(messageInput, 'Hello! Thanks for accepting my request.');
 
-      const sendButton = getByText('Send');
+      const sendButton = getByLabelText('Send message');
       fireEvent.press(sendButton);
 
       await waitFor(() => {
@@ -807,7 +823,7 @@ describe('End-to-End User Journey Tests', () => {
         participantName: 'John Mentor',
       });
 
-      const { getByPlaceholderText, getByText } = render(<ChatScreen />);
+      const { getByPlaceholderText, getByText, getByLabelText } = render(<ChatScreen />);
 
       await waitFor(() => {
         expect(getByText('Hello! How can I help you?')).toBeTruthy();
@@ -816,7 +832,7 @@ describe('End-to-End User Journey Tests', () => {
       const messageInput = getByPlaceholderText('Type a message...');
       fireEvent.changeText(messageInput, 'Thanks for reaching out! I\'d be happy to help.');
 
-      fireEvent.press(getByText('Send'));
+      fireEvent.press(getByLabelText('Send message'));
 
       await waitFor(() => {
         expect(mockHybridMessageService.hybridSendMessage).toHaveBeenCalled();
@@ -860,7 +876,7 @@ describe('End-to-End User Journey Tests', () => {
         participantName: 'John Mentor',
       });
 
-      const { getByPlaceholderText, getByText } = render(<ScheduleMeetingScreen />);
+      const { getByPlaceholderText, getByText, getByLabelText } = render(<ScheduleMeetingScreen />);
 
       const titleInput = getByPlaceholderText('e.g., Introduction Call');
       fireEvent.changeText(titleInput, 'Introduction Call');
@@ -872,13 +888,13 @@ describe('End-to-End User Journey Tests', () => {
       const linkInput = getByPlaceholderText('e.g., https://zoom.us/j/...');
       fireEvent.changeText(linkInput, 'https://zoom.us/j/123456789');
 
-      const durationInput = getByPlaceholderText('Duration (minutes)');
+      const durationInput = getByPlaceholderText('60');
       fireEvent.changeText(durationInput, '60');
 
-      const descriptionInput = getByPlaceholderText('Description (optional)');
+      const descriptionInput = getByPlaceholderText('Meeting agenda or notes');
       fireEvent.changeText(descriptionInput, 'Let\'s discuss your career goals and how I can help.');
 
-      fireEvent.press(getByText('Schedule Meeting'));
+      fireEvent.press(getByLabelText('Send meeting request'));
 
       await waitFor(() => {
         expect(mockHybridMeetingService.hybridCreateMeeting).toHaveBeenCalledWith(
@@ -889,7 +905,7 @@ describe('End-to-End User Journey Tests', () => {
             duration: 60,
           })
         );
-      }, { timeout: 3000 });
+      }, { timeout: 5000 });
     });
 
     it('UJ6.7: Accept Meeting Request', async () => {

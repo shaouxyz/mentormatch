@@ -208,8 +208,11 @@ jest.mock('./services/hybridMeetingService', () => ({
 
 // Mock Hybrid Message Service
 jest.mock('./services/hybridMessageService', () => ({
+  hybridCreateOrGetConversation: jest.fn(),
+  hybridGetMessages: jest.fn(() => Promise.resolve([])),
   hybridSendMessage: jest.fn(),
   hybridSubscribeToChat: jest.fn(() => () => {}),
+  subscribeToMessages: jest.fn(() => () => {}),
   hybridMarkMessagesAsRead: jest.fn(),
   hybridGetUnreadMessageCount: jest.fn(() => Promise.resolve(0)),
   generateConversationId: jest.fn((email1, email2) => {

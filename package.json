@@ -14,6 +14,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
+    "verify": "npm test && npm run test:coverage",
     "analyze:bundle": "npx expo export --dump-sourcemap && npx source-map-explorer .expo/web-build/static/js/*.js --html bundle-report.html"
   },
   "engines": {

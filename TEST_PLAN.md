@@ -22,6 +22,31 @@
 
 ---
 
+## 0. ENGINEERING QUALITY GATES (MANDATORY BEFORE COMMIT)
+
+These checks apply to **any** change (bug fix / feature / refactor / docs that affect behavior).
+
+### 0.1 Verify full regression passes
+- **Steps**:
+  1. Run `npm test`
+- **Expected Results**:
+  - ✅ `Test Suites: X passed, X total`
+  - ✅ `Tests: X passed, X total`
+  - ✅ **0 failures, 0 skipped**
+
+### 0.2 Verify 100% code coverage gates
+- **Steps**:
+  1. Run `npm run test:coverage` (or `npm run verify`)
+- **Expected Results**:
+  - ✅ Global coverage is **100%** for:
+    - Statements
+    - Branches
+    - Functions
+    - Lines
+  - ✅ No Jest coverage threshold failures
+
+---
+
 ## 1. AUTHENTICATION & INITIALIZATION
 
 ### 1.1 Welcome Screen (`app/index.tsx`)
