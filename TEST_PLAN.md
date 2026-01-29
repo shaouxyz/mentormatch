@@ -1,10 +1,13 @@
 # MentorMatch - Comprehensive Test Plan
 
 ## Document Information
-- **Version**: 1.0
-- **Date**: 2026-01-20
+- **Version**: 1.1
+- **Date**: 2026-01-26
 - **App Version**: 1.0.0
 - **Platform**: Android & iOS (React Native Expo)
+
+## Related Documents
+- **End-to-End User Journey Test Plan**: See `TEST_PLAN_E2E_USER_JOURNEY.md` for complete user flow testing from installation through all activities
 
 ## Test Coverage Goals
 - ✅ Every feature implemented
@@ -1348,7 +1351,258 @@
 
 ---
 
-## 6. NAVIGATION & ROUTING
+## 6. MEETINGS & NOTIFICATIONS
+
+### 6.1 Schedule Meeting (`app/meeting/schedule.tsx`)
+
+#### Test Case 6.1.1: Schedule Meeting Successfully
+- **Precondition**: User logged in, viewing another user's profile
+- **Steps**:
+  1. Navigate to schedule meeting screen
+  2. Fill in meeting details (title, date, time, duration, location/meeting link)
+  3. Tap "Schedule Meeting"
+- **Expected Results**:
+  - ✅ Meeting created successfully
+  - ✅ Meeting saved to AsyncStorage and Firebase (if configured)
+  - ✅ Alert: "Meeting request sent"
+  - ✅ Navigates back
+  - ✅ Notifications scheduled if meeting is accepted
+
+#### Test Case 6.1.2: Schedule Virtual Meeting
+- **Precondition**: On schedule meeting screen
+- **Steps**:
+  1. Select "Virtual" location type
+  2. Enter meeting link
+  3. Fill other required fields
+  4. Tap "Schedule Meeting"
+- **Expected Results**:
+  - ✅ Meeting created with virtual location type
+  - ✅ Meeting link saved
+  - ✅ Location field empty or not required
+
+#### Test Case 6.1.3: Schedule In-Person Meeting
+- **Precondition**: On schedule meeting screen
+- **Steps**:
+  1. Select "In-Person" location type
+  2. Enter location address
+  3. Fill other required fields
+  4. Tap "Schedule Meeting"
+- **Expected Results**:
+  - ✅ Meeting created with in-person location type
+  - ✅ Location address saved
+  - ✅ Meeting link not required
+
+#### Test Case 6.1.4: Schedule Phone Meeting
+- **Precondition**: On schedule meeting screen
+- **Steps**:
+  1. Select "Phone" location type
+  2. Enter phone number
+  3. Fill other required fields
+  4. Tap "Schedule Meeting"
+- **Expected Results**:
+  - ✅ Meeting created with phone location type
+  - ✅ Phone number saved in location field
+  - ✅ Meeting link not required
+
+### 6.2 Meeting Notifications (`services/meetingNotificationService.ts`)
+
+#### Test Case 6.2.1: Schedule Day-Before Notification
+- **Precondition**: Meeting accepted, meeting is more than 1 day away
+- **Steps**:
+  1. Accept a meeting scheduled for 2+ days from now
+  2. Check scheduled notifications
+- **Expected Results**:
+  - ✅ Day-before notification scheduled (9 AM the day before)
+  - ✅ Notification content includes meeting title, time, and location/link
+  - ✅ Notification stored in AsyncStorage
+
+#### Test Case 6.2.2: Schedule 1-Hour-Before Notification
+- **Precondition**: Meeting accepted, meeting is more than 1 hour away
+- **Steps**:
+  1. Accept a meeting scheduled for 2+ hours from now
+  2. Check scheduled notifications
+- **Expected Results**:
+  - ✅ 1-hour-before notification scheduled
+  - ✅ Notification content includes "Meeting in 1 Hour"
+  - ✅ Notification includes meeting details
+
+#### Test Case 6.2.3: Schedule 5-Minutes-Before Notification
+- **Precondition**: Meeting accepted, meeting is more than 5 minutes away
+- **Steps**:
+  1. Accept a meeting scheduled for 10+ minutes from now
+  2. Check scheduled notifications
+- **Expected Results**:
+  - ✅ 5-minutes-before notification scheduled
+  - ✅ Notification content includes "Meeting Starting Soon"
+  - ✅ Notification includes meeting details
+
+#### Test Case 6.2.4: All Three Notifications Scheduled
+- **Precondition**: Meeting accepted, meeting is 2+ days away
+- **Steps**:
+  1. Accept a meeting scheduled for 2+ days from now
+  2. Check scheduled notifications
+- **Expected Results**:
+  - ✅ Day-before notification scheduled
+  - ✅ 1-hour-before notification scheduled
+  - ✅ 5-minutes-before notification scheduled
+  - ✅ All three notifications stored
+
+#### Test Case 6.2.5: Skip Past Notifications
+- **Precondition**: Meeting accepted, meeting is tomorrow (less than 1 day away)
+- **Steps**:
+  1. Accept a meeting scheduled for tomorrow
+  2. Check scheduled notifications
+- **Expected Results**:
+  - ✅ Day-before notification NOT scheduled (already past)
+  - ✅ 1-hour-before notification scheduled
+  - ✅ 5-minutes-before notification scheduled
+
+#### Test Case 6.2.6: Skip Notifications for Past Meetings
+- **Precondition**: Meeting accepted, but meeting time is in the past
+- **Steps**:
+  1. Accept a meeting with past date/time
+  2. Check scheduled notifications
+- **Expected Results**:
+  - ✅ No notifications scheduled
+  - ✅ Logged: "Skipping notification scheduling for past meeting"
+
+#### Test Case 6.2.7: Skip Notifications for Non-Accepted Meetings
+- **Precondition**: Meeting with status 'pending' or 'declined'
+- **Steps**:
+  1. Try to schedule notifications for pending meeting
+- **Expected Results**:
+  - ✅ No notifications scheduled
+  - ✅ Logged: "Skipping notification scheduling for non-accepted meeting"
+
+#### Test Case 6.2.8: Cancel Notifications When Meeting Declined
+- **Precondition**: Meeting has scheduled notifications, user declines meeting
+- **Steps**:
+  1. Decline a meeting that had notifications scheduled
+  2. Check scheduled notifications
+- **Expected Results**:
+  - ✅ All notifications for meeting canceled
+  - ✅ Notification IDs removed from storage
+  - ✅ Logged: "Meeting notifications canceled"
+
+#### Test Case 6.2.9: Cancel Notifications When Meeting Cancelled
+- **Precondition**: Meeting has scheduled notifications, meeting status changed to 'cancelled'
+- **Steps**:
+  1. Cancel a meeting that had notifications scheduled
+  2. Check scheduled notifications
+- **Expected Results**:
+  - ✅ All notifications for meeting canceled
+  - ✅ Notification IDs removed from storage
+
+#### Test Case 6.2.10: Notification Permission Denial
+- **Precondition**: User denies notification permissions
+- **Steps**:
+  1. Deny notification permissions
+  2. Accept a meeting
+- **Expected Results**:
+  - ✅ No notifications scheduled
+  - ✅ Warning logged: "Notification permissions not granted"
+  - ✅ Meeting still accepted successfully
+
+#### Test Case 6.2.11: Notification Content for Virtual Meeting
+- **Precondition**: Virtual meeting accepted
+- **Steps**:
+  1. Accept virtual meeting with meeting link
+  2. Check notification content
+- **Expected Results**:
+  - ✅ Notification body includes meeting link
+  - ✅ Link is clickable/accessible
+
+#### Test Case 6.2.12: Notification Content for In-Person Meeting
+- **Precondition**: In-person meeting accepted
+- **Steps**:
+  1. Accept in-person meeting with location
+  2. Check notification content
+- **Expected Results**:
+  - ✅ Notification body includes location address
+  - ✅ Location clearly labeled
+
+#### Test Case 6.2.13: Notification Content for Phone Meeting
+- **Precondition**: Phone meeting accepted
+- **Steps**:
+  1. Accept phone meeting with phone number
+  2. Check notification content
+- **Expected Results**:
+  - ✅ Notification body includes phone number
+  - ✅ Phone number clearly labeled
+
+#### Test Case 6.2.14: Reschedule Notifications When Meeting Updated
+- **Precondition**: Meeting has scheduled notifications, meeting time is updated
+- **Steps**:
+  1. Update meeting time to a new time
+  2. Check scheduled notifications
+- **Expected Results**:
+  - ✅ Old notifications canceled
+  - ✅ New notifications scheduled for new time
+  - ✅ All three notification types scheduled if applicable
+
+#### Test Case 6.2.15: Schedule Notifications for Multiple Meetings
+- **Precondition**: User has multiple accepted meetings
+- **Steps**:
+  1. Load upcoming meetings
+  2. Check scheduled notifications
+- **Expected Results**:
+  - ✅ Notifications scheduled for all accepted meetings
+  - ✅ Each meeting has its own set of notifications
+  - ✅ No duplicate notifications
+
+#### Test Case 6.2.16: Handle Notification Scheduling Errors Gracefully
+- **Precondition**: Notification service encounters error
+- **Steps**:
+  1. Mock notification service to throw error
+  2. Accept a meeting
+- **Expected Results**:
+  - ✅ Meeting still accepted successfully
+  - ✅ Error logged but doesn't block meeting acceptance
+  - ✅ User sees success message
+
+#### Test Case 6.2.17: Handle Notification Cancellation Errors Gracefully
+- **Precondition**: Notification cancellation encounters error
+- **Steps**:
+  1. Mock notification cancellation to throw error
+  2. Decline a meeting
+- **Expected Results**:
+  - ✅ Meeting still declined successfully
+  - ✅ Error logged but doesn't block meeting decline
+  - ✅ User sees success message
+
+#### Test Case 6.2.18: Notification Storage Persistence
+- **Precondition**: Notifications scheduled
+- **Steps**:
+  1. Schedule notifications for a meeting
+  2. Close app
+  3. Reopen app
+- **Expected Results**:
+  - ✅ Scheduled notifications persist
+  - ✅ Notifications still scheduled in system
+  - ✅ Notification records in AsyncStorage
+
+#### Test Case 6.2.19: Cleanup Past Meeting Notifications
+- **Precondition**: Past meetings with notification records
+- **Steps**:
+  1. Call cleanupPastMeetingNotifications
+- **Expected Results**:
+  - ✅ Past notification records cleaned up
+  - ✅ Active notifications preserved
+  - ✅ Storage updated
+
+#### Test Case 6.2.20: Notification Timing Accuracy
+- **Precondition**: Meeting scheduled for specific time
+- **Steps**:
+  1. Schedule notifications for meeting
+  2. Check notification trigger times
+- **Expected Results**:
+  - ✅ Day-before: 9 AM the day before meeting
+  - ✅ 1-hour-before: Exactly 1 hour before meeting time
+  - ✅ 5-minutes-before: Exactly 5 minutes before meeting time
+
+---
+
+## 7. NAVIGATION & ROUTING
 
 ### 6.1 Tab Navigation
 
