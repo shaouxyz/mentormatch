@@ -1015,8 +1015,99 @@
 - **Steps**:
   1. Tap back button
 - **Expected Results**:
-   - ✅ Returns to requests screen
-   - ✅ No changes saved
+  - ✅ Returns to requests screen
+  - ✅ No changes saved
+
+#### Test Case 4.2.8: Invitation Code Added to Inbox After Accepting
+- **Precondition**: User is logged in, accepting a mentorship request
+- **Steps**:
+  1. Navigate to respond screen
+  2. Tap "Accept" button
+- **Expected Results**:
+  - ✅ Request status updated to 'accepted'
+  - ✅ Invitation code generated for mentor
+  - ✅ Invitation code added to mentor's inbox
+  - ✅ Inbox item has type 'invitation_code'
+  - ✅ Inbox item contains the invitation code
+  - ✅ Inbox item saved to both local storage and Firebase (if configured)
+  - ✅ Success logged
+
+#### Test Case 4.2.9: Invitation Code Not Added When Declining
+- **Precondition**: User is logged in, declining a mentorship request
+- **Steps**:
+  1. Navigate to respond screen
+  2. Tap "Decline" button
+- **Expected Results**:
+  - ✅ Request status updated to 'declined'
+  - ✅ No invitation code generated
+  - ✅ No invitation code added to inbox
+
+#### Test Case 4.2.10: Invitation Code Generation Error Handling
+- **Precondition**: User is logged in, accepting a mentorship request, invitation code service fails
+- **Steps**:
+  1. Mock invitation code service to throw error
+  2. Navigate to respond screen
+  3. Tap "Accept" button
+- **Expected Results**:
+  - ✅ Request still accepted successfully
+  - ✅ Error logged but doesn't block request acceptance
+  - ✅ User sees success message
+
+#### Test Case 4.2.11: Invitation Code Inbox Addition Error Handling
+- **Precondition**: User is logged in, accepting a mentorship request, inbox service fails
+- **Steps**:
+  1. Mock inbox service to throw error
+  2. Navigate to respond screen
+  3. Tap "Accept" button
+- **Expected Results**:
+  - ✅ Request still accepted successfully
+  - ✅ Invitation code generated
+  - ✅ Error logged but doesn't block request acceptance
+  - ✅ User sees success message
+
+#### Test Case 4.2.12: Firebase Request Update on Accept
+- **Precondition**: Firebase configured, accepting a Firebase request (non-local ID)
+- **Steps**:
+  1. Navigate to respond screen with Firebase request
+  2. Tap "Accept" button
+- **Expected Results**:
+  - ✅ Request updated in local storage
+  - ✅ Request updated in Firebase
+  - ✅ Invitation code generated and added to inbox
+  - ✅ Success logged
+
+#### Test Case 4.2.13: Firebase Request Update Failure Handling
+- **Precondition**: Firebase configured but update fails
+- **Steps**:
+  1. Mock Firebase update to fail
+  2. Navigate to respond screen
+  3. Tap "Accept" button
+- **Expected Results**:
+  - ✅ Request still updated in local storage
+  - ✅ Error logged but doesn't block local update
+  - ✅ Invitation code still generated and added to inbox
+
+#### Test Case 4.2.14: Missing User Data When Accepting
+- **Precondition**: No user data in AsyncStorage
+- **Steps**:
+  1. Clear user data from AsyncStorage
+  2. Navigate to respond screen
+  3. Tap "Accept" button
+- **Expected Results**:
+  - ✅ Request still accepted
+  - ✅ Warning logged about missing user data
+  - ✅ No invitation code generated (graceful degradation)
+
+#### Test Case 4.2.15: Invalid User Data When Accepting
+- **Precondition**: Invalid user data in AsyncStorage
+- **Steps**:
+  1. Set invalid user data in AsyncStorage
+  2. Navigate to respond screen
+  3. Tap "Accept" button
+- **Expected Results**:
+  - ✅ Request still accepted
+  - ✅ Warning logged about invalid user data
+  - ✅ No invitation code generated (graceful degradation)
 
 ---
 

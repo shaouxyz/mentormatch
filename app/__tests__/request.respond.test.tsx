@@ -5,6 +5,8 @@ import RespondRequestScreen from '../request/respond';
 import * as expoRouter from 'expo-router';
 import * as invitationCodeService from '@/services/invitationCodeService';
 import * as inboxService from '@/services/inboxService';
+import * as firebaseRequestService from '@/services/firebaseRequestService';
+import * as firebaseConfig from '@/config/firebase.config';
 import * as logger from '@/utils/logger';
 import * as ErrorHandler from '@/utils/errorHandler';
 
@@ -26,6 +28,14 @@ jest.mock('@/services/invitationCodeService', () => ({
 
 jest.mock('@/services/inboxService', () => ({
   addInvitationCodeToInbox: jest.fn(),
+}));
+
+jest.mock('@/services/firebaseRequestService', () => ({
+  updateFirebaseRequest: jest.fn(),
+}));
+
+jest.mock('@/config/firebase.config', () => ({
+  isFirebaseConfigured: jest.fn(),
 }));
 
 describe('RespondRequestScreen', () => {
@@ -61,6 +71,8 @@ describe('RespondRequestScreen', () => {
       createdAt: '2026-01-20T10:00:00Z',
     });
     (inboxService.addInvitationCodeToInbox as jest.Mock).mockResolvedValue(undefined);
+    (firebaseRequestService.updateFirebaseRequest as jest.Mock).mockResolvedValue(undefined);
+    (firebaseConfig.isFirebaseConfigured as jest.Mock).mockReturnValue(false);
     mockLogger.error = jest.fn();
     mockLogger.warn = jest.fn();
     mockLogger.info = jest.fn();
@@ -468,6 +480,111 @@ describe('RespondRequestScreen', () => {
     await waitFor(() => {
       expect(getByText('Requester User')).toBeTruthy();
     });
+  });
+
+  it('should update Firebase request when Firebase is configured and request is not local', async () => {
+    const firebaseRequest = {
+      ...mockRequest,
+      id: 'firebase123', // Non-local ID
+    };
+    mockParams.request = JSON.stringify(firebaseRequest);
+    (firebaseConfig.isFirebaseConfigured as jest.Mock).mockReturnValue(true);
+    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([firebaseRequest]));
+
+    const { getByText } = render(<RespondRequestScreen />);
+
+    await waitForScreenReady(getByText);
+
+    fireEvent.press(getByText('Accept'));
+
+    await waitFor(() => {
+      expect(firebaseRequestService.updateFirebaseRequest).toHaveBeenCalledWith(
+        'firebase123',
+        expect.objectContaining({
+          status: 'accepted',
+          responseNote: expect.any(String),
+          respondedAt: expect.any(String),
+        })
+      );
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        'Request updated in Firebase',
+        expect.objectContaining({
+          requestId: 'firebase123',
+          status: 'accepted',
+        })
+      );
+    }, { timeout: 3000 });
+  });
+
+  it('should not update Firebase request when request ID is local', async () => {
+    const localRequest = {
+      ...mockRequest,
+      id: 'local_1234567890', // Local ID
+    };
+    mockParams.request = JSON.stringify(localRequest);
+    (firebaseConfig.isFirebaseConfigured as jest.Mock).mockReturnValue(true);
+    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([localRequest]));
+
+    const { getByText } = render(<RespondRequestScreen />);
+
+    await waitForScreenReady(getByText);
+
+    fireEvent.press(getByText('Accept'));
+
+    await waitFor(() => {
+      expect(firebaseRequestService.updateFirebaseRequest).not.toHaveBeenCalled();
+    }, { timeout: 3000 });
+  });
+
+  it('should not update Firebase request when Firebase is not configured', async () => {
+    const firebaseRequest = {
+      ...mockRequest,
+      id: 'firebase123',
+    };
+    mockParams.request = JSON.stringify(firebaseRequest);
+    (firebaseConfig.isFirebaseConfigured as jest.Mock).mockReturnValue(false);
+    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([firebaseRequest]));
+
+    const { getByText } = render(<RespondRequestScreen />);
+
+    await waitForScreenReady(getByText);
+
+    fireEvent.press(getByText('Accept'));
+
+    await waitFor(() => {
+      expect(firebaseRequestService.updateFirebaseRequest).not.toHaveBeenCalled();
+    }, { timeout: 3000 });
+  });
+
+  it('should handle Firebase update error gracefully and continue with local update', async () => {
+    const firebaseRequest = {
+      ...mockRequest,
+      id: 'firebase123',
+    };
+    mockParams.request = JSON.stringify(firebaseRequest);
+    (firebaseConfig.isFirebaseConfigured as jest.Mock).mockReturnValue(true);
+    (firebaseRequestService.updateFirebaseRequest as jest.Mock).mockRejectedValue(
+      new Error('Firebase update failed')
+    );
+    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([firebaseRequest]));
+
+    const { getByText } = render(<RespondRequestScreen />);
+
+    await waitForScreenReady(getByText);
+
+    fireEvent.press(getByText('Accept'));
+
+    await waitFor(() => {
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Failed to update request in Firebase, continuing with local only',
+        expect.objectContaining({
+          error: 'Firebase update failed',
+          requestId: 'firebase123',
+        })
+      );
+      // Should still update locally
+      expect(AsyncStorage.setItem).toHaveBeenCalled();
+    }, { timeout: 3000 });
   });
 
   it('should handle storage error in handleRespond', async () => {

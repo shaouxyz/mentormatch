@@ -20,6 +20,8 @@ import { sanitizeString } from '@/utils/security';
 import { safeParseJSON, validateMentorshipRequestSchema } from '@/utils/schemaValidation';
 import { createInvitationCode } from '@/services/invitationCodeService';
 import { addInvitationCodeToInbox } from '@/services/inboxService';
+import { updateFirebaseRequest } from '@/services/firebaseRequestService';
+import { isFirebaseConfigured } from '@/config/firebase.config';
 
 interface MentorshipRequest {
   id: string;
@@ -125,6 +127,24 @@ export default function RespondRequestScreen() {
       };
 
       await AsyncStorage.setItem('mentorshipRequests', JSON.stringify(requests));
+      
+      // Update in Firebase if configured
+      if (isFirebaseConfigured() && request.id && !request.id.startsWith('local_')) {
+        try {
+          await updateFirebaseRequest(request.id, {
+            status,
+            responseNote: sanitizeString(responseNote.trim()),
+            respondedAt: new Date().toISOString(),
+          });
+          logger.info('Request updated in Firebase', { requestId: request.id, status });
+        } catch (firebaseError) {
+          logger.error('Failed to update request in Firebase, continuing with local only', {
+            error: firebaseError instanceof Error ? firebaseError.message : String(firebaseError),
+            requestId: request.id
+          });
+          // Continue with local update even if Firebase fails
+        }
+      }
       
       // If accepted, generate a new invitation code for the mentor
       if (status === 'accepted') {
