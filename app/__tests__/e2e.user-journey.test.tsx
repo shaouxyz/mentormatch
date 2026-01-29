@@ -281,7 +281,8 @@ describe('End-to-End User Journey Tests', () => {
         fireEvent.changeText(getByPlaceholderText('e.g., Data Science, Business Strategy, Photography'), 'Product Management');
         fireEvent.changeText(getByPlaceholderText('Enter years of interest experience'), '2');
         fireEvent.changeText(getByPlaceholderText('Enter your phone number'), '+1-555-123-4567');
-        fireEvent.changeText(getByPlaceholderText('Enter your location (optional)'), 'San Francisco, CA');
+        const locationInput = getByPlaceholderText('e.g., San Francisco, CA or New York City');
+        fireEvent.changeText(locationInput, 'San Francisco, CA');
 
         fireEvent.press(getByText('Save Profile'));
 
@@ -357,8 +358,8 @@ describe('End-to-End User Journey Tests', () => {
 
         const { getByPlaceholderText, getByText } = render(<LoginScreen />);
 
-        fireEvent.changeText(getByPlaceholderText('Email'), 'newuser@example.com');
-        fireEvent.changeText(getByPlaceholderText('Password'), 'SecurePass123!');
+        fireEvent.changeText(getByPlaceholderText('Enter your email'), 'newuser@example.com');
+        fireEvent.changeText(getByPlaceholderText('Enter your password'), 'SecurePass123!');
 
         fireEvent.press(getByText('Log In'));
 
