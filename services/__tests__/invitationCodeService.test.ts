@@ -17,7 +17,14 @@ jest.mock('firebase/firestore', () => ({
 }));
 
 jest.mock('../../config/firebase.config');
-jest.mock('../../utils/logger');
+jest.mock('../../utils/logger', () => ({
+  logger: {
+    error: jest.fn(),
+    warn: jest.fn(),
+    info: jest.fn(),
+    debug: jest.fn(),
+  },
+}));
 
 // Unmock the service we're testing
 jest.unmock('../invitationCodeService');
@@ -405,6 +412,164 @@ describe('Invitation Code Service', () => {
       expect(mockLogger.logger.error).toHaveBeenCalled();
 
       AsyncStorage.setItem = originalSetItem;
+    });
+  });
+
+  // Coverage Hole Tests - Section 26.16
+
+  describe('useInvitationCode - Local Code Fallback (lines 134-139)', () => {
+    it('should fallback to local code when Firebase query is empty', async () => {
+      mockFirebaseConfig.isFirebaseConfigured.mockReturnValue(true);
+      mockFirebaseConfig.getFirebaseFirestore.mockReturnValue(mockDb);
+      
+      // Mock Firebase query to return empty
+      const emptyQuerySnapshot = {
+        docs: [],
+        empty: true,
+        forEach: jest.fn(),
+      };
+      const mockQuery = {};
+      mockFirestore.collection.mockReturnValue(mockCollectionRef);
+      mockFirestore.where.mockReturnValueOnce(mockQuery);
+      mockFirestore.query.mockReturnValue(mockQuery);
+      mockFirestore.getDocs.mockResolvedValue(emptyQuerySnapshot);
+      
+      // Set local code
+      const localCode = { ...mockInvitationCode, isUsed: false };
+      await AsyncStorage.setItem('invitationCodes', JSON.stringify([localCode]));
+
+      const result = await useInvitationCode('ABC12345', 'newuser@example.com');
+
+      expect(result).toBe(true);
+      expect(mockLogger.logger.info).toHaveBeenCalledWith(
+        'Invitation code used (local only)',
+        expect.objectContaining({ code: 'ABC12345' })
+      );
+      
+      // Verify local code was marked as used
+      const savedCodes = JSON.parse(await AsyncStorage.getItem('invitationCodes') || '[]');
+      expect(savedCodes[0].isUsed).toBe(true);
+    });
+  });
+
+  describe('useInvitationCode - Local Code Update on Firebase Use (lines 161-164)', () => {
+    it('should update local code when code is used in Firebase', async () => {
+      mockFirebaseConfig.isFirebaseConfigured.mockReturnValue(true);
+      mockFirebaseConfig.getFirebaseFirestore.mockReturnValue(mockDb);
+      
+      const mockQuerySnapshotWithCode = {
+        docs: [
+          {
+            id: 'firebase_code123',
+            ref: mockDocRef,
+            data: () => ({ ...mockInvitationCode, isUsed: false }),
+          },
+        ],
+        empty: false,
+      };
+      const mockQuery = {};
+      mockFirestore.collection.mockReturnValue(mockCollectionRef);
+      mockFirestore.where.mockReturnValueOnce(mockQuery);
+      mockFirestore.query.mockReturnValue(mockQuery);
+      mockFirestore.getDocs.mockResolvedValue(mockQuerySnapshotWithCode);
+      mockFirestore.updateDoc.mockResolvedValue(undefined);
+      
+      // Set local code with same code
+      const localCode = { ...mockInvitationCode, isUsed: false };
+      await AsyncStorage.setItem('invitationCodes', JSON.stringify([localCode]));
+
+      const result = await useInvitationCode('ABC12345', 'newuser@example.com');
+
+      expect(result).toBe(true);
+      expect(mockFirestore.updateDoc).toHaveBeenCalled();
+      
+      // Verify local code was also updated
+      const savedCodes = JSON.parse(await AsyncStorage.getItem('invitationCodes') || '[]');
+      expect(savedCodes[0].isUsed).toBe(true);
+      expect(savedCodes[0].usedBy).toBe('newuser@example.com');
+    });
+  });
+
+  describe('useInvitationCode - Error Handling (lines 186-187, 198-199)', () => {
+    it('should handle error when local code is already used (line 186-187)', async () => {
+      mockFirebaseConfig.isFirebaseConfigured.mockReturnValue(false);
+      
+      // Set local code as already used
+      const usedCode = { ...mockInvitationCode, isUsed: true, usedBy: 'other@example.com' };
+      await AsyncStorage.setItem('invitationCodes', JSON.stringify([usedCode]));
+
+      const result = await useInvitationCode('ABC12345', 'newuser@example.com');
+
+      expect(result).toBe(false);
+      expect(mockLogger.logger.warn).toHaveBeenCalledWith(
+        'Invitation code already used',
+        expect.objectContaining({ code: 'ABC12345' })
+      );
+    });
+
+    it('should handle non-Error exception in useInvitationCode catch block (line 198-199)', async () => {
+      mockFirebaseConfig.isFirebaseConfigured.mockReturnValue(false);
+      // Set up a valid code in storage
+      await AsyncStorage.setItem('invitationCodes', JSON.stringify([{
+        ...mockInvitationCode,
+        isUsed: false,
+      }]));
+      
+      // Mock setItem to fail when saveLocalInvitationCodes is called (line 193)
+      // This will cause the outer catch block (line 197) to be triggered
+      const originalSetItem = AsyncStorage.setItem;
+      AsyncStorage.setItem = jest.fn().mockImplementation((key, value) => {
+        // Fail when saving invitation codes (this happens in saveLocalInvitationCodes at line 193)
+        if (key === 'invitationCodes') {
+          return Promise.reject('Storage error string');
+        }
+        return originalSetItem(key, value);
+      });
+
+      const result = await useInvitationCode('ABC12345', 'newuser@example.com');
+
+      expect(result).toBe(false);
+      expect(mockLogger.logger.error).toHaveBeenCalledWith(
+        'Error using invitation code',
+        expect.any(Error)
+      );
+
+      AsyncStorage.setItem = originalSetItem;
+    });
+  });
+
+  describe('isValidInvitationCode - Error Handling (lines 231-232, 269-270)', () => {
+    it('should handle non-Error exception in isValidInvitationCode Firebase path (line 231-232)', async () => {
+      mockFirebaseConfig.isFirebaseConfigured.mockReturnValue(true);
+      mockFirebaseConfig.getFirebaseFirestore.mockReturnValue(mockDb);
+      mockFirestore.collection.mockReturnValue(mockCollectionRef);
+      mockFirestore.where.mockReturnValue({} as any);
+      mockFirestore.query.mockReturnValue({} as any);
+      mockFirestore.getDocs.mockRejectedValue('Firebase error string');
+
+      const result = await isValidInvitationCode('ABC12345');
+
+      expect(result).toBe(false);
+      expect(mockLogger.logger.error).toHaveBeenCalledWith(
+        'Error checking invitation code validity',
+        expect.any(Error)
+      );
+    });
+
+    it('should handle non-Error exception in isValidInvitationCode local path (line 269-270)', async () => {
+      mockFirebaseConfig.isFirebaseConfigured.mockReturnValue(false);
+      const originalGetItem = AsyncStorage.getItem;
+      AsyncStorage.getItem = jest.fn().mockRejectedValue('Storage error string');
+
+      const result = await isValidInvitationCode('ABC12345');
+
+      expect(result).toBe(false);
+      expect(mockLogger.logger.error).toHaveBeenCalledWith(
+        'Error checking invitation code validity',
+        expect.any(Error)
+      );
+
+      AsyncStorage.getItem = originalGetItem;
     });
   });
 });

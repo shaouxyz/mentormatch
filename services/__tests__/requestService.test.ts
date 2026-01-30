@@ -19,7 +19,14 @@ import * as logger from '../../utils/logger';
 import * as schemaValidation from '../../utils/schemaValidation';
 
 // Mock dependencies
-jest.mock('../../utils/logger');
+jest.mock('../../utils/logger', () => ({
+  logger: {
+    error: jest.fn(),
+    warn: jest.fn(),
+    info: jest.fn(),
+    debug: jest.fn(),
+  },
+}));
 jest.mock('../../utils/schemaValidation');
 
 const mockLogger = logger as any;
@@ -388,6 +395,85 @@ describe('Request Service', () => {
       expect(result).toEqual([]);
       expect(mockLogger.logger.error).toHaveBeenCalled();
       
+      AsyncStorage.getItem = originalGetItem;
+    });
+  });
+
+  // Coverage Hole Tests - Section 26.20
+
+  describe('getAllRequests - Error Handling (line 23)', () => {
+    it('should handle non-Error exception in getAllRequests', async () => {
+      const originalGetItem = AsyncStorage.getItem;
+      AsyncStorage.getItem = jest.fn().mockRejectedValue('Storage error string');
+
+      const result = await getAllRequests();
+
+      expect(result).toEqual([]);
+      expect(mockLogger.logger.error).toHaveBeenCalledWith(
+        'Error getting all requests',
+        expect.any(Error)
+      );
+
+      AsyncStorage.getItem = originalGetItem;
+    });
+  });
+
+  describe('getRequestsByUser - Error Handling (line 65-66)', () => {
+    it('should handle non-Error exception in getRequestsByUser', async () => {
+      const originalGetItem = AsyncStorage.getItem;
+      // Mock getItem to fail when getting requests (line 23 in getAllRequests)
+      AsyncStorage.getItem = jest.fn().mockImplementation((key) => {
+        if (key === STORAGE_KEYS.MENTORSHIP_REQUESTS) {
+          return Promise.reject('Storage error string');
+        }
+        return originalGetItem(key);
+      });
+
+      const result = await getRequestsByUser('user@example.com');
+
+      expect(result).toEqual({ incoming: [], outgoing: [], processed: [] });
+      expect(mockLogger.logger.error).toHaveBeenCalledWith(
+        'Error getting requests by user',
+        expect.any(Error),
+        expect.objectContaining({ userEmail: 'user@example.com' })
+      );
+
+      AsyncStorage.getItem = originalGetItem;
+    });
+  });
+
+  describe('getRequestById - Error Handling (line 163-164)', () => {
+    it('should handle non-Error exception in getRequestById', async () => {
+      const originalGetItem = AsyncStorage.getItem;
+      AsyncStorage.getItem = jest.fn().mockRejectedValue('Storage error string');
+
+      const result = await getRequestById('req1');
+
+      expect(result).toBeNull();
+      expect(mockLogger.logger.error).toHaveBeenCalledWith(
+        'Error getting request by ID',
+        expect.any(Error),
+        expect.objectContaining({ requestId: 'req1' })
+      );
+
+      AsyncStorage.getItem = originalGetItem;
+    });
+  });
+
+  describe('getAcceptedConnections - Error Handling (line 191-192)', () => {
+    it('should handle non-Error exception in getAcceptedConnections', async () => {
+      const originalGetItem = AsyncStorage.getItem;
+      AsyncStorage.getItem = jest.fn().mockRejectedValue('Storage error string');
+
+      const result = await getAcceptedConnections('user@example.com');
+
+      expect(result).toEqual({ mentors: [], mentees: [] });
+      expect(mockLogger.logger.error).toHaveBeenCalledWith(
+        'Error getting accepted connections',
+        expect.any(Error),
+        expect.objectContaining({ userEmail: 'user@example.com' })
+      );
+
       AsyncStorage.getItem = originalGetItem;
     });
   });

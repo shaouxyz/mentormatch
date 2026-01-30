@@ -476,4 +476,29 @@ describe('ProfileScreen', () => {
       expect(screen2.getByText('Test User')).toBeTruthy();
     }, { timeout: 3000 });
   });
+
+  // Coverage Hole Tests - Section 26.5
+
+  it('should prevent duplicate loads with initial load guard (line 57)', async () => {
+    await AsyncStorage.setItem('user', JSON.stringify({ email: 'test@example.com' }));
+    await AsyncStorage.setItem('profile', JSON.stringify(mockProfile));
+
+    const { rerender } = render(<ProfileScreen />);
+
+    await waitFor(() => {
+      // First load should happen
+      expect(AsyncStorage.getItem).toHaveBeenCalledWith('profile');
+    });
+
+    // Re-render the component
+    rerender(<ProfileScreen />);
+
+    // hasLoadedRef.current should be true, so early return should execute (line 57)
+    // Verify that profile is not loaded again
+    const getItemCalls = (AsyncStorage.getItem as jest.Mock).mock.calls.filter(
+      (call: any[]) => call[0] === 'profile'
+    );
+    // Should only be called once (on initial mount)
+    expect(getItemCalls.length).toBeLessThanOrEqual(1);
+  });
 });

@@ -431,4 +431,88 @@ describe('Data Migration', () => {
       expect(version).toBe('2');
     });
   });
+
+  // Coverage Hole Tests - Section 26.21
+
+  describe('setDataVersion - Error Handling (line 36)', () => {
+    it('should handle error when setting data version', async () => {
+      const originalSetItem = AsyncStorage.setItem;
+      AsyncStorage.setItem = jest.fn().mockRejectedValue(new Error('Storage error'));
+
+      // This will call setDataVersion internally through runMigrations
+      await runMigrations();
+
+      expect(mockLogger.logger.error).toHaveBeenCalledWith(
+        'Error setting data version',
+        expect.any(Error)
+      );
+
+      AsyncStorage.setItem = originalSetItem;
+    });
+  });
+
+  describe('migrateV1ToV2 - Error Handling (lines 70-87, 146)', () => {
+    it('should handle error when getting user by email during migration', async () => {
+      await AsyncStorage.setItem('dataVersion', '1');
+      
+      const oldUser = {
+        email: 'user@example.com',
+        password: 'plaintextpassword',
+      };
+      await AsyncStorage.setItem('user', JSON.stringify(oldUser));
+
+      // Mock getUserByEmail to throw error
+      mockUserManagement.getUserByEmail.mockRejectedValue(new Error('User lookup error'));
+
+      await runMigrations();
+
+      // Should handle error gracefully
+      expect(mockLogger.logger.error).toHaveBeenCalled();
+    });
+
+    it('should handle error when setting users during migration', async () => {
+      await AsyncStorage.setItem('dataVersion', '1');
+      
+      const oldUser = {
+        email: 'user@example.com',
+        password: 'plaintextpassword',
+      };
+      await AsyncStorage.setItem('user', JSON.stringify(oldUser));
+
+      mockUserManagement.getUserByEmail.mockResolvedValue(null);
+      mockUserManagement.getAllUsers.mockResolvedValue([]);
+      
+      // Mock setItem to fail when saving users
+      const originalSetItem = AsyncStorage.setItem;
+      let setItemCallCount = 0;
+      AsyncStorage.setItem = jest.fn().mockImplementation((key, value) => {
+        setItemCallCount++;
+        if (key === 'users' && setItemCallCount > 1) {
+          return Promise.reject(new Error('Storage error'));
+        }
+        return originalSetItem(key, value);
+      });
+
+      await runMigrations();
+
+      // Should handle error gracefully
+      expect(mockLogger.logger.error).toHaveBeenCalled();
+
+      AsyncStorage.setItem = originalSetItem;
+    });
+
+    it('should handle error in runMigrations catch block (line 146)', async () => {
+      // Mock getDataVersion to throw error
+      const originalGetItem = AsyncStorage.getItem;
+      AsyncStorage.getItem = jest.fn().mockRejectedValue('Storage error string');
+
+      await runMigrations();
+
+      // The error should be caught and logged
+      // Note: initializeDataMigration catches errors, but runMigrations itself may throw
+      expect(mockLogger.logger.error).toHaveBeenCalled();
+
+      AsyncStorage.getItem = originalGetItem;
+    });
+  });
 });

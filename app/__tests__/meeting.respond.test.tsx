@@ -374,4 +374,46 @@ describe('MeetingResponseScreen', () => {
       expect(mockHybridUpdateMeeting).toHaveBeenCalled();
     }, { timeout: 3000 });
   });
+
+  // Coverage Hole Tests - Section 26.7
+
+  it('should handle response submission error (line 109)', async () => {
+    const mockMeeting: Meeting = {
+      id: 'meeting123',
+      organizerEmail: 'organizer@example.com',
+      organizerName: 'John Organizer',
+      participantEmail: 'participant@example.com',
+      participantName: 'Jane Participant',
+      title: 'Introduction Call',
+      description: 'Let\'s discuss your career goals',
+      date: '2026-02-15T10:00:00Z',
+      time: '2026-02-15T10:00:00Z',
+      duration: 60,
+      location: '',
+      locationType: 'virtual',
+      meetingLink: 'https://zoom.us/j/123456',
+      status: 'pending',
+      createdAt: '2026-01-15T10:00:00Z',
+    };
+
+    mockHybridGetMeeting.mockResolvedValue(mockMeeting);
+    // Mock hybridUpdateMeeting to throw error
+    mockHybridUpdateMeeting.mockRejectedValue(new Error('Update failed'));
+
+    const { getByText } = render(<MeetingResponseScreen />);
+
+    await waitFor(() => {
+      expect(getByText('Introduction Call')).toBeTruthy();
+    });
+
+    const acceptButton = getByText('Accept');
+    fireEvent.press(acceptButton);
+
+    await waitFor(() => {
+      // Error should be caught and handled (line 109)
+      expect(mockHybridUpdateMeeting).toHaveBeenCalled();
+      // Error alert should be shown
+      expect(Alert.alert).toHaveBeenCalled();
+    });
+  });
 });
