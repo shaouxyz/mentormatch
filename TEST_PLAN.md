@@ -3267,7 +3267,917 @@ Notes: [Any issues found]
 
 ---
 
-## 26. SIGN-OFF
+## 26. COVERAGE HOLES - SYSTEMATIC TEST COVERAGE
+
+This section addresses **every uncovered statement, branch, and function** identified in `COVERAGE_HOLES.md` to achieve 100% code coverage.
+
+### 26.1 Signup Screen (`app/signup.tsx`)
+
+#### Test Case 26.1.1: Platform-Specific KeyboardAvoidingView Behavior (Android)
+- **Target**: Line 116, branch 1 (cond-expr) - Android behavior
+- **Precondition**: Running on Android platform
+- **Steps**:
+  1. Mock `Platform.OS` to return `'android'`
+  2. Render SignupScreen
+- **Expected Results**:
+  - ✅ `KeyboardAvoidingView` uses `behavior="height"` (not `"padding"`)
+  - ✅ Component renders without errors
+
+### 26.2 Home Tab (`app/(tabs)/home.tsx`)
+
+#### Test Case 26.2.1: Profile Validation Failure in Fallback
+- **Target**: Line 153, statement id 52, branch id 13 branch 0
+- **Precondition**: Firebase fails, local profiles exist but invalid
+- **Steps**:
+  1. Mock Firebase to fail
+  2. Set invalid profile data in AsyncStorage
+  3. Load home screen
+- **Expected Results**:
+  - ✅ `validateProfileSchema` returns false for invalid profile
+  - ✅ `safeParseJSON` returns empty array `[]`
+  - ✅ Fallback to sample profiles occurs
+  - ✅ Warning logged for invalid profile
+
+#### Test Case 26.2.2: Current User Profile Deduplication Warning
+- **Target**: Line 241, statement id 80, branch id 20 branch 0
+- **Precondition**: Current user profile appears in loaded profiles
+- **Steps**:
+  1. Set current user email
+  2. Load profiles including current user's profile
+  3. Trigger deduplication
+- **Expected Results**:
+  - ✅ `normalizedCurrentUserEmail` is set
+  - ✅ `finalFilteredProfiles.length !== uniqueProfiles.length`
+  - ✅ Warning logged: "Current user profile was found after deduplication and removed"
+  - ✅ Current user profile excluded from display
+
+#### Test Case 26.2.3: Match Score Calculation with No Current Profile
+- **Target**: Line 315, statement id 116, branch id 28 branch 0
+- **Precondition**: No current profile loaded
+- **Steps**:
+  1. Set `currentProfile` to `null`
+  2. Call `getMatchScore` for a profile
+- **Expected Results**:
+  - ✅ Function returns `0` immediately
+  - ✅ No calculation attempted
+  - ✅ No errors thrown
+
+#### Test Case 26.2.4: Search Filter Excludes Current User
+- **Target**: Line 350, statement id 131, branch id 34 branch 0
+- **Precondition**: User searches with current user email in results
+- **Steps**:
+  1. Set current user email
+  2. Enter search query that matches current user's profile
+  3. Filter profiles
+- **Expected Results**:
+  - ✅ `normalizedCurrentEmail` is set
+  - ✅ `normalizedProfileEmail === normalizedCurrentEmail` check executes
+  - ✅ Current user profile excluded from search results
+  - ✅ `return false` executed
+
+#### Test Case 26.2.5: Initial Load with No User Data
+- **Target**: Branch id 0 branch 1, id 1 branch 1, id 2 branch 1
+- **Precondition**: No user or profile in AsyncStorage
+- **Steps**:
+  1. Clear AsyncStorage
+  2. Render HomeScreen
+- **Expected Results**:
+  - ✅ `userData` is null/undefined
+  - ✅ Early return executed
+  - ✅ Loading state handled correctly
+  - ✅ No profile loading attempted
+
+#### Test Case 26.2.6: Firebase Error with No Local Fallback
+- **Target**: Branch id 4 branch 1, id 8 branch 1, id 9 branch 1, id 10 branch 1
+- **Precondition**: Firebase fails, no local profiles
+- **Steps**:
+  1. Mock Firebase to throw error
+  2. Clear local profiles
+  3. Load home screen
+- **Expected Results**:
+  - ✅ Error caught and logged
+   - ✅ `allProfiles` is null
+   - ✅ Sample profiles created
+   - ✅ Component renders with sample data
+
+#### Test Case 26.2.7: Profile Loading with Invalid Current User Email
+- **Target**: Branch id 11 branch 1, id 13 branch 0
+- **Precondition**: Current user email is invalid/missing
+- **Steps**:
+  1. Set user with invalid email format
+  2. Load profiles
+- **Expected Results**:
+  - ✅ Email normalization handles invalid format
+  - ✅ Profile filtering works correctly
+  - ✅ No crashes
+
+#### Test Case 26.2.8: Search with Empty Query
+- **Target**: Branch id 23 branch 1, id 27 branch 1
+- **Precondition**: Search query is empty string
+- **Steps**:
+  1. Set empty search query
+  2. Filter profiles
+- **Expected Results**:
+  - ✅ All profiles shown (no filtering)
+  - ✅ Search logic handles empty string
+  - ✅ No errors
+
+#### Test Case 26.2.9: Pagination Edge Cases
+- **Target**: Branch id 40 branch 1, id 46 branch 0, id 47 branch 1
+- **Precondition**: Profiles loaded, pagination active
+- **Steps**:
+  1. Load profiles
+  2. Trigger pagination at boundaries
+- **Expected Results**:
+  - ✅ Last page detection works
+  - ✅ Load more button hidden at end
+  - ✅ Pagination calculations correct
+
+### 26.3 Mentorship Tab (`app/(tabs)/mentorship.tsx`)
+
+#### Test Case 26.3.1: No User Data - Early Return
+- **Target**: Lines 74-77, statements id 16-19, branch id 2 branch 0
+- **Precondition**: No user in AsyncStorage
+- **Steps**:
+  1. Clear user from AsyncStorage
+  2. Render MentorshipScreen
+- **Expected Results**:
+   - ✅ `user` is null
+   - ✅ `setMentors([])` called
+   - ✅ `setMentees([])` called
+   - ✅ `setLoading(false)` called
+   - ✅ Early return executed
+   - ✅ No further processing
+
+#### Test Case 26.3.2: Invalid Requests Data Schema
+- **Target**: Line 93, statement id 29, branch id 4 branch 1, id 5 branch 0
+- **Precondition**: Invalid mentorship requests in AsyncStorage
+- **Steps**:
+  1. Set invalid requests data (not array or invalid schema)
+  2. Load mentorship screen
+- **Expected Results**:
+   - ✅ `safeParseJSON` validation fails
+   - ✅ Returns empty array `[]`
+   - ✅ `acceptedRequests` is empty array
+   - ✅ No crashes
+
+#### Test Case 26.3.3: No Requests Data
+- **Target**: Line 123, statement id 44, branch id 7 branch 1, id 8 branch 0
+- **Precondition**: No requests in AsyncStorage
+- **Steps**:
+  1. Clear requests from AsyncStorage
+  2. Load mentorship screen
+- **Expected Results**:
+   - ✅ `requestsData` is null
+   - ✅ Early return executed
+   - ✅ Mentors and mentees set to empty arrays
+   - ✅ Loading set to false
+
+#### Test Case 26.3.4: Profile Loading Error
+- **Target**: Line 166, statement id 61, branch id 14 branch 1, id 15 branch 0
+- **Precondition**: Profile loading fails
+- **Steps**:
+  1. Mock `hybridGetProfile` to throw error
+  2. Load mentorship screen with accepted requests
+- **Expected Results**:
+   - ✅ Error caught and logged
+   - ✅ Profile loading error handled gracefully
+   - ✅ Component continues to render
+   - ✅ No crashes
+
+#### Test Case 26.3.5: Request Filtering Edge Cases
+- **Target**: Branch id 6 branch 1, id 12 branch 1, id 13 branch 1
+- **Precondition**: Mixed request statuses
+- **Steps**:
+  1. Set requests with various statuses
+  2. Load mentorship screen
+- **Expected Results**:
+   - ✅ Only accepted requests processed
+   - ✅ Mentors and mentees correctly filtered
+   - ✅ Request status checks work correctly
+
+#### Test Case 26.3.6: Profile Matching Logic
+- **Target**: Branch id 19 branch 1, id 20 branch 1
+- **Precondition**: Accepted requests with matching profiles
+- **Steps**:
+  1. Set accepted requests
+  2. Set matching profiles
+  3. Load mentorship screen
+- **Expected Results**:
+   - ✅ Profile matching logic executes
+   - ✅ Mentors/mentees correctly identified
+   - ✅ Conditional rendering works
+
+#### Test Case 26.3.7: Empty Mentors/Mentees Lists
+- **Target**: Branch id 25 branch 1, id 30 branch 1
+- **Precondition**: No accepted requests
+- **Steps**:
+  1. Set no accepted requests
+  2. Render mentorship screen
+- **Expected Results**:
+   - ✅ Empty lists rendered
+   - ✅ Empty state messages shown
+   - ✅ No errors
+
+### 26.4 Messages Tab (`app/(tabs)/messages.tsx`)
+
+#### Test Case 26.4.1: useFocusEffect Callback Execution
+- **Target**: Lines 60, 65-66, statements id 22, 24-25, functions id 3-4, branch id 1 branch 1, id 2 branch 1
+- **Precondition**: Messages tab mounted
+- **Steps**:
+  1. Render MessagesScreen
+  2. Trigger focus effect
+- **Expected Results**:
+   - ✅ `useFocusEffect` callback executed
+   - ✅ `loadConversations()` called
+   - ✅ `onRefresh` callback defined
+   - ✅ Refresh logic works
+
+#### Test Case 26.4.2: Refresh Functionality
+- **Target**: Branch id 10 branch 1
+- **Precondition**: Conversations loaded
+- **Steps**:
+  1. Load conversations
+  2. Trigger refresh
+- **Expected Results**:
+   - ✅ `setRefreshing(true)` called
+   - ✅ `loadConversations()` called again
+   - ✅ Refresh state managed correctly
+
+### 26.5 Profile Tab (`app/(tabs)/profile.tsx`)
+
+#### Test Case 26.5.1: Initial Load Guard
+- **Target**: Line 57, statement id 11, branch id 0 branch 0
+- **Precondition**: Component mounted
+- **Steps**:
+  1. Render ProfileScreen
+  2. Check initial load behavior
+- **Expected Results**:
+   - ✅ `hasLoadedRef.current` check executes
+   - ✅ Early return if already loaded
+   - ✅ Prevents duplicate loads
+
+#### Test Case 26.5.2: Profile Loading Error Handling
+- **Target**: Branch id 4 branch 1, id 5 branch 1
+- **Precondition**: Profile loading fails
+- **Steps**:
+  1. Mock profile loading to fail
+  2. Load profile screen
+- **Expected Results**:
+   - ✅ Error caught and handled
+   - ✅ Error state set correctly
+   - ✅ No crashes
+
+### 26.6 Requests Tab (`app/(tabs)/requests.tsx`)
+
+#### Test Case 26.6.1: Loading Guard - Prevent Concurrent Loads
+- **Target**: Line 60, statement id 12, branch id 0 branch 0
+- **Precondition**: Load already in progress
+- **Steps**:
+  1. Set `isLoadingRef.current = true`
+  2. Call `loadRequests()`
+- **Expected Results**:
+   - ✅ Early return executed
+   - ✅ No duplicate loading
+   - ✅ Guard works correctly
+
+#### Test Case 26.6.2: No Requests Data
+- **Target**: Line 95, statement id 36, branch id 5 branch 1, id 6 branch 0
+- **Precondition**: No requests in AsyncStorage
+- **Steps**:
+  1. Clear requests from AsyncStorage
+  2. Load requests screen
+- **Expected Results**:
+   - ✅ `requestsData` is null
+   - ✅ Early return executed
+   - ✅ Empty arrays set
+   - ✅ Loading state cleared
+
+#### Test Case 26.6.3: Request Rendering - Fallback Logic
+- **Target**: Lines 297-298, 302-303, statements id 91-94, branch id 22 branch 1, id 24 branch 1
+- **Precondition**: Request with edge case data
+- **Steps**:
+  1. Set request where userEmail not loaded yet
+  2. Render request item
+- **Expected Results**:
+   - ✅ Fallback logic executes
+   - ✅ `otherPersonName` and `otherPersonEmail` set from requester
+   - ✅ No crashes
+
+#### Test Case 26.6.4: Tab Switching - Default Cases
+- **Target**: Lines 366, 379, statements id 101, 107, branch id 31 branch 3, id 32 branch 3
+- **Precondition**: Invalid or default tab state
+- **Steps**:
+  1. Set `activeTab` to invalid value
+  2. Call `getDisplayRequests()` and `getRenderFunction()`
+- **Expected Results**:
+   - ✅ Default case in switch executes
+   - ✅ Returns empty array or default render function
+   - ✅ No errors
+
+#### Test Case 26.6.5: Request Filtering Edge Cases
+- **Target**: Branch id 10 branch 1, id 11 branch 1, id 12 branch 1, id 13 branch 1, id 14 branch 1
+- **Precondition**: Various request statuses and user roles
+- **Steps**:
+  1. Set mixed incoming/outgoing/processed requests
+  2. Filter requests
+- **Expected Results**:
+   - ✅ Filtering logic works for all cases
+   - ✅ Status checks correct
+   - ✅ User role detection works
+
+#### Test Case 26.6.6: Request Item Rendering - Edge Cases
+- **Target**: Branch id 19 branch 1, id 20 branch 1, id 21 branch 1, id 25 branch 1
+- **Precondition**: Requests with various data combinations
+- **Steps**:
+  1. Set requests with different requester/mentor combinations
+  2. Render request items
+- **Expected Results**:
+   - ✅ Correct person identified
+   - ✅ Name and email extracted correctly
+   - ✅ Conditional rendering works
+
+#### Test Case 26.6.7: Anonymous Function for Tab Press
+- **Target**: Line 403, statement id 112, function id 21
+- **Precondition**: Tab button pressed
+- **Steps**:
+  1. Press tab button
+  2. Check callback execution
+- **Expected Results**:
+   - ✅ Anonymous function executes
+   - ✅ `setActiveTab` called with correct value
+   - ✅ Tab state updates
+
+### 26.7 Meeting Respond Screen (`app/meeting/respond.tsx`)
+
+#### Test Case 26.7.1: Meeting Loading Error
+- **Target**: Line 61, statement id 23, branch id 1 branch 1, id 2 branch 0
+- **Precondition**: Meeting loading fails
+- **Steps**:
+  1. Mock `hybridGetMeeting` to throw error
+  2. Load meeting respond screen
+- **Expected Results**:
+   - ✅ Error caught and logged
+   - ✅ Error message displayed
+   - ✅ Navigation back executed
+   - ✅ No crashes
+
+#### Test Case 26.7.2: Response Submission - Error Handling
+- **Target**: Lines 83, 93, 109, statements id 32, 35, 37, branch id 6 branch 0/1, id 7 branch 0/1, id 9 branch 1
+- **Precondition**: Response submission fails
+- **Steps**:
+  1. Mock `hybridUpdateMeeting` to throw error
+  2. Submit response
+- **Expected Results**:
+   - ✅ Error caught and logged
+   - ✅ Error alert shown
+   - ✅ Conditional error handling works
+   - ✅ No crashes
+
+#### Test Case 26.7.3: Notification Scheduling Error
+- **Target**: Line 109, function id 4
+- **Precondition**: Notification scheduling fails
+- **Steps**:
+  1. Mock `scheduleMeetingNotifications` to throw error
+  2. Accept meeting
+- **Expected Results**:
+   - ✅ Error caught in try-catch
+   - ✅ Warning logged
+   - ✅ Meeting still accepted
+   - ✅ No crashes
+
+### 26.8 Meeting Schedule Screen (`app/meeting/schedule.tsx`)
+
+#### Test Case 26.8.1: DateTimePicker Error Handling
+- **Target**: Lines 151-153, 158-160, statements id 51-53, 55-57, functions id 3-4, branch id 14 branch 0/1, id 15 branch 0/1
+- **Precondition**: DateTimePicker errors or cancellation
+- **Steps**:
+  1. Trigger date/time picker
+  2. Cancel or cause error
+- **Expected Results**:
+   - ✅ Error handlers execute
+   - ✅ Cancellation handled gracefully
+   - ✅ State not updated on cancel
+   - ✅ No crashes
+
+#### Test Case 26.8.2: Form Validation Edge Cases
+- **Target**: Branch id 12 branch 1, id 13 branch 1, id 17 branch 1, id 19 branch 1
+- **Precondition**: Various form states
+- **Steps**:
+  1. Test validation with different location types
+  2. Test required field validation
+- **Expected Results**:
+   - ✅ Validation logic executes for all cases
+   - ✅ Error messages shown correctly
+   - ✅ Conditional validation works
+
+### 26.9 Meeting Upcoming Screen (`app/meeting/upcoming.tsx`)
+
+#### Test Case 26.9.1: Meeting Loading Error
+- **Target**: Line 60, statement id 20, branch id 1 branch 0/1
+- **Precondition**: Meeting loading fails
+- **Steps**:
+  1. Mock `hybridGetUpcomingMeetings` to throw error
+  2. Load upcoming meetings screen
+- **Expected Results**:
+   - ✅ Error caught and logged
+   - ✅ Error state set
+   - ✅ No crashes
+
+#### Test Case 26.9.2: Notification Scheduling on Load
+- **Target**: Lines 77-78, statements id 27-28, function id 3, branch id 10 branch 1
+- **Precondition**: Meetings loaded successfully
+- **Steps**:
+  1. Load upcoming meetings
+  2. Check notification scheduling
+- **Expected Results**:
+   - ✅ `scheduleNotificationsForMeetings` called
+   - ✅ Error handling works if scheduling fails
+   - ✅ Warning logged on failure
+
+#### Test Case 26.9.3: Calendar Integration Edge Cases
+- **Target**: Branch id 14 branch 1, id 16 branch 1, id 17 branch 1, id 18 branch 1
+- **Precondition**: Various calendar states
+- **Steps**:
+  1. Test calendar add with different meeting types
+  2. Test permission handling
+- **Expected Results**:
+   - ✅ Calendar logic executes for all cases
+   - ✅ Permission checks work
+   - ✅ Error handling works
+
+### 26.10 Chat Screen (`app/messages/chat.tsx`)
+
+#### Test Case 26.10.1: Message Subscription Error
+- **Target**: Line 138, statement id 54, branch id 9 branch 0
+- **Precondition**: Message subscription fails
+- **Steps**:
+  1. Mock `hybridSubscribeToChat` to throw error
+  2. Load chat screen
+- **Expected Results**:
+   - ✅ Error caught and logged
+   - ✅ Subscription error handled
+   - ✅ Component continues to work
+   - ✅ No crashes
+
+#### Test Case 26.10.2: Message Send Error
+- **Target**: Line 228, statement id 76, function id 13, branch id 17 branch 1
+- **Precondition**: Message sending fails
+- **Steps**:
+  1. Mock `hybridSendMessage` to throw error
+  2. Send message
+- **Expected Results**:
+   - ✅ Error caught and logged
+   - ✅ Error alert shown
+   - ✅ Anonymous error handler executes
+   - ✅ No crashes
+
+#### Test Case 26.10.3: Chat Loading Edge Cases
+- **Target**: Branch id 3 branch 1, id 5 branch 1, id 6 branch 1
+- **Precondition**: Various chat states
+- **Steps**:
+  1. Test loading with no conversation
+  2. Test loading with empty messages
+- **Expected Results**:
+   - ✅ Loading states handled
+   - ✅ Empty states rendered
+   - ✅ Conditional rendering works
+
+### 26.11 Profile Create Screen (`app/profile/create.tsx`)
+
+#### Test Case 26.11.1: Form Validation Edge Cases
+- **Target**: Branch id 0 branch 1, id 1 branch 1, id 3 branch 1, id 6 branch 1
+- **Precondition**: Various form validation scenarios
+- **Steps**:
+  1. Test validation with missing required fields
+  2. Test validation with invalid data types
+- **Expected Results**:
+   - ✅ Validation logic executes for all cases
+   - ✅ Error messages shown
+   - ✅ Conditional validation works
+
+### 26.12 Profile Edit Screen (`app/profile/edit.tsx`)
+
+#### Test Case 26.12.1: Profile Update Error
+- **Target**: Line 88, statement id 12, branch id 10 branch 0/1
+- **Precondition**: Profile update fails
+- **Steps**:
+  1. Mock `hybridUpdateProfile` to throw error
+  2. Submit profile update
+- **Expected Results**:
+   - ✅ Error caught and logged
+   - ✅ Error alert shown
+   - ✅ Conditional error handling works
+
+#### Test Case 26.12.2: Form Field Validation
+- **Target**: Branch id 2-8 branch 1, id 12 branch 1, id 15 branch 1
+- **Precondition**: Various field validation scenarios
+- **Steps**:
+  1. Test each field validation
+  2. Test combined validation
+- **Expected Results**:
+   - ✅ All field validations execute
+   - ✅ Validation errors shown correctly
+   - ✅ Conditional validation works
+
+### 26.13 Profile View Screen (`app/profile/view.tsx`)
+
+#### Test Case 26.13.1: Profile Loading Error
+- **Target**: Line 67, statement id 15, branch id 2 branch 0, id 3 branch 1
+- **Precondition**: Profile loading fails
+- **Steps**:
+  1. Mock `hybridGetProfile` to throw error
+  2. Load profile view screen
+- **Expected Results**:
+   - ✅ Error caught and logged
+   - ✅ Error state set
+   - ✅ Navigation back executed
+   - ✅ No crashes
+
+#### Test Case 26.13.2: Contact Information Display Logic
+- **Target**: Lines 160, 183, 248-249, 254-255, statements id 63, 79, 110-111, 113-114, branch id 17 branch 1, id 19 branch 1, id 20 branch 0, id 32 branch 0/1, id 33 branch 0/1, id 34 branch 0/1
+- **Precondition**: Various connection states
+- **Steps**:
+  1. Test viewing own profile
+  2. Test viewing unmatched profile
+  3. Test viewing matched profile
+- **Expected Results**:
+   - ✅ Contact info shown/hidden correctly
+   - ✅ Conditional rendering works
+   - ✅ All branch conditions tested
+
+#### Test Case 26.13.3: Navigation and Actions
+- **Target**: Line 295, statement id 121, function id 15, branch id 7 branch 1, id 15 branch 1, id 22 branch 1, id 24 branch 1, id 25 branch 1, id 27 branch 1, id 28 branch 1, id 30 branch 1
+- **Precondition**: Various action scenarios
+- **Steps**:
+  1. Test request button press
+  2. Test message button press
+  3. Test schedule meeting button press
+- **Expected Results**:
+   - ✅ Navigation works correctly
+   - ✅ Anonymous handlers execute
+   - ✅ Conditional actions work
+
+### 26.14 Request Respond Screen (`app/request/respond.tsx`)
+
+#### Test Case 26.14.1: Request Loading Error
+- **Target**: Line 88, statement id 18, branch id 4 branch 0
+- **Precondition**: Request loading fails
+- **Steps**:
+  1. Mock request loading to fail
+  2. Load respond screen
+- **Expected Results**:
+   - ✅ Error caught and logged
+   - ✅ Error handling works
+   - ✅ No crashes
+
+#### Test Case 26.14.2: Response Submission - Validation
+- **Target**: Lines 93, 99, 109, statements id 20, 23, 29, branch id 5 branch 1-5, id 6 branch 0/1, id 7 branch 0, id 8 branch 1, id 9 branch 1, id 10 branch 0
+- **Precondition**: Various validation scenarios
+- **Steps**:
+  1. Test response with empty note
+  2. Test response with invalid data
+  3. Test response submission errors
+- **Expected Results**:
+   - ✅ Validation logic executes
+   - ✅ Error handling works
+   - ✅ All branch conditions tested
+
+#### Test Case 26.14.3: Invitation Code Generation Error
+- **Target**: Branch id 14 branch 1, id 20 branch 1, id 21 branch 1, id 23 branch 1, id 25 branch 1
+- **Precondition**: Invitation code generation fails
+- **Steps**:
+  1. Mock `createInvitationCode` to throw error
+  2. Accept request
+- **Expected Results**:
+   - ✅ Error caught and logged
+   - ✅ Request still accepted
+   - ✅ Conditional error handling works
+
+### 26.15 Request Send Screen (`app/request/send.tsx`)
+
+#### Test Case 26.15.1: Profile Loading Error
+- **Target**: Line 92, statement id 17, branch id 3 branch 0
+- **Precondition**: Profile loading fails
+- **Steps**:
+  1. Mock profile loading to fail
+  2. Load send request screen
+- **Expected Results**:
+   - ✅ Error caught and logged
+   - ✅ Error handling works
+   - ✅ No crashes
+
+#### Test Case 26.15.2: Request Creation - Validation
+- **Target**: Lines 122, 127, 134, 140, 152, statements id 25, 27, 30, 35, 43, branch id 7 branch 0, id 8 branch 1-7, id 9 branch 0/1, id 10 branch 0, id 11 branch 0, id 13 branch 0
+- **Precondition**: Various validation scenarios
+- **Steps**:
+  1. Test request creation with missing fields
+  2. Test request creation with invalid data
+  3. Test request creation errors
+- **Expected Results**:
+   - ✅ Validation logic executes
+   - ✅ Error handling works
+   - ✅ All branch conditions tested
+
+#### Test Case 26.15.3: Request Submission Error Handling
+- **Target**: Lines 181, 206, 215, 252, 294, statements id 57, 67, 70, 88, 103, branch id 17 branch 1, id 18 branch 1, id 20 branch 0, id 24 branch 1, id 25 branch 0, id 26 branch 0, id 27 branch 1-4, id 28 branch 1, id 33 branch 1, id 34 branch 0, id 37 branch 1, id 39 branch 1, id 40 branch 0, id 43 branch 1, id 44 branch 1, id 46 branch 1, id 47 branch 0
+- **Precondition**: Request submission fails
+- **Steps**:
+  1. Mock `createRequest` to throw error
+  2. Submit request
+- **Expected Results**:
+   - ✅ Error caught and logged
+   - ✅ Error alert shown
+   - ✅ All error handling branches tested
+   - ✅ No crashes
+
+### 26.16 Services - Invitation Code Service
+
+#### Test Case 26.16.1: Local Code Fallback in useInvitationCode
+- **Target**: Lines 126, 134-139, statement id 46, 50-55, function id 5, branch id 8 branch 0/1, id 9 branch 1
+- **Precondition**: Firebase query empty, local code exists
+- **Steps**:
+  1. Mock Firebase query to return empty
+  2. Set local unused code
+  3. Call `useInvitationCode`
+- **Expected Results**:
+   - ✅ Local code found
+   - ✅ Code marked as used locally
+   - ✅ Local storage updated
+   - ✅ Returns true
+
+#### Test Case 26.16.2: Local Code Update on Firebase Use
+- **Target**: Lines 159-165, statement id 64, 66-69, function id 6, branch id 11 branch 0
+- **Precondition**: Code used in Firebase, exists locally
+- **Steps**:
+  1. Set code used in Firebase
+  2. Set same code in local storage
+  3. Call `useInvitationCode`
+- **Expected Results**:
+   - ✅ Local code updated to match Firebase
+   - ✅ `localCodeIndex !== -1` check works
+   - ✅ Local storage synced
+
+#### Test Case 26.16.3: Code Validation Edge Cases
+- **Target**: Lines 186-187, 198-199, 231-232, 269-270, statements id 80-81, 88-89, 105-106, 122-123, branch id 14 branch 0, id 15 branch 0/1, id 17 branch 1, id 18 branch 1, id 20 branch 0/1, id 22 branch 1, id 24 branch 0/1, id 25 branch 1
+- **Precondition**: Various code validation scenarios
+- **Steps**:
+  1. Test invalid code format
+  2. Test already used code
+  3. Test code not found
+- **Expected Results**:
+   - ✅ All validation branches tested
+   - ✅ Error handling works
+   - ✅ Correct return values
+
+### 26.17 Services - Meeting Notification Service
+
+#### Test Case 26.17.1: Notification Handler Configuration
+- **Target**: Line 19, statement id 2, function id 0, branch id 1 branch 1
+- **Precondition**: App initialization
+- **Steps**:
+  1. Import meeting notification service
+  2. Check notification handler
+- **Expected Results**:
+   - ✅ Handler configured
+   - ✅ Anonymous function executes
+   - ✅ Configuration correct
+
+#### Test Case 26.17.2: Notification Storage Error Handling
+- **Target**: Lines 52-53, statements id 10-11, branch id 2 branch 0/1
+- **Precondition**: AsyncStorage error
+- **Steps**:
+  1. Mock AsyncStorage to throw error
+  2. Call `saveScheduledNotifications`
+- **Expected Results**:
+   - ✅ Error caught and logged
+   - ✅ Error re-thrown
+   - ✅ Error handling works
+
+#### Test Case 26.17.3: Notification Scheduling - Edge Cases
+- **Target**: Lines 235, 243, 254, 297, 300, 327-328, 356-357, statements id 62, 65, 69, 85-86, 95-96, 105-106, branch id 7 branch 1, id 10 branch 0, id 11 branch 0, id 12 branch 0, id 17 branch 1, id 18 branch 1, id 19 branch 1, id 20 branch 0, id 21 branch 1, id 23 branch 1, id 24 branch 0/1, id 25 branch 1, id 26 branch 0/1, id 27 branch 0/1, function id 6
+- **Precondition**: Various notification scenarios
+- **Steps**:
+  1. Test scheduling with past meeting
+  2. Test scheduling with no permissions
+  3. Test scheduling errors
+  4. Test cleanup function
+- **Expected Results**:
+   - ✅ All scheduling branches tested
+   - ✅ Error handling works
+   - ✅ Cleanup function executes
+   - ✅ All edge cases covered
+
+### 26.18 Services - Firebase Services
+
+#### Test Case 26.18.1: Firebase Meeting Service - Error Handling
+- **Target**: Lines 308-309, statements id 109-111, branch id 1 branch 1, id 9 branch 1, id 10 branch 1, id 11 branch 1, id 13 branch 1, id 15 branch 1, id 16 branch 0/1, id 17 branch 1, function id 20
+- **Precondition**: Firebase operations fail
+- **Steps**:
+  1. Mock Firebase to throw errors
+  2. Test various Firebase meeting operations
+- **Expected Results**:
+   - ✅ Error handling works
+   - ✅ Non-Error exceptions handled
+   - ✅ All branches tested
+
+#### Test Case 26.18.2: Firebase Message Service - Error Handling
+- **Target**: Lines 199, 205-206, statements id 55, 57-58, branch id 2 branch 1, id 6 branch 0, id 7 branch 0/1
+- **Precondition**: Firebase message operations fail
+- **Steps**:
+  1. Mock Firebase to throw errors
+  2. Test message operations
+- **Expected Results**:
+   - ✅ Error handling works
+   - ✅ All branches tested
+
+#### Test Case 26.18.3: Firebase Request Service - Error Handling
+- **Target**: Lines 230, 235, statements id 72, 74, functions id 12-13
+- **Precondition**: Firebase request operations fail
+- **Steps**:
+  1. Mock Firebase to throw errors
+  2. Test request operations
+- **Expected Results**:
+   - ✅ Error handlers execute
+   - ✅ Anonymous functions work
+   - ✅ Error handling correct
+
+### 26.19 Services - Hybrid Services
+
+#### Test Case 26.19.1: Hybrid Auth Service - Error Handling
+- **Target**: Branch id 8 branch 0, id 9 branch 0
+- **Precondition**: Auth operations fail
+- **Steps**:
+  1. Mock auth to fail
+  2. Test auth operations
+- **Expected Results**:
+   - ✅ Error handling works
+   - ✅ Conditional branches tested
+
+#### Test Case 26.19.2: Hybrid Meeting Service - Error Handling
+- **Target**: Branch id 1 branch 1
+- **Precondition**: Meeting operations fail
+- **Steps**:
+  1. Mock meeting service to fail
+  2. Test meeting operations
+- **Expected Results**:
+   - ✅ Error handling works
+   - ✅ Branch tested
+
+#### Test Case 26.19.3: Hybrid Message Service - Error Handling
+- **Target**: Lines 195, 221, 236, 246, 251, 292, 297, statements id 52, 69, 75, 80, 84, 97, 101, branch id 12 branch 0, id 13 branch 0, id 15 branch 1, id 16 branch 0, id 18 branch 0, id 19 branch 0, id 22 branch 0, functions id 5, 9, 12, 17
+- **Precondition**: Message operations fail
+- **Steps**:
+  1. Mock message service to fail
+  2. Test message operations
+- **Expected Results**:
+   - ✅ Error handling works
+   - ✅ All error branches tested
+   - ✅ Anonymous functions work
+
+#### Test Case 26.19.4: Hybrid Profile Service - Error Handling
+- **Target**: Branch id 9 branch 1, id 17 branch 1, id 22 branch 1, id 28 branch 0
+- **Precondition**: Profile operations fail
+- **Steps**:
+  1. Mock profile service to fail
+  2. Test profile operations
+- **Expected Results**:
+   - ✅ Error handling works
+   - ✅ All branches tested
+
+### 26.20 Services - Other Services
+
+#### Test Case 26.20.1: Inbox Service - Error Handling
+- **Target**: Lines 172-173, 217-218, statements id 53-54, 76-77, branch id 11 branch 0/1, id 16 branch 0/1
+- **Precondition**: Inbox operations fail
+- **Steps**:
+  1. Mock inbox service to fail
+  2. Test inbox operations
+- **Expected Results**:
+   - ✅ Error handling works
+   - ✅ Conditional branches tested
+
+#### Test Case 26.20.2: Profile Service - Error Handling
+- **Target**: Lines 86, 114-115, 135, statements id 24, 35-36, 40, branch id 4 branch 1, id 8 branch 1, id 9 branch 0/1, id 13 branch 0/1, id 15 branch 1, id 16 branch 0/1, functions id 5, 10
+- **Precondition**: Profile service operations fail
+- **Steps**:
+  1. Mock profile service to fail
+  2. Test profile operations
+- **Expected Results**:
+   - ✅ Error handling works
+   - ✅ All branches tested
+   - ✅ Anonymous functions work
+
+#### Test Case 26.20.3: Request Service - Error Handling
+- **Target**: Lines 23, 65-66, 163-164, 191-192, statements id 5, 17-18, 47-48, 58-59, branch id 1 branch 1, id 2 branch 0/1, id 7 branch 0/1, id 16 branch 0/1, id 17 branch 0/1, function id 1
+- **Precondition**: Request service operations fail
+- **Steps**:
+  1. Mock request service to fail
+  2. Test request operations
+- **Expected Results**:
+   - ✅ Error handling works
+   - ✅ All branches tested
+   - ✅ Anonymous function works
+
+### 26.21 Utils - Data Migration
+
+#### Test Case 26.21.1: Migration Error Handling
+- **Target**: Lines 36, 70-71, 73, 75-77, 79, 86-87, 146, statements id 9, 21-22, 23-27, 28-29, 50, branch id 1 branch 1, id 2 branch 0/1, id 8 branch 0/1, id 9 branch 0/1, id 10 branch 0/1, id 11 branch 0, id 12 branch 1, id 14 branch 1, id 15 branch 1, id 16 branch 0/1
+- **Precondition**: Migration operations fail
+- **Steps**:
+  1. Mock migration to fail at various points
+  2. Test migration scenarios
+- **Expected Results**:
+   - ✅ Error handling works
+   - ✅ All migration branches tested
+   - ✅ Error logging works
+
+### 26.22 Utils - Other Utilities
+
+#### Test Case 26.22.1: Connection Utils - Error Handling
+- **Target**: Lines 29, 69, statements id 6, 22, branch id 1 branch 1, id 2 branch 0, id 5 branch 1, id 7 branch 1, id 8 branch 0, id 11 branch 1
+- **Precondition**: Connection operations fail
+- **Steps**:
+  1. Mock connection utils to fail
+  2. Test connection operations
+- **Expected Results**:
+   - ✅ Error handling works
+   - ✅ All branches tested
+
+#### Test Case 26.22.2: Profile Ordering - Edge Cases
+- **Target**: Lines 75, 154, statements id 18, 53, branch id 4 branch 0, id 9 branch 0
+- **Precondition**: Various profile ordering scenarios
+- **Steps**:
+  1. Test ordering with empty profiles
+  2. Test ordering with edge case data
+- **Expected Results**:
+   - ✅ Ordering logic works
+   - ✅ Edge cases handled
+   - ✅ All branches tested
+
+#### Test Case 26.22.3: Schema Validation - Edge Cases
+- **Target**: Branch id 25 branch 1
+- **Precondition**: Schema validation edge cases
+- **Steps**:
+  1. Test validation with edge case data
+  2. Test validation error handling
+- **Expected Results**:
+   - ✅ Validation works
+   - ✅ Branch tested
+
+#### Test Case 26.22.4: Test Accounts - Error Handling
+- **Target**: Lines 61, 82, 161-162, statements id 5, 13, 48-49, branch id 1 branch 0, id 2 branch 1, id 4 branch 1, id 5 branch 0, id 7 branch 1, id 8 branch 1, id 11 branch 1, id 14 branch 1, id 16 branch 1, id 19 branch 0/1
+- **Precondition**: Test account operations fail
+- **Steps**:
+  1. Mock test accounts to fail
+  2. Test test account operations
+- **Expected Results**:
+   - ✅ Error handling works
+   - ✅ All branches tested
+
+#### Test Case 26.22.5: User Management - Error Handling
+- **Target**: Line 35, statement id 8, branch id 1 branch 0, id 3 branch 1, id 9 branch 1
+- **Precondition**: User management operations fail
+- **Steps**:
+  1. Mock user management to fail
+  2. Test user operations
+- **Expected Results**:
+   - ✅ Error handling works
+   - ✅ All branches tested
+
+#### Test Case 26.22.6: Logger - Error Handling
+- **Target**: Branch id 8 branch 1
+- **Precondition**: Logger operations fail
+- **Steps**:
+  1. Mock logger to fail
+  2. Test logging operations
+- **Expected Results**:
+   - ✅ Error handling works
+   - ✅ Branch tested
+
+#### Test Case 26.22.7: Config - Edge Cases
+- **Target**: Branch id 8 branch 1
+- **Precondition**: Config edge cases
+- **Steps**:
+  1. Test config with edge case values
+  2. Test config validation
+- **Expected Results**:
+   - ✅ Config works
+   - ✅ Branch tested
+
+#### Test Case 26.22.8: Caspa Profiles - Edge Cases
+- **Target**: Branch id 2 branch 1, id 4 branch 1
+- **Precondition**: Caspa profile edge cases
+- **Steps**:
+  1. Test caspa profile operations
+  2. Test edge case data
+- **Expected Results**:
+   - ✅ Operations work
+   - ✅ Branches tested
+
+---
+
+## 27. SIGN-OFF
 
 ### Test Completion Criteria
 
