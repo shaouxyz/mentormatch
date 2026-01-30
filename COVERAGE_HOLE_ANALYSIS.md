@@ -1,360 +1,290 @@
-# Coverage Hole Analysis
+# Coverage Hole Analysis - Complete Report
 
-**Generated**: 2026-01-30  
-**Current Coverage**: 95.49% statements, 84.63% branches, 96.41% lines, 95.36% functions  
-**Target**: 100% for all metrics
+**Generated:** 2026-01-26  
+**Current Coverage:** 
+- Statements: 95.59% (Target: 100%, Gap: 4.41%)
+- Branches: 84.84% (Target: 100%, Gap: 15.16%)
+- Functions: 95.36% (Target: 100%, Gap: 4.64%)
+- Lines: 96.48% (Target: 100%, Gap: 3.52%)
 
-## Analysis Methodology
-
-This document analyzes each uncovered statement, branch, and function to identify:
-1. **Code Context**: What the code does
-2. **Trigger Conditions**: What conditions cause this code to execute
-3. **Test Strategy**: How to test this code path
-4. **Priority**: Critical, High, Medium, Low
+**Test Status:** 1351 passing, 15 failing
 
 ---
 
-## 1. APP SCREENS
+## Executive Summary
+
+This document provides a comprehensive analysis of all coverage holes in the codebase. Each hole is categorized by:
+- **File and Location**: Exact file path and line numbers
+- **Type**: Statement, Branch, or Function
+- **Code Context**: What the code does
+- **Trigger Condition**: What causes this code to execute
+- **Test Strategy**: How to test this code path
+- **Priority**: Critical, High, Medium, Low
+
+---
+
+## 1. APP COMPONENTS
 
 ### 1.1 Home Tab (`app/(tabs)/home.tsx`)
 
-#### Statement 52 (Line 153) - Profile Validation Failure
-- **Code**: `if (!Array.isArray(data)) return false;` - Validation check in safeParseJSON
-- **Context**: When local profiles exist but are invalid (not an array)
-- **Trigger**: Firebase fails, local storage has invalid profile data (not array)
-- **Test Strategy**: Mock Firebase to fail, set invalid profile data (object instead of array) in AsyncStorage
-- **Priority**: HIGH
+**Coverage:** 97.29% statements, 83.78% branches, 100% functions, 98.6% lines
 
-#### Statement 80 (Line 241) - Deduplication Warning
+#### Uncovered Lines: 241, 350
+
+**Line 241 - Deduplication Warning**
+- **Type**: Statement
 - **Code**: `logger.warn('Current user profile was found after deduplication and removed', ...)`
-- **Context**: Current user profile appears in loaded profiles after deduplication
+- **Context**: Warning logged when current user profile appears in loaded profiles after deduplication
 - **Trigger**: `finalFilteredProfiles.length !== uniqueProfiles.length` when current user email exists
 - **Test Strategy**: Load profiles including current user, ensure deduplication removes it, verify warning
 - **Priority**: MEDIUM
 
-#### Statement 116 (Line 315) - Match Score with No Profile
-- **Code**: `if (!currentProfile) return 0;` - Early return in getMatchScore
-- **Context**: Match score calculation when current profile is null
-- **Trigger**: `getMatchScore` called when `currentProfile` is null/undefined
-- **Test Strategy**: Don't set profile, call getMatchScore, verify returns 0
-- **Priority**: HIGH
-
-#### Statement 131 (Line 350) - Search Filter Excludes Current User
+**Line 350 - Search Filter Excludes Current User**
+- **Type**: Statement/Branch
 - **Code**: `if (normalizedCurrentEmail && normalizedProfileEmail === normalizedCurrentEmail) { return false; }`
 - **Context**: Search filtering excludes current user's profile
 - **Trigger**: Search query matches current user's email, profile filtering executes
 - **Test Strategy**: Set current user email, search for that email, verify profile excluded
 - **Priority**: HIGH
 
-#### Branch 0 branch 1 (Line ?) - No User Data Early Return
-- **Code**: Early return when no user data
-- **Context**: Initial load with no user in AsyncStorage
-- **Trigger**: `userData` is null/undefined
-- **Test Strategy**: Clear AsyncStorage, render component, verify early return
-- **Priority**: HIGH
-
-#### Branch 1 branch 1 (Line 74) - Session Refresh Error
-- **Code**: Error handler in useFocusEffect callback
-- **Context**: Session refresh fails
-- **Trigger**: `refreshSession()` throws error
-- **Test Strategy**: Mock refreshSession to throw error, trigger focus effect
-- **Priority**: MEDIUM
-
-#### Branch 2 branch 1 (Line 86) - Firebase Init Warning
-- **Code**: Warning when Firebase initialization fails
-- **Context**: Firebase init throws error but app continues
-- **Trigger**: `initializeFirebase()` throws error
-- **Test Strategy**: Mock initializeFirebase to throw error
-- **Priority**: MEDIUM
-
-#### Branch 4 branch 1 (Line 100) - Invalid User Data
-- **Code**: `?.email || null` - Fallback when user data is invalid
-- **Context**: User data exists but doesn't have valid email
-- **Trigger**: `safeParseJSON` returns null for user data
-- **Test Strategy**: Set invalid user data in AsyncStorage
-- **Priority**: MEDIUM
-
-#### Branch 8 branch 1 (Line 118) - Profile Load Error Warning
-- **Code**: Warning when profile load fails
-- **Context**: hybridGetProfile throws error, fallback to local
-- **Trigger**: `hybridGetProfile` throws error
-- **Test Strategy**: Mock hybridGetProfile to throw error
-- **Priority**: MEDIUM
-
-#### Branch 9 branch 1 (Line ?) - No Profile Data Fallback
-- **Code**: Fallback when no profile data in local storage
-- **Context**: Profile load fails, no local profile data
-- **Trigger**: `profileData` is null after error
-- **Test Strategy**: Mock hybridGetProfile to fail, clear profile from AsyncStorage
-- **Priority**: MEDIUM
-
-#### Branch 10 branch 1 (Line ?) - No Current User Email
-- **Code**: Skip profile loading when no current user email
-- **Context**: User data exists but no email field
-- **Trigger**: `currentUserEmail` is null
-- **Test Strategy**: Set user data without email field
-- **Priority**: MEDIUM
-
-#### Branch 11 branch 1 (Line 145) - Profile Sync Error Warning
-- **Code**: Warning when profile sync fails
-- **Context**: hybridGetAllProfiles throws error
-- **Trigger**: `hybridGetAllProfiles` throws error
-- **Test Strategy**: Mock hybridGetAllProfiles to throw error
-- **Priority**: HIGH
-
-#### Branch 13 branch 0 (Line 153) - Valid Array Check
-- **Code**: `if (!Array.isArray(data)) return false;` - False branch
-- **Context**: When data IS an array (validation passes)
-- **Trigger**: Local profiles exist and are valid array
-- **Test Strategy**: Set valid array of profiles in AsyncStorage
-- **Priority**: HIGH
-
-#### Branch 14 branch 1 (Line 158) - Parsed Profiles Fallback
-- **Code**: `profilesList = parsed || [];` - When parsed is null/undefined
-- **Context**: Validation fails, parsed is null
-- **Trigger**: safeParseJSON returns null
-- **Test Strategy**: Set invalid profiles, verify fallback to empty array
-- **Priority**: MEDIUM
-
-#### Branch 20 branch 0 (Line 240) - No Deduplication Needed
-- **Code**: `if (normalizedCurrentUserEmail && finalFilteredProfiles.length !== uniqueProfiles.length)` - False branch
-- **Context**: When deduplication doesn't remove any profiles
-- **Trigger**: Current user not in profiles, or lengths match
-- **Test Strategy**: Load profiles without current user, verify no warning
-- **Priority**: MEDIUM
-
-#### Branch 23 branch 1 (Line 270) - Error in loadProfiles
-- **Code**: Error handler in loadProfiles catch block
-- **Context**: Any error in loadProfiles
-- **Trigger**: Any exception in loadProfiles
-- **Test Strategy**: Cause error in loadProfiles (e.g., invalid data)
-- **Priority**: HIGH
-
-#### Branch 27 branch 1 (Line ?) - Error in onRefresh
-- **Code**: Error handling in onRefresh
-- **Context**: Error during refresh
-- **Trigger**: loadProfiles throws error during refresh
-- **Test Strategy**: Mock loadProfiles to throw error, trigger refresh
-- **Priority**: MEDIUM
-
-#### Branch 28 branch 0 (Line 315) - Current Profile Exists
-- **Code**: `if (!currentProfile) return 0;` - False branch
-- **Context**: When current profile exists
-- **Trigger**: currentProfile is not null
-- **Test Strategy**: Set current profile, call getMatchScore
-- **Priority**: HIGH
-
-#### Branch 34 branch 0 (Line 349) - No Current Email in Search
-- **Code**: `if (normalizedCurrentEmail && normalizedProfileEmail === normalizedCurrentEmail)` - False branch
-- **Context**: When current email doesn't match profile email
-- **Trigger**: Search for different email
-- **Test Strategy**: Set current user, search for different email
-- **Priority**: MEDIUM
-
-#### Branch 40 branch 1 (Line 417) - Location Display
-- **Code**: `{item.location && (...)}` - When location exists
-- **Context**: Profile has location field
-- **Trigger**: Profile object has location property
-- **Test Strategy**: Create profile with location, verify display
-- **Priority**: MEDIUM
-
-#### Branch 46 branch 0 (Line 513) - No Loading More Footer
-- **Code**: `loadingMore && !searchQuery.trim() ? (...) : null` - False branch
-- **Context**: When not loading more or search query exists
-- **Trigger**: loadingMore is false OR searchQuery is not empty
-- **Test Strategy**: Set search query, verify no loading footer
-- **Priority**: MEDIUM
-
-#### Branch 47 branch 1 (Line 512) - Loading More Footer
-- **Code**: `loadingMore && !searchQuery.trim() ? (...) : null` - True branch
-- **Context**: When loading more and no search query
-- **Trigger**: loadingMore is true AND searchQuery is empty
-- **Test Strategy**: Trigger loadMore, verify footer appears
-- **Priority**: MEDIUM
-
 ### 1.2 Mentorship Tab (`app/(tabs)/mentorship.tsx`)
 
-#### Statements 16-19 (Lines 74-77) - No User Early Return
+**Coverage:** 94.23% statements, 81.81% branches, 100% functions, 95.78% lines
+
+#### Uncovered Lines: 74-77
+
+**Lines 74-77 - No User Early Return**
+- **Type**: Statement
 - **Code**: `setMentors([]); setMentees([]); setLoading(false); return;`
 - **Context**: Early return when no user data
 - **Trigger**: `user` is null after parsing
 - **Test Strategy**: Clear user from AsyncStorage, render component
 - **Priority**: HIGH
 
-#### Statement 29 (Line 93) - Invalid Requests Schema
-- **Code**: Validation check in safeParseJSON
-- **Context**: Requests data is invalid (not array)
-- **Trigger**: Invalid requests data in AsyncStorage
-- **Test Strategy**: Set invalid requests data
-- **Priority**: MEDIUM
-
-#### Statement 44 (Line 123) - No Requests Data
-- **Code**: Early return when no requests
-- **Context**: No requests in AsyncStorage
-- **Trigger**: `requestsData` is null
-- **Test Strategy**: Clear requests from AsyncStorage
-- **Priority**: MEDIUM
-
-#### Statement 61 (Line 166) - Profile Loading Error
-- **Code**: Error handling in profile loading
-- **Context**: hybridGetProfile throws error
-- **Trigger**: Mock hybridGetProfile to throw error
-- **Test Strategy**: Mock profile loading to fail
-- **Priority**: MEDIUM
-
 ### 1.3 Messages Tab (`app/(tabs)/messages.tsx`)
 
-#### Statements 22, 24-25 (Lines 60, 65-66) - useFocusEffect and onRefresh
+**Coverage:** 94.82% statements, 89.28% branches, 81.81% functions, 94.23% lines
+
+#### Uncovered Lines: 60, 65-66
+
+**Lines 60, 65-66 - useFocusEffect and onRefresh**
+- **Type**: Statement/Function
 - **Code**: `loadConversations()` in useFocusEffect and onRefresh
 - **Context**: Focus effect callback and refresh handler
 - **Trigger**: Component focuses or refresh triggered
 - **Test Strategy**: Trigger focus effect, trigger refresh
 - **Priority**: HIGH
 
-#### Functions 3-4 (Lines 59, 64) - Anonymous Callbacks
-- **Code**: useFocusEffect callback and onRefresh function
-- **Context**: Callback functions
-- **Trigger**: Focus effect and refresh
-- **Test Strategy**: Execute callbacks directly or trigger events
-- **Priority**: HIGH
-
 ### 1.4 Profile Tab (`app/(tabs)/profile.tsx`)
 
-#### Statement 11 (Line 57) - Initial Load Guard
+**Coverage:** 98% statements, 83.33% branches, 100% functions, 100% lines
+
+#### Uncovered Lines: 57, 80-81
+
+**Line 57 - Initial Load Guard**
+- **Type**: Statement
 - **Code**: `if (hasLoadedRef.current) return;`
 - **Context**: Prevents duplicate loads
 - **Trigger**: Component re-renders after initial load
 - **Test Strategy**: Render component twice, verify load only once
 - **Priority**: MEDIUM
 
-### 1.5 Requests Tab (`app/(tabs)/requests.tsx`)
-
-#### Statement 12 (Line 60) - Loading Guard
-- **Code**: `if (isLoadingRef.current) return;`
-- **Context**: Prevents concurrent loads
-- **Trigger**: loadRequests called while already loading
-- **Test Strategy**: Call loadRequests twice rapidly
+**Lines 80-81 - Profile Update Guard**
+- **Type**: Statement/Branch
+- **Code**: Profile update comparison logic
+- **Context**: Prevents unnecessary re-renders
+- **Trigger**: Profile data unchanged
+- **Test Strategy**: Update profile with same data, verify no re-render
 - **Priority**: MEDIUM
 
-#### Statements 91-94 (Lines 297-303) - Request Rendering Fallback
+### 1.5 Requests Tab (`app/(tabs)/requests.tsx`)
+
+**Coverage:** 92.3% statements, 85.18% branches, 96% functions, 93.85% lines
+
+#### Uncovered Lines: 297-303, 366, 379, 403
+
+**Lines 297-303 - Request Rendering Fallback**
+- **Type**: Statement/Branch
 - **Code**: Fallback logic when userEmail not loaded
 - **Context**: Request item rendering with missing userEmail
 - **Trigger**: Render request before userEmail is set
 - **Test Strategy**: Render with userEmail undefined
 - **Priority**: MEDIUM
 
-#### Statements 101, 107 (Lines 366, 379) - Switch Default Cases
+**Lines 366, 379 - Switch Default Cases**
+- **Type**: Statement
 - **Code**: Default cases in switch statements
-- **Trigger**: Invalid tab value
+- **Context**: Invalid tab value handling
+- **Trigger**: Invalid activeTab value
 - **Test Strategy**: Set invalid activeTab value
 - **Priority**: LOW
 
-#### Statement 112 (Line 403) - Anonymous Function
+**Line 403 - Tab Press Handler**
+- **Type**: Statement/Function
 - **Code**: Tab press handler
+- **Context**: Tab button press handling
 - **Trigger**: Tab button pressed
 - **Test Strategy**: Press tab button
 - **Priority**: MEDIUM
 
 ### 1.6 Meeting Respond (`app/meeting/respond.tsx`)
 
-#### Statement 23 (Line 61) - Meeting Load Error
-- **Code**: Error handling when meeting load fails
-- **Trigger**: hybridGetMeeting throws error
-- **Test Strategy**: Mock hybridGetMeeting to throw error
+**Coverage:** 94.82% statements, 85% branches, 90.9% functions, 96.49% lines
+
+#### Uncovered Lines: 93, 109
+
+**Line 93 - Response Validation Error**
+- **Type**: Statement/Branch
+- **Code**: Error handling in response validation
+- **Context**: Validation failure handling
+- **Trigger**: Invalid response data
+- **Test Strategy**: Submit invalid response
 - **Priority**: HIGH
 
-#### Statements 32, 35, 37 (Lines 83, 93, 109) - Response Error Handling
+**Line 109 - Response Submission Error**
+- **Type**: Statement
 - **Code**: Error handling in response submission
-- **Trigger**: hybridUpdateMeeting or notification scheduling fails
-- **Test Strategy**: Mock services to throw errors
+- **Context**: Service error handling
+- **Trigger**: hybridUpdateMeeting throws error
+- **Test Strategy**: Mock service to throw error
 - **Priority**: HIGH
 
 ### 1.7 Meeting Schedule (`app/meeting/schedule.tsx`)
 
-#### Statements 51-53, 55-57 (Lines 151-153, 158-160) - DateTimePicker Error Handling
-- **Code**: Error handlers for date/time picker
-- **Trigger**: Picker errors or cancellation
-- **Test Strategy**: Trigger picker errors/cancellation
+**Coverage:** 91.66% statements, 87.87% branches, 88.23% functions, 91.66% lines
+
+#### Uncovered Lines: 151-153, 158-160
+
+**Lines 151-153 - Date Picker Cancellation**
+- **Type**: Statement/Branch
+- **Code**: Date picker cancellation handler
+- **Context**: User cancels date picker
+- **Trigger**: Date picker cancelled (undefined selectedDate)
+- **Test Strategy**: Trigger picker cancellation
+- **Priority**: MEDIUM
+
+**Lines 158-160 - Time Picker Cancellation**
+- **Type**: Statement/Branch
+- **Code**: Time picker cancellation handler
+- **Context**: User cancels time picker
+- **Trigger**: Time picker cancelled (undefined selectedTime)
+- **Test Strategy**: Trigger picker cancellation
 - **Priority**: MEDIUM
 
 ### 1.8 Meeting Upcoming (`app/meeting/upcoming.tsx`)
 
-#### Statement 20 (Line 60) - Meeting Load Error
-- **Code**: Error handling when meetings load fails
-- **Trigger**: hybridGetUpcomingMeetings throws error
-- **Test Strategy**: Mock service to throw error
-- **Priority**: HIGH
+**Coverage:** 98.27% statements, 89.28% branches, 95.65% functions, 98.24% lines
 
-#### Statements 27-28 (Lines 77-78) - Notification Scheduling
+#### Uncovered Lines: 77-78
+
+**Lines 77-78 - Notification Scheduling**
+- **Type**: Statement
 - **Code**: Notification scheduling on load
+- **Context**: Schedule notifications for loaded meetings
 - **Trigger**: Meetings loaded successfully
 - **Test Strategy**: Load meetings, verify notifications scheduled
 - **Priority**: MEDIUM
 
 ### 1.9 Chat Screen (`app/messages/chat.tsx`)
 
-#### Statement 54 (Line 138) - Subscription Error
-- **Code**: Error handling in message subscription
-- **Trigger**: hybridSubscribeToChat throws error
-- **Test Strategy**: Mock subscription to throw error
-- **Priority**: HIGH
+**Coverage:** 97.53% statements, 88.88% branches, 93.75% functions, 98.71% lines
 
-#### Statement 76 (Line 228) - Send Message Error
+#### Uncovered Lines: 228
+
+**Line 228 - Send Message Error**
+- **Type**: Statement
 - **Code**: Error handler for message sending
+- **Context**: Message send failure handling
 - **Trigger**: hybridSendMessage throws error
 - **Test Strategy**: Mock sendMessage to throw error
 - **Priority**: HIGH
 
 ### 1.10 Profile View (`app/profile/view.tsx`)
 
-#### Statement 15 (Line 67) - Profile Load Error
+**Coverage:** 93.54% statements, 80.43% branches, 82.35% functions, 94.16% lines
+
+#### Uncovered Lines: 67, 183, 248-249, 254-255, 295
+
+**Line 67 - Profile Load Error**
+- **Type**: Statement/Branch
 - **Code**: Error handling when profile load fails
+- **Context**: Profile loading error path
 - **Trigger**: hybridGetProfile throws error
 - **Test Strategy**: Mock profile loading to fail
 - **Priority**: HIGH
 
-#### Statements 63, 79, 110-111, 113-114 (Lines 160, 183, 248-249, 254-255) - Contact Info Display
-- **Code**: Conditional display of contact information
-- **Trigger**: Various connection states
-- **Test Strategy**: Test viewing own profile, unmatched, matched
+**Line 183 - Contact Info Display (Matched)**
+- **Type**: Statement/Branch
+- **Code**: Conditional display of contact information for matched users
+- **Context**: Show contact info when matched
+- **Trigger**: User is matched with profile
+- **Test Strategy**: View matched profile, verify contact info visible
 - **Priority**: HIGH
 
-#### Statement 121 (Line 295) - Action Handlers
+**Lines 248-249, 254-255 - Contact Info Display (Own Profile)**
+- **Type**: Statement/Branch
+- **Code**: Conditional display of contact information for own profile
+- **Context**: Show contact info when viewing own profile
+- **Trigger**: Viewing own profile
+- **Test Strategy**: View own profile, verify contact info visible
+- **Priority**: HIGH
+
+**Line 295 - Action Handlers**
+- **Type**: Statement/Function
 - **Code**: Navigation and action handlers
+- **Context**: Button press handlers
 - **Trigger**: Button presses
 - **Test Strategy**: Press various action buttons
 - **Priority**: MEDIUM
 
 ### 1.11 Request Respond (`app/request/respond.tsx`)
 
-#### Statement 18 (Line 88) - Request Load Error
+**Coverage:** 94.44% statements, 73.84% branches, 100% functions, 97.05% lines
+
+#### Uncovered Lines: 88, 93
+
+**Line 88 - Request Load Error**
+- **Type**: Statement
 - **Code**: Error handling when request load fails
-- **Trigger**: Request loading throws error
-- **Test Strategy**: Mock request loading to fail
+- **Context**: Request parsing error
+- **Trigger**: Invalid request data in AsyncStorage
+- **Test Strategy**: Set invalid request data
 - **Priority**: HIGH
 
-#### Statements 20, 23, 29 (Lines 93, 99, 109) - Response Validation and Errors
-- **Code**: Validation and error handling in response
-- **Trigger**: Invalid data or service errors
-- **Test Strategy**: Test validation failures and service errors
+**Line 93 - Response Validation Error**
+- **Type**: Statement/Branch
+- **Code**: Error handling in response validation
+- **Context**: Validation failure
+- **Trigger**: Invalid response data
+- **Test Strategy**: Submit invalid response
 - **Priority**: HIGH
 
 ### 1.12 Request Send (`app/request/send.tsx`)
 
-#### Statement 17 (Line 92) - Profile Load Error
+**Coverage:** 91.05% statements, 70.68% branches, 100% functions, 97.34% lines
+
+#### Uncovered Lines: 122, 127, 215
+
+**Line 122 - Profile Load Error**
+- **Type**: Statement
 - **Code**: Error handling when profile load fails
-- **Trigger**: Profile loading throws error
+- **Context**: Profile loading error path
+- **Trigger**: hybridGetProfile throws error
 - **Test Strategy**: Mock profile loading to fail
 - **Priority**: HIGH
 
-#### Statements 25, 27, 30, 35, 43 (Lines 122, 127, 134, 140, 152) - Request Creation Validation
-- **Code**: Validation and error handling
-- **Trigger**: Invalid data or service errors
-- **Test Strategy**: Test various validation scenarios
-- **Priority**: HIGH
+**Line 127 - Profile Parse Error**
+- **Type**: Statement
+- **Code**: Error handling in profile parsing
+- **Context**: Profile parsing error
+- **Trigger**: Invalid profile data
+- **Test Strategy**: Set invalid profile data
+- **Priority**: MEDIUM
 
-#### Statements 57, 67, 70, 88, 103 (Lines 181, 206, 215, 252, 294) - Request Submission Errors
+**Line 215 - Request Submission Error**
+- **Type**: Statement/Branch
 - **Code**: Error handling in request submission
+- **Context**: Request creation error
 - **Trigger**: Service errors
 - **Test Strategy**: Mock services to throw errors
 - **Priority**: HIGH
@@ -363,136 +293,336 @@ This document analyzes each uncovered statement, branch, and function to identif
 
 ## 2. SERVICES
 
-### 2.1 Invitation Code Service (`services/invitationCodeService.ts`)
+### 2.1 Profile Service (`services/profileService.ts`)
 
-#### Statements 46, 50-55 (Lines 126, 134-139) - Local Code Fallback
+**Coverage:** 92% statements, 76.31% branches, 83.33% functions, 91.3% lines
+
+#### Uncovered Lines: 86, 114-115, 135
+
+**Line 86 - Error Handler**
+- **Type**: Statement/Function
+- **Code**: Error handling in profile operations
+- **Context**: Error handler callback
+- **Trigger**: Error in profile operation
+- **Test Strategy**: Mock operation to throw error
+- **Priority**: HIGH
+
+**Lines 114-115 - Error Handling Branch**
+- **Type**: Statement/Branch
+- **Code**: Error handling in profile retrieval
+- **Context**: Error path in getProfile
+- **Trigger**: Profile retrieval throws error
+- **Test Strategy**: Mock getProfile to throw error
+- **Priority**: HIGH
+
+**Line 135 - Error Handler**
+- **Type**: Statement/Function
+- **Code**: Error handling in profile operations
+- **Context**: Error handler callback
+- **Trigger**: Error in profile operation
+- **Test Strategy**: Mock operation to throw error
+- **Priority**: HIGH
+
+### 2.2 Hybrid Profile Service (`services/hybridProfileService.ts`)
+
+**Coverage:** 100% statements, 93.1% branches, 100% functions, 100% lines
+
+#### Uncovered Branches: Lines 114, 174, 201, 254
+
+**Line 114 - Error Branch**
+- **Type**: Branch
+- **Code**: Error handling branch
+- **Context**: Firebase error handling
+- **Trigger**: Firebase operation throws error
+- **Test Strategy**: Mock Firebase to throw error
+- **Priority**: MEDIUM
+
+**Line 174 - Fallback Branch**
+- **Type**: Branch
+- **Code**: Local storage fallback
+- **Context**: Firebase fails, use local
+- **Trigger**: Firebase fails, local data exists
+- **Test Strategy**: Mock Firebase to fail, set local data
+- **Priority**: MEDIUM
+
+**Line 201 - Error Branch**
+- **Type**: Branch
+- **Code**: Error handling branch
+- **Context**: Service error handling
+- **Trigger**: Service operation throws error
+- **Test Strategy**: Mock service to throw error
+- **Priority**: MEDIUM
+
+**Line 254 - Conditional Branch**
+- **Type**: Branch
+- **Code**: Conditional logic branch
+- **Context**: Conditional operation
+- **Trigger**: Specific condition met
+- **Test Strategy**: Set condition to trigger branch
+- **Priority**: MEDIUM
+
+### 2.3 Hybrid Message Service (`services/hybridMessageService.ts`)
+
+**Coverage:** 93.13% statements, 84.78% branches, 77.77% functions, 96.87% lines
+
+#### Uncovered Lines: 221, 251, 297
+
+**Line 221 - Error Handler**
+- **Type**: Statement
+- **Code**: Error handling in message operations
+- **Context**: Error handler callback
+- **Trigger**: Error in message operation
+- **Test Strategy**: Mock operation to throw error
+- **Priority**: HIGH
+
+**Line 251 - Error Handler**
+- **Type**: Statement/Function
+- **Code**: Error handling in message operations
+- **Context**: Error handler callback
+- **Trigger**: Error in message operation
+- **Test Strategy**: Mock operation to throw error
+- **Priority**: HIGH
+
+**Line 297 - Error Handler**
+- **Type**: Statement/Function
+- **Code**: Error handling in message operations
+- **Context**: Error handler callback
+- **Trigger**: Error in message operation
+- **Test Strategy**: Mock operation to throw error
+- **Priority**: HIGH
+
+### 2.4 Invitation Code Service (`services/invitationCodeService.ts`)
+
+**Coverage:** 85.07% statements, 71.15% branches, 85.71% functions, 85.82% lines
+
+#### Uncovered Lines: 134-139, 161-164, 186-187, 198-199, 231-232, 269-270
+
+**Lines 134-139 - Local Code Fallback**
+- **Type**: Statement
 - **Code**: Local code fallback when Firebase query empty
+- **Context**: Fallback to local storage
 - **Trigger**: Firebase query returns empty, local code exists
 - **Test Strategy**: Mock Firebase to return empty, set local unused code
 - **Priority**: HIGH
 
-#### Statements 64, 66-69 (Lines 159-164) - Local Code Sync
+**Lines 161-164 - Local Code Sync**
+- **Type**: Statement
 - **Code**: Sync local code when Firebase code used
+- **Context**: Local code synchronization
 - **Trigger**: Code used in Firebase, exists locally
 - **Test Strategy**: Set code used in Firebase, verify local sync
 - **Priority**: MEDIUM
 
-### 2.2 Meeting Notification Service (`services/meetingNotificationService.ts`)
+**Lines 186-187, 198-199, 231-232, 269-270 - Error Handlers**
+- **Type**: Statement
+- **Code**: Error handling in invitation code operations
+- **Context**: Error handler callbacks
+- **Trigger**: Errors in code operations
+- **Test Strategy**: Mock operations to throw errors
+- **Priority**: MEDIUM
 
-#### Statement 2 (Line 19) - Notification Handler
+### 2.5 Meeting Notification Service (`services/meetingNotificationService.ts`)
+
+**Coverage:** 88.78% statements, 64.91% branches, 84.61% functions, 89.32% lines
+
+#### Uncovered Lines: 19, 52-53, 243, 254, 297-300, 327-328, 356-357
+
+**Line 19 - Notification Handler**
+- **Type**: Statement/Function
 - **Code**: Notification handler configuration
+- **Context**: Service initialization
 - **Trigger**: Service initialization
 - **Test Strategy**: Import service, verify handler configured
 - **Priority**: LOW
 
-#### Statements 10-11 (Lines 52-53) - Storage Error Handling
+**Lines 52-53 - Storage Error Handling**
+- **Type**: Statement
 - **Code**: Error handling in saveScheduledNotifications
+- **Context**: AsyncStorage error handling
 - **Trigger**: AsyncStorage throws error
 - **Test Strategy**: Mock AsyncStorage to throw error
 - **Priority**: MEDIUM
 
-#### Statements 62, 65, 69 (Lines 235, 243, 254) - Notification Scheduling Edge Cases
+**Lines 243, 254, 297-300, 327-328, 356-357 - Notification Scheduling Edge Cases**
+- **Type**: Statement
 - **Code**: Various notification scheduling scenarios
+- **Context**: Edge case handling
 - **Trigger**: Past meetings, no permissions, errors
 - **Test Strategy**: Test various scheduling scenarios
 - **Priority**: MEDIUM
 
-### 2.3 Hybrid Services
+### 2.6 Request Service (`services/requestService.ts`)
 
-#### hybridMessageService - Multiple Error Handlers
-- **Code**: Error handling in message operations
-- **Trigger**: Various service errors
-- **Test Strategy**: Mock services to throw errors
-- **Priority**: HIGH
+**Coverage:** 88.33% statements, 76.92% branches, 93.75% functions, 87.27% lines
 
-#### hybridProfileService - Error Branches
-- **Code**: Error handling branches
-- **Trigger**: Service errors
-- **Test Strategy**: Mock services to throw errors
+#### Uncovered Lines: 23, 65-66, 163-164, 191-192
+
+**Line 23 - Error Handler**
+- **Type**: Statement/Function
+- **Code**: Error handling in request operations
+- **Context**: Error handler callback
+- **Trigger**: Error in request operation
+- **Test Strategy**: Mock operation to throw error
 - **Priority**: MEDIUM
 
-### 2.4 Firebase Services
-
-#### firebaseMeetingService - Error Handling
-- **Code**: Error handling in Firebase operations
-- **Trigger**: Firebase errors
-- **Test Strategy**: Mock Firebase to throw errors
+**Lines 65-66, 163-164, 191-192 - Error Handlers**
+- **Type**: Statement
+- **Code**: Error handling in request operations
+- **Context**: Error handler callbacks
+- **Trigger**: Errors in request operations
+- **Test Strategy**: Mock operations to throw errors
 - **Priority**: MEDIUM
 
-#### firebaseMessageService - Error Handling
-- **Code**: Error handling in message operations
-- **Trigger**: Firebase errors
-- **Test Strategy**: Mock Firebase to throw errors
+### 2.7 Firebase Services
+
+#### Firebase Meeting Service (`services/firebaseMeetingService.ts`)
+**Coverage:** 97.43% statements, 75% branches, 95.45% functions, 98.23% lines
+
+**Uncovered Lines: 308-309**
+- Error handling in meeting operations
+- **Priority**: MEDIUM
+
+#### Firebase Message Service (`services/firebaseMessageService.ts`)
+**Coverage:** 96.15% statements, 78.94% branches, 100% functions, 97.4% lines
+
+**Uncovered Lines: 205-206**
+- Error handling in message operations
+- **Priority**: MEDIUM
+
+#### Firebase Request Service (`services/firebaseRequestService.ts`)
+**Coverage:** 97.75% statements, 100% branches, 87.5% functions, 97.75% lines
+
+**Uncovered Lines: 230, 235**
+- Error handler functions
 - **Priority**: MEDIUM
 
 ---
 
 ## 3. UTILS
 
-### 3.1 Data Migration (`utils/dataMigration.ts`)
+### 3.1 Caspa Profiles (`utils/caspaProfiles.ts`)
 
-#### Multiple Statements - Migration Error Handling
+**Coverage:** 100% statements, 80% branches, 100% functions, 100% lines
+
+#### Uncovered Branches: Lines 371, 395
+
+**Line 371 - Conditional Branch**
+- **Type**: Branch
+- **Code**: Conditional logic branch
+- **Context**: Edge case handling
+- **Trigger**: Specific condition met
+- **Test Strategy**: Set condition to trigger branch
+- **Priority**: MEDIUM
+
+**Line 395 - Conditional Branch**
+- **Type**: Branch
+- **Code**: Conditional logic branch
+- **Context**: Edge case handling
+- **Trigger**: Specific condition met
+- **Test Strategy**: Set condition to trigger branch
+- **Priority**: MEDIUM
+
+### 3.2 Profile Ordering (`utils/profileOrdering.ts`)
+
+**Coverage:** 96.87% statements, 90.9% branches, 100% functions, 96.49% lines
+
+#### Uncovered Lines: 75, 154
+
+**Line 75 - Edge Case**
+- **Type**: Statement/Branch
+- **Code**: Edge case handling in ordering
+- **Context**: Empty profiles or edge case data
+- **Trigger**: Edge case data
+- **Test Strategy**: Test with edge case data
+- **Priority**: MEDIUM
+
+**Line 154 - Edge Case**
+- **Type**: Statement/Branch
+- **Code**: Edge case handling in ordering
+- **Context**: Edge case in ordering logic
+- **Trigger**: Edge case data
+- **Test Strategy**: Test with edge case data
+- **Priority**: MEDIUM
+
+### 3.3 Connection Utils (`utils/connectionUtils.ts`)
+
+**Coverage:** 94.44% statements, 76.92% branches, 100% functions, 100% lines
+
+#### Uncovered Lines: 26-29, 48, 66-69, 88
+
+**Lines 26-29, 48, 66-69, 88 - Error Handlers**
+- **Type**: Statement/Branch
+- **Code**: Error handling in connection operations
+- **Context**: Error handler callbacks
+- **Trigger**: Errors in connection operations
+- **Test Strategy**: Mock operations to throw errors
+- **Priority**: MEDIUM
+
+### 3.4 Data Migration (`utils/dataMigration.ts`)
+
+**Coverage:** 78.43% statements, 58.33% branches, 100% functions, 78.43% lines
+
+#### Uncovered Lines: 36, 70-87, 146
+
+**Multiple Statements - Migration Error Handling**
+- **Type**: Statement
 - **Code**: Error handling in migration process
+- **Context**: Migration error handling
 - **Trigger**: Migration errors at various points
 - **Test Strategy**: Mock migration to fail at different points
 - **Priority**: MEDIUM
 
-### 3.2 Connection Utils (`utils/connectionUtils.ts`)
+### 3.5 Test Accounts (`utils/testAccounts.ts`)
 
-#### Statements 6, 22 (Lines 29, 69) - Error Handling
-- **Code**: Error handling in connection operations
-- **Trigger**: Connection operations fail
-- **Test Strategy**: Mock operations to fail
-- **Priority**: MEDIUM
+**Coverage:** 92% statements, 73.17% branches, 100% functions, 93.75% lines
 
-### 3.3 Profile Ordering (`utils/profileOrdering.ts`)
+#### Uncovered Lines: 61, 161-162
 
-#### Statements 18, 53 (Lines 75, 154) - Edge Cases
-- **Code**: Edge case handling in ordering
-- **Trigger**: Empty profiles, edge case data
-- **Test Strategy**: Test with edge case data
-- **Priority**: MEDIUM
-
-### 3.4 Test Accounts (`utils/testAccounts.ts`)
-
-#### Multiple Statements - Error Handling
+**Lines 61, 161-162 - Error Handlers**
+- **Type**: Statement
 - **Code**: Error handling in test account operations
-- **Trigger**: Test account operations fail
-- **Test Strategy**: Mock operations to fail
+- **Context**: Error handler callbacks
+- **Trigger**: Errors in test account operations
+- **Test Strategy**: Mock operations to throw errors
 - **Priority**: MEDIUM
 
 ---
 
-## 4. TESTING PRIORITY
+## 4. PRIORITY MATRIX
 
 ### Priority 1 (CRITICAL - Must Test)
 - Error handling in critical paths (profile loading, authentication)
 - Validation failures
 - Early returns with no data
 - Match score calculation edge cases
+- **Estimated Impact**: 2-3% coverage improvement
 
 ### Priority 2 (HIGH - Should Test)
 - Service error handling
 - Firebase fallback scenarios
 - Conditional rendering branches
 - Navigation and action handlers
+- **Estimated Impact**: 3-5% coverage improvement
 
 ### Priority 3 (MEDIUM - Nice to Have)
 - Edge cases in utilities
 - Notification scheduling edge cases
 - Migration error handling
 - Logging and warning paths
+- **Estimated Impact**: 2-3% coverage improvement
 
 ### Priority 4 (LOW - Optional)
 - Default switch cases
 - Handler configuration
 - Rare edge cases
+- **Estimated Impact**: 1-2% coverage improvement
 
 ---
 
 ## 5. TESTING STRATEGY
 
 ### For Each Coverage Hole:
+
 1. **Identify the trigger condition** - What causes this code to execute?
 2. **Set up test environment** - Mock dependencies, set up data
 3. **Execute the trigger** - Call function, trigger event, etc.
@@ -500,11 +630,39 @@ This document analyzes each uncovered statement, branch, and function to identif
 5. **Clean up** - Reset mocks, clear state
 
 ### Common Patterns:
+
 - **Error Handling**: Mock service to throw error, verify error is caught and handled
 - **Early Returns**: Set up condition for early return, verify return happens
 - **Conditional Rendering**: Set up condition, verify correct branch renders
 - **Validation**: Provide invalid data, verify validation fails correctly
 - **Fallbacks**: Cause primary path to fail, verify fallback executes
+
+---
+
+## 6. ESTIMATED EFFORT
+
+### To Reach 100% Coverage:
+
+- **Priority 1 (Critical)**: ~20-30 tests, 2-3 days
+- **Priority 2 (High)**: ~30-40 tests, 3-4 days
+- **Priority 3 (Medium)**: ~20-30 tests, 2-3 days
+- **Priority 4 (Low)**: ~10-15 tests, 1 day
+
+**Total Estimated Effort**: 8-11 days for complete coverage
+
+---
+
+## 7. NEXT STEPS
+
+1. ✅ Coverage analysis completed
+2. ✅ Test plan updated with coverage holes
+3. ⏳ Fix 15 failing tests (blocking verification)
+4. ⏳ Add Priority 1 tests (critical paths)
+5. ⏳ Add Priority 2 tests (high priority)
+6. ⏳ Add Priority 3 tests (medium priority)
+7. ⏳ Add Priority 4 tests (low priority)
+8. ⏳ Verify 100% coverage achievement
+9. ⏳ Update test plan with final test cases
 
 ---
 
