@@ -376,4 +376,5 @@ describe('MessagesScreen', () => {
     // This test verifies that loadConversations is called on mount
     // Focus effect behavior is tested implicitly through the component lifecycle
   });
+
 });

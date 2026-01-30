@@ -1,10 +1,5 @@
 # Coverage Holes Report
 
-## C:\Proj\cmn\app\signup.tsx
-
-### Uncovered Branches
-- id 10 branch 1 (cond-expr) at line 116
-
 ## C:\Proj\cmn\app\(tabs)\home.tsx
 
 ### Uncovered Statements

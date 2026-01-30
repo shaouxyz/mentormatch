@@ -392,4 +392,17 @@ describe('SignupScreen', () => {
     expect(passwordInput.props.value).toBe('newpassword123');
     expect(confirmPasswordInput.props.value).toBe('newpassword123');
   });
+
+  it('should use Android behavior for KeyboardAvoidingView on Android platform', () => {
+    const Platform = require('react-native').Platform;
+    const originalOS = Platform.OS;
+    Platform.OS = 'android';
+
+    const { UNSAFE_getByType } = render(<SignupScreen />);
+    const keyboardAvoidingView = UNSAFE_getByType(require('react-native').KeyboardAvoidingView);
+
+    expect(keyboardAvoidingView.props.behavior).toBe('height');
+
+    Platform.OS = originalOS;
+  });
 });
