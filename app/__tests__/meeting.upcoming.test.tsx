@@ -846,4 +846,43 @@ describe('UpcomingMeetingsScreen', () => {
 
     (Linking.openURL as jest.Mock) = originalOpenURL;
   });
+
+  // Coverage holes tests - Section 26.9
+  it('should handle meeting load error (line 60)', async () => {
+    await AsyncStorage.setItem('user', JSON.stringify(mockUser));
+    mockHybridGetUpcomingMeetings.mockRejectedValue(new Error('Load failed'));
+
+    render(<UpcomingMeetingsScreen />);
+
+    await waitFor(() => {
+      expect(Alert.alert).toHaveBeenCalledWith('Error', 'Failed to load upcoming meetings');
+    }, { timeout: 3000 });
+  });
+
+  it('should schedule notifications on load (lines 77-78)', async () => {
+    await AsyncStorage.setItem('user', JSON.stringify(mockUser));
+    mockHybridGetUpcomingMeetings.mockResolvedValue(mockMeetings);
+    const mockScheduleNotifications = meetingNotificationService.scheduleNotificationsForMeetings as jest.Mock;
+    mockScheduleNotifications.mockResolvedValue(undefined);
+
+    render(<UpcomingMeetingsScreen />);
+
+    await waitFor(() => {
+      expect(mockScheduleNotifications).toHaveBeenCalledWith(mockMeetings);
+    }, { timeout: 3000 });
+  });
+
+  it('should handle notification scheduling error on load', async () => {
+    await AsyncStorage.setItem('user', JSON.stringify(mockUser));
+    mockHybridGetUpcomingMeetings.mockResolvedValue(mockMeetings);
+    const mockScheduleNotifications = meetingNotificationService.scheduleNotificationsForMeetings as jest.Mock;
+    mockScheduleNotifications.mockRejectedValue(new Error('Notification failed'));
+
+    render(<UpcomingMeetingsScreen />);
+
+    await waitFor(() => {
+      // Should handle error gracefully, meetings should still load
+      expect(mockHybridGetUpcomingMeetings).toHaveBeenCalled();
+    }, { timeout: 3000 });
+  });
 });

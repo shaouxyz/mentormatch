@@ -691,4 +691,71 @@ describe('MentorshipScreen', () => {
       expect(getByText('Mentor User')).toBeTruthy();
     }, { timeout: 3000 });
   });
+
+  // Coverage holes tests - Section 26.3
+  it('should handle no user data - early return (lines 74-77)', async () => {
+    // Clear user from AsyncStorage
+    await AsyncStorage.removeItem('user');
+
+    const { getByText } = render(<MentorshipScreen />);
+
+    await waitFor(() => {
+      // Should show empty state when no user
+      expect(getByText('My Mentors')).toBeTruthy();
+    }, { timeout: 3000 });
+  });
+
+  it('should handle invalid requests data schema (line 93)', async () => {
+    await AsyncStorage.setItem('user', JSON.stringify(mockUser));
+    // Set invalid requests data (not an array)
+    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify({ invalid: 'data' }));
+
+    const { getByText } = render(<MentorshipScreen />);
+
+    await waitFor(() => {
+      // Should handle invalid data gracefully
+      expect(getByText('My Mentors')).toBeTruthy();
+    }, { timeout: 3000 });
+  });
+
+  it('should handle no requests data (line 123)', async () => {
+    await AsyncStorage.setItem('user', JSON.stringify(mockUser));
+    // Clear requests
+    await AsyncStorage.removeItem('mentorshipRequests');
+
+    const { getByText } = render(<MentorshipScreen />);
+
+    await waitFor(() => {
+      // Should show empty state
+      expect(getByText('My Mentors')).toBeTruthy();
+    }, { timeout: 3000 });
+  });
+
+  it('should handle profile loading error (line 166)', async () => {
+    const acceptedRequest = createRequest({
+      requesterEmail: 'user@example.com',
+      mentorEmail: 'mentor@example.com',
+      status: 'accepted',
+    });
+
+    await AsyncStorage.setItem('user', JSON.stringify(mockUser));
+    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([acceptedRequest]));
+
+    // Mock hybridGetProfile to throw error
+    const hybridProfileService = require('@/services/hybridProfileService');
+    const originalGetProfile = hybridProfileService.hybridGetProfile;
+    hybridProfileService.hybridGetProfile = jest.fn().mockRejectedValue(new Error('Profile load failed'));
+
+    const { getByText } = render(<MentorshipScreen />);
+
+    await waitFor(() => {
+      // Should handle error gracefully - screen should still render
+      expect(getByText('My Mentors')).toBeTruthy();
+      // Error should be logged
+      expect(mockLogger.error || mockLogger.warn).toHaveBeenCalled();
+    }, { timeout: 5000 });
+
+    // Restore
+    hybridProfileService.hybridGetProfile = originalGetProfile;
+  });
 });

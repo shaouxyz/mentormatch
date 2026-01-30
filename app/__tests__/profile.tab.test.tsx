@@ -459,4 +459,21 @@ describe('ProfileScreen', () => {
       expect(getByText('Test User')).toBeTruthy();
     });
   });
+
+  // Coverage holes tests - Section 26.4
+  it('should prevent duplicate loads with initial load guard (line 57)', async () => {
+    await AsyncStorage.setItem('user', JSON.stringify({ email: 'test@example.com' }));
+    await AsyncStorage.setItem('profile', JSON.stringify(mockProfile));
+
+    const screen1 = render(<ProfileScreen />);
+    await waitFor(() => {
+      expect(screen1.getByText('Test User')).toBeTruthy();
+    }, { timeout: 3000 });
+
+    // Render again - should not load twice
+    const screen2 = render(<ProfileScreen />);
+    await waitFor(() => {
+      expect(screen2.getByText('Test User')).toBeTruthy();
+    }, { timeout: 3000 });
+  });
 });

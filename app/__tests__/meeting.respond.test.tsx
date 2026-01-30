@@ -326,4 +326,52 @@ describe('MeetingResponseScreen', () => {
       );
     });
   });
+
+  // Coverage holes tests - Section 26.7
+  it('should handle meeting load error (line 61)', async () => {
+    mockHybridGetMeeting.mockRejectedValue(new Error('Meeting load failed'));
+
+    render(<MeetingResponseScreen />);
+
+    await waitFor(() => {
+      expect(Alert.alert).toHaveBeenCalledWith('Error', expect.any(String));
+    }, { timeout: 3000 });
+  });
+
+  it('should handle response submission errors (lines 83, 93, 109)', async () => {
+    mockHybridGetMeeting.mockResolvedValue(mockMeeting);
+    mockHybridUpdateMeeting.mockRejectedValue(new Error('Update failed'));
+
+    const { getByText } = render(<MeetingResponseScreen />);
+
+    await waitFor(() => {
+      expect(getByText('Accept')).toBeTruthy();
+    }, { timeout: 3000 });
+
+    fireEvent.press(getByText('Accept'));
+
+    await waitFor(() => {
+      expect(Alert.alert).toHaveBeenCalledWith('Error', expect.any(String));
+    }, { timeout: 3000 });
+  });
+
+  it('should handle notification scheduling error on accept', async () => {
+    mockHybridGetMeeting.mockResolvedValue(mockMeeting);
+    mockHybridUpdateMeeting.mockResolvedValue({ ...mockMeeting, status: 'accepted' });
+    const mockScheduleNotifications = meetingNotificationService.scheduleMeetingNotifications as jest.Mock;
+    mockScheduleNotifications.mockRejectedValue(new Error('Notification failed'));
+
+    const { getByText } = render(<MeetingResponseScreen />);
+
+    await waitFor(() => {
+      expect(getByText('Accept')).toBeTruthy();
+    }, { timeout: 3000 });
+
+    fireEvent.press(getByText('Accept'));
+
+    await waitFor(() => {
+      // Should still succeed even if notifications fail
+      expect(mockHybridUpdateMeeting).toHaveBeenCalled();
+    }, { timeout: 3000 });
+  });
 });

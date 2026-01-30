@@ -3271,6 +3271,8 @@ Notes: [Any issues found]
 
 This section addresses **every uncovered statement, branch, and function** identified in `COVERAGE_HOLES.md` to achieve 100% code coverage.
 
+**Reference**: See `COVERAGE_HOLE_ANALYSIS.md` for detailed analysis of each coverage hole, including code context, trigger conditions, and test strategies.
+
 ### 26.1 Signup Screen (`app/signup.tsx`)
 
 #### Test Case 26.1.1: Platform-Specific KeyboardAvoidingView Behavior (Android)

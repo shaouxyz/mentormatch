@@ -630,4 +630,78 @@ describe('ChatScreen', () => {
       );
     }, { timeout: 2000 });
   });
+
+  // Coverage holes tests - Section 26.10
+  it('should handle message subscription error (line 138)', async () => {
+    await AsyncStorage.setItem('user', JSON.stringify({ email: 'test@example.com' }));
+    await AsyncStorage.setItem('profile', JSON.stringify({ name: 'Test User', email: 'test@example.com' }));
+
+    const hybridMessageService = require('@/services/hybridMessageService');
+    const mockConversation = {
+      id: 'conv123',
+      participants: ['test@example.com', 'participant@example.com'],
+      participantNames: {
+        'test@example.com': 'Test User',
+        'participant@example.com': 'Participant User',
+      },
+      unreadCount: {},
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    hybridMessageService.hybridCreateOrGetConversation.mockResolvedValue(mockConversation);
+    hybridMessageService.hybridGetMessages.mockResolvedValue([]);
+    // Mock subscription to throw error
+    const originalSubscribe = hybridMessageService.hybridSubscribeToChat;
+    hybridMessageService.hybridSubscribeToChat = jest.fn().mockImplementation(() => {
+      throw new Error('Subscription failed');
+    });
+
+    render(<ChatScreen />);
+
+    await waitFor(() => {
+      // Should handle error gracefully - conversation should still be created
+      expect(hybridMessageService.hybridCreateOrGetConversation).toHaveBeenCalled();
+    }, { timeout: 5000 });
+
+    // Restore
+    hybridMessageService.hybridSubscribeToChat = originalSubscribe;
+  });
+
+  it('should handle message send error (line 228)', async () => {
+    await AsyncStorage.setItem('user', JSON.stringify({ email: 'test@example.com' }));
+    await AsyncStorage.setItem('profile', JSON.stringify({ name: 'Test User', email: 'test@example.com' }));
+
+    const hybridMessageService = require('@/services/hybridMessageService');
+    const mockConversation = {
+      id: 'conv123',
+      participants: ['test@example.com', 'participant@example.com'],
+      participantNames: {
+        'test@example.com': 'Test User',
+        'participant@example.com': 'Participant User',
+      },
+      unreadCount: {},
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    hybridMessageService.hybridCreateOrGetConversation.mockResolvedValue(mockConversation);
+    hybridMessageService.hybridGetMessages.mockResolvedValue([]);
+    hybridMessageService.hybridSubscribeToChat = jest.fn(() => () => {});
+    hybridMessageService.hybridSendMessage = jest.fn().mockRejectedValue(new Error('Send failed'));
+
+    const { getByPlaceholderText, getByText } = render(<ChatScreen />);
+
+    await waitFor(() => {
+      const input = getByPlaceholderText('Type a message...');
+      fireEvent.changeText(input, 'Test message');
+    }, { timeout: 3000 });
+
+    const sendButton = getByText('Send');
+    fireEvent.press(sendButton);
+
+    await waitFor(() => {
+      expect(Alert.alert).toHaveBeenCalledWith('Error', expect.any(String));
+    }, { timeout: 3000 });
+  });
 });

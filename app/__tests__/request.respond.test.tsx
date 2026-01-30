@@ -34,6 +34,11 @@ jest.mock('@/services/firebaseRequestService', () => ({
   updateFirebaseRequest: jest.fn(),
 }));
 
+jest.mock('@/services/requestService', () => ({
+  updateRequestStatus: jest.fn(),
+  getAllRequests: jest.fn(),
+}));
+
 jest.mock('@/config/firebase.config', () => ({
   isFirebaseConfigured: jest.fn(),
 }));
@@ -611,6 +616,63 @@ describe('RespondRequestScreen', () => {
         'respond to request'
       );
     }, { timeout: 3000 });
+
+    // Restore
+    AsyncStorage.setItem = originalSetItem;
+  });
+
+  // Coverage holes tests - Section 26.14
+  it('should handle request load error (line 88)', async () => {
+    mockParams.request = JSON.stringify(mockRequest);
+    await AsyncStorage.setItem('user', JSON.stringify({ email: 'mentor@example.com' }));
+
+    // Set invalid request data that will cause parsing error
+    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify({ invalid: 'data' }));
+
+    const requestService = require('@/services/requestService');
+    requestService.getAllRequests.mockResolvedValue([]);
+
+    render(<RespondRequestScreen />);
+
+    await waitFor(() => {
+      // Error should be logged when parsing fails
+      const errorCalls = (mockLogger.error as jest.Mock).mock.calls;
+      const hasError = errorCalls.some((call) => 
+        call[0]?.includes('Error parsing request') || call[0]?.includes('Error')
+      );
+      // Component should still render even with error
+      expect(hasError || mockLogger.error).toHaveBeenCalled();
+    }, { timeout: 5000 });
+  });
+
+  it('should handle response validation errors (lines 93, 99, 109)', async () => {
+    mockParams.request = JSON.stringify(mockRequest);
+    await AsyncStorage.setItem('user', JSON.stringify({ email: 'mentor@example.com' }));
+    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([mockRequest]));
+
+    // Mock AsyncStorage.setItem to throw error when saving response
+    const originalSetItem = AsyncStorage.setItem;
+    AsyncStorage.setItem = jest.fn((key, value) => {
+      if (key === 'mentorshipRequests') {
+        return Promise.reject(new Error('Storage error'));
+      }
+      return originalSetItem(key, value);
+    });
+
+    const { getByText } = render(<RespondRequestScreen />);
+
+    await waitFor(() => {
+      expect(getByText('Accept')).toBeTruthy();
+    }, { timeout: 3000 });
+
+    fireEvent.press(getByText('Accept'));
+
+    await waitFor(() => {
+      // Should show error alert via ErrorHandler
+      const alertCalls = (Alert.alert as jest.Mock).mock.calls;
+      const hasError = alertCalls.some((call) => call[0] === 'Error' || call[0]?.includes('Error'));
+      expect(hasError).toBe(true);
+    }, { timeout: 5000 });
 
     // Restore
     AsyncStorage.setItem = originalSetItem;

@@ -554,4 +554,85 @@ describe('ViewProfileScreen', () => {
     // Should not call hybridGetProfile again if params haven't changed
     // (This tests the early return logic)
   });
+
+  // Coverage holes tests - Section 26.13
+  it('should handle profile load error (line 67)', async () => {
+    mockParams.email = 'test@example.com';
+    await AsyncStorage.setItem('user', JSON.stringify({ email: 'user@example.com' }));
+    // Don't set allProfiles so it will try to load from service
+    
+    const hybridProfileService = require('@/services/hybridProfileService');
+    const originalGetProfile = hybridProfileService.hybridGetProfile;
+    hybridProfileService.hybridGetProfile = jest.fn().mockRejectedValue(new Error('Load failed'));
+
+    render(<ViewProfileScreen />);
+
+    await waitFor(() => {
+      // Should navigate back or show error
+      const backCalled = mockRouter.back.mock.calls.length > 0;
+      const errorCalled = (mockLogger.error as jest.Mock).mock.calls.length > 0;
+      expect(backCalled || errorCalled).toBe(true);
+    }, { timeout: 5000 });
+
+    // Restore
+    hybridProfileService.hybridGetProfile = originalGetProfile;
+  });
+
+  it('should display contact info for matched users (lines 160, 183, 248-249, 254-255)', async () => {
+    await AsyncStorage.setItem('user', JSON.stringify({ email: 'user@example.com' }));
+    await AsyncStorage.setItem('allProfiles', JSON.stringify([mockProfile]));
+    
+    const connectionUtils = require('@/utils/connectionUtils');
+    connectionUtils.areUsersMatched.mockResolvedValue(true); // Users are matched
+
+    mockParams.email = mockProfile.email;
+
+    const { getByText } = render(<ViewProfileScreen />);
+
+    await waitFor(() => {
+      // Contact info should be visible for matched users
+      expect(getByText(mockProfile.email)).toBeTruthy();
+      expect(getByText(mockProfile.phoneNumber)).toBeTruthy();
+    }, { timeout: 3000 });
+  });
+
+  it('should hide contact info for unmatched users', async () => {
+    await AsyncStorage.setItem('user', JSON.stringify({ email: 'user@example.com' }));
+    await AsyncStorage.setItem('allProfiles', JSON.stringify([mockProfile]));
+    
+    const connectionUtils = require('@/utils/connectionUtils');
+    connectionUtils.areUsersMatched.mockResolvedValue(false); // Users not matched
+
+    mockParams.email = mockProfile.email;
+
+    const { queryByText } = render(<ViewProfileScreen />);
+
+    await waitFor(() => {
+      // Contact info should NOT be visible for unmatched users
+      expect(queryByText(mockProfile.email)).toBeNull();
+      expect(queryByText(mockProfile.phoneNumber)).toBeNull();
+    }, { timeout: 3000 });
+  });
+
+  it('should handle action button presses (line 295)', async () => {
+    await AsyncStorage.setItem('user', JSON.stringify({ email: 'user@example.com' }));
+    await AsyncStorage.setItem('allProfiles', JSON.stringify([mockProfile]));
+    
+    const connectionUtils = require('@/utils/connectionUtils');
+    connectionUtils.areUsersMatched.mockResolvedValue(false);
+
+    mockParams.email = mockProfile.email;
+
+    const { getByText } = render(<ViewProfileScreen />);
+
+    await waitFor(() => {
+      expect(getByText('Send Mentor Request')).toBeTruthy();
+    }, { timeout: 3000 });
+
+    fireEvent.press(getByText('Send Mentor Request'));
+
+    await waitFor(() => {
+      expect(mockRouter.push).toHaveBeenCalled();
+    }, { timeout: 3000 });
+  });
 });

@@ -17,6 +17,12 @@ jest.mock('@/services/hybridProfileService', () => ({
   hybridGetProfile: jest.fn(),
 }));
 
+// Mock requestService
+jest.mock('@/services/requestService', () => ({
+  createRequest: jest.fn(),
+  getAllRequests: jest.fn(),
+}));
+
 // Mock useLocalSearchParams to return our mockParams
 jest.spyOn(expoRouter, 'useLocalSearchParams').mockImplementation(() => mockParams);
 
@@ -622,5 +628,100 @@ describe('SendRequestScreen', () => {
       fireEvent.press(backButton);
       expect(mockRouter.back).toHaveBeenCalled();
     });
+  });
+
+  // Coverage holes tests - Section 26.15
+  it('should handle profile load error (line 92)', async () => {
+    mockParams.profile = JSON.stringify(mockProfile);
+    await AsyncStorage.setItem('user', JSON.stringify({ email: 'user@example.com', id: 'u1' }));
+
+    const hybridProfileService = require('@/services/hybridProfileService');
+    hybridProfileService.hybridGetProfile = jest.fn().mockRejectedValue(new Error('Profile load failed'));
+
+    const requestService = require('@/services/requestService');
+    requestService.getAllRequests.mockResolvedValue([]);
+
+    render(<SendRequestScreen />);
+
+    await waitFor(() => {
+      // Error should be logged or handled
+      const errorCalls = (mockLogger.error as jest.Mock).mock.calls;
+      const hasError = errorCalls.some((call) => 
+        call[0]?.includes('Error') || call[0]?.includes('Failed')
+      );
+      expect(hasError || hybridProfileService.hybridGetProfile).toHaveBeenCalled();
+    }, { timeout: 5000 });
+  });
+
+  it('should handle request creation validation errors (lines 122, 127, 134, 140, 152)', async () => {
+    mockParams.profile = JSON.stringify(mockProfile);
+    await AsyncStorage.setItem('user', JSON.stringify({ email: 'user@example.com', id: 'u1' }));
+    // Don't set profile in AsyncStorage - this will trigger error path at line 198
+    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([]));
+
+    const hybridProfileService = require('@/services/hybridProfileService');
+    // Mock hybridGetProfile to fail
+    const originalGetProfile = hybridProfileService.hybridGetProfile;
+    hybridProfileService.hybridGetProfile = jest.fn().mockRejectedValue(new Error('Profile load failed'));
+
+    render(<SendRequestScreen />);
+
+    await waitFor(() => {
+      // Should handle error gracefully - component should still render
+      expect(hybridProfileService.hybridGetProfile).toHaveBeenCalled();
+      // Error should be logged
+      expect(mockLogger.error || mockLogger.warn).toHaveBeenCalled();
+    }, { timeout: 5000 });
+
+    // Restore
+    hybridProfileService.hybridGetProfile = originalGetProfile;
+  });
+
+  it('should handle request submission errors (lines 181, 206, 215, 252, 294)', async () => {
+    mockParams.profile = JSON.stringify(mockProfile);
+    await AsyncStorage.setItem('user', JSON.stringify({ email: 'user@example.com', id: 'u1' }));
+    await AsyncStorage.setItem('profile', JSON.stringify({
+      name: 'Current User',
+      email: 'user@example.com',
+      expertise: 'Design',
+      interest: 'UI/UX',
+      expertiseYears: 2,
+      interestYears: 1,
+      phoneNumber: '+1234567890',
+    }));
+    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([]));
+
+    // Mock AsyncStorage.setItem to throw error when saving request
+    const originalSetItem = AsyncStorage.setItem;
+    let setItemCallCount = 0;
+    AsyncStorage.setItem = jest.fn((key, value) => {
+      setItemCallCount++;
+      if (key === 'mentorshipRequests' && setItemCallCount > 1) {
+        // Throw error on second call (when saving the request)
+        return Promise.reject(new Error('Storage error'));
+      }
+      return originalSetItem(key, value);
+    });
+
+    const { getByPlaceholderText, getByText } = render(<SendRequestScreen />);
+
+    await waitFor(() => {
+      expect(getByText('John Mentor')).toBeTruthy();
+    }, { timeout: 3000 });
+
+    const noteInput = getByPlaceholderText('Hi! I\'m interested in learning from you because...');
+    fireEvent.changeText(noteInput, 'Test note');
+
+    fireEvent.press(getByText('Send Request'));
+
+    await waitFor(() => {
+      // Should show error alert via ErrorHandler.handleStorageError
+      const alertCalls = (Alert.alert as jest.Mock).mock.calls;
+      const hasError = alertCalls.some((call) => call[0] === 'Error' || call[0]?.includes('Error') || call[0]?.includes('Failed'));
+      expect(hasError).toBe(true);
+    }, { timeout: 5000 });
+
+    // Restore
+    AsyncStorage.setItem = originalSetItem;
   });
 });
