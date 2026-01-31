@@ -618,7 +618,7 @@ describe('ViewProfileScreen', () => {
     }, { timeout: 3000 });
   });
 
-  it.skip('should handle action button presses (line 295)', async () => {
+  it('should handle action button presses (line 295)', async () => {
     await AsyncStorage.setItem('user', JSON.stringify({ email: 'user@example.com' }));
     await AsyncStorage.setItem('allProfiles', JSON.stringify([mockProfile]));
     
@@ -627,13 +627,13 @@ describe('ViewProfileScreen', () => {
 
     mockParams.email = mockProfile.email;
 
-    const { getByText } = render(<ViewProfileScreen />);
+    const screen = render(<ViewProfileScreen />);
 
     await waitFor(() => {
-      expect(getByText('Send Mentor Request')).toBeTruthy();
+      expect(screen.getByText('Request as Mentor')).toBeTruthy();
     }, { timeout: 3000 });
 
-    fireEvent.press(getByText('Send Mentor Request'));
+    fireEvent.press(screen.getByText('Request as Mentor'));
 
     await waitFor(() => {
       expect(mockRouter.push).toHaveBeenCalled();

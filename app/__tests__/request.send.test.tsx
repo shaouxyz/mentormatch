@@ -631,12 +631,36 @@ describe('SendRequestScreen', () => {
   });
 
   // Coverage holes tests - Section 26.15
-  it.skip('should handle profile load error (line 92)', async () => {
-    // Test is flaky - skipping for now
+  it('should handle profile load error (line 92)', async () => {
+    // Set invalid profile param to trigger error at line 92
+    mockParams.profile = 'invalid json{';
+    await AsyncStorage.setItem('user', JSON.stringify({ email: 'user@example.com', id: 'u1' }));
+
+    const screen = render(<SendRequestScreen />);
+
+    // Component should handle error gracefully and render
+    await waitFor(() => {
+      expect(screen.root).toBeTruthy();
+    }, { timeout: 2000 });
   });
 
-  it.skip('should handle profile load error paths (lines 122, 127, 134, 140, 152)', async () => {
-    // Test is flaky - skipping for now
+  it('should handle profile load error paths (lines 122, 127, 134, 140, 152)', async () => {
+    // Set valid profile param but trigger errors in various paths
+    mockParams.profile = JSON.stringify(mockProfile);
+    await AsyncStorage.setItem('user', JSON.stringify({ email: 'user@example.com', id: 'u1' }));
+    
+    // Mock AsyncStorage.getItem to fail for various operations
+    const originalGetItem = AsyncStorage.getItem;
+    AsyncStorage.getItem = jest.fn().mockRejectedValue(new Error('Storage error'));
+
+    const screen = render(<SendRequestScreen />);
+
+    // Component should handle errors gracefully
+    await waitFor(() => {
+      expect(screen.root).toBeTruthy();
+    }, { timeout: 2000 });
+
+    AsyncStorage.getItem = originalGetItem;
   });
 
   it('should handle request submission storage errors (lines 181, 206, 215, 252, 294)', async () => {

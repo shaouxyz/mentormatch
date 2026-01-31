@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -52,8 +52,11 @@ export default function MentorshipScreen() {
   const [mentors, setMentors] = useState<MentorshipConnection[]>([]);
   const [mentees, setMentees] = useState<MentorshipConnection[]>([]);
   const [loading, setLoading] = useState(true);
+  const isLoadingRef = useRef(false);
 
   const loadConnections = useCallback(async () => {
+    if (isLoadingRef.current) return;
+    isLoadingRef.current = true;
     try {
       setLoading(true);
       const userData = await AsyncStorage.getItem('user');
@@ -202,6 +205,7 @@ export default function MentorshipScreen() {
       logger.error('Error loading connections', error instanceof Error ? error : new Error(String(error)));
     } finally {
       setLoading(false);
+      isLoadingRef.current = false;
     }
   }, []); // Empty deps since we use state setters
 
