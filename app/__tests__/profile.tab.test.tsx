@@ -540,6 +540,29 @@ describe('ProfileScreen', () => {
   });
 
   // Coverage holes tests - Section 26.4
+  it('should handle non-Error exception in loadProfile (line 80 branch 1)', async () => {
+    // Test branch 1 of line 80: when error is not an Error instance
+    const originalGetItem = AsyncStorage.getItem;
+    AsyncStorage.getItem = jest.fn().mockImplementation((key) => {
+      if (key === 'profile') {
+        return Promise.reject('String error'); // Non-Error exception
+      }
+      return originalGetItem(key);
+    });
+
+    render(<ProfileScreen />);
+
+    await waitFor(() => {
+      expect(logger.logger.error).toHaveBeenCalledWith(
+        'Error loading profile',
+        expect.any(Error)
+      );
+    }, { timeout: 3000 });
+
+    // Restore
+    AsyncStorage.getItem = originalGetItem;
+  });
+
   it('should prevent duplicate loads with initial load guard (line 57)', async () => {
     await AsyncStorage.setItem('user', JSON.stringify({ email: 'test@example.com' }));
     await AsyncStorage.setItem('profile', JSON.stringify(mockProfile));

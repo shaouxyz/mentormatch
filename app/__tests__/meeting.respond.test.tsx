@@ -386,6 +386,97 @@ describe('MeetingResponseScreen', () => {
     }, { timeout: 5000 });
   });
 
+  it('should handle non-Error exception in loadMeeting (line 53 branch 1)', async () => {
+    // Test branch 1 of line 53: when error is not an Error instance
+    mockHybridGetMeeting.mockRejectedValue('String error');
+
+    const { queryByText } = render(<MeetingResponseScreen />);
+
+    await waitFor(() => {
+      expect(queryByText('Loading meeting details...')).toBeNull();
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Error loading meeting',
+        expect.any(Error)
+      );
+      expect(Alert.alert).toHaveBeenCalledWith('Error', 'Failed to load meeting details');
+    }, { timeout: 3000 });
+  });
+
+  it('should handle non-Error exception in notification scheduling (line 84 branch 0 and 1)', async () => {
+    // Test branch 0 and 1 of line 84: when notificationError is not an Error instance
+    const mockScheduleNotifications = meetingNotificationService.scheduleMeetingNotifications as jest.MockedFunction<typeof meetingNotificationService.scheduleMeetingNotifications>;
+    mockScheduleNotifications.mockRejectedValue('String notification error');
+
+    const { getByLabelText, queryByText } = render(<MeetingResponseScreen />);
+
+    await waitFor(() => {
+      expect(queryByText('Loading meeting details...')).toBeNull();
+    }, { timeout: 3000 });
+
+    const acceptButton = getByLabelText('Accept meeting');
+    fireEvent.press(acceptButton);
+
+    await waitFor(() => {
+      // Should handle non-Error exception gracefully (line 84 branch 0 and 1)
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        'Failed to schedule notifications for accepted meeting',
+        expect.objectContaining({
+          error: expect.any(String),
+          meetingId: 'meeting123',
+        })
+      );
+    }, { timeout: 3000 });
+  });
+
+  it('should handle non-Error exception in notification cancellation (line 94 branch 0 and 1)', async () => {
+    // Test branch 0 and 1 of line 94: when notificationError is not an Error instance
+    const mockCancelNotifications = meetingNotificationService.cancelMeetingNotifications as jest.MockedFunction<typeof meetingNotificationService.cancelMeetingNotifications>;
+    mockCancelNotifications.mockRejectedValue('String cancellation error');
+
+    const { getByLabelText, queryByText } = render(<MeetingResponseScreen />);
+
+    await waitFor(() => {
+      expect(queryByText('Loading meeting details...')).toBeNull();
+    }, { timeout: 3000 });
+
+    const declineButton = getByLabelText('Decline meeting');
+    fireEvent.press(declineButton);
+
+    await waitFor(() => {
+      // Should handle non-Error exception gracefully (line 94 branch 0 and 1)
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        'Failed to cancel notifications for declined meeting',
+        expect.objectContaining({
+          error: expect.any(String),
+          meetingId: 'meeting123',
+        })
+      );
+    }, { timeout: 3000 });
+  });
+
+  it('should handle non-Error exception in handleResponse (line 116 branch 1)', async () => {
+    // Test branch 1 of line 116: when error is not an Error instance
+    mockHybridUpdateMeeting.mockRejectedValue('String response error');
+
+    const { getByLabelText, queryByText } = render(<MeetingResponseScreen />);
+
+    await waitFor(() => {
+      expect(queryByText('Loading meeting details...')).toBeNull();
+    }, { timeout: 3000 });
+
+    const acceptButton = getByLabelText('Accept meeting');
+    fireEvent.press(acceptButton);
+
+    await waitFor(() => {
+      // Should handle non-Error exception gracefully (line 116 branch 1)
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Error responding to meeting',
+        expect.any(Error)
+      );
+      expect(Alert.alert).toHaveBeenCalledWith('Error', 'Failed to respond to meeting. Please try again.');
+    }, { timeout: 3000 });
+  });
+
   it('should handle notification scheduling error on accept', async () => {
     mockHybridGetMeeting.mockResolvedValue(mockMeeting);
     mockHybridUpdateMeeting.mockResolvedValue({ ...mockMeeting, status: 'accepted' });

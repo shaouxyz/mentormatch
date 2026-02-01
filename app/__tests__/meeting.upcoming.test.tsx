@@ -18,6 +18,7 @@ jest.mock('@/services/meetingNotificationService', () => ({
   scheduleNotificationsForMeetings: jest.fn(),
 }));
 jest.mock('expo-linking');
+jest.mock('@/utils/logger');
 
 const mockRouterInstance = {
   back: jest.fn(),
@@ -848,6 +849,94 @@ describe('UpcomingMeetingsScreen', () => {
   });
 
   // Coverage holes tests - Section 26.9
+  it('should handle non-Error exception in notification scheduling (line 60-61 branch 0 and 1)', async () => {
+    // Test branch 0 and 1 of line 60-61: when notificationError is not an Error instance
+    const mockScheduleNotifications = meetingNotificationService.scheduleNotificationsForMeetings as jest.MockedFunction<typeof meetingNotificationService.scheduleNotificationsForMeetings>;
+    mockScheduleNotifications.mockRejectedValue('String notification error');
+
+    await AsyncStorage.setItem('user', JSON.stringify(mockUser));
+    mockHybridGetUpcomingMeetings.mockResolvedValue(mockMeetings);
+
+    const screen = render(<UpcomingMeetingsScreen />);
+
+    await waitFor(() => {
+      // Should handle non-Error exception gracefully (line 60-61 branch 0 and 1)
+      expect(screen.root).toBeTruthy();
+    }, { timeout: 3000 });
+  });
+
+  it('should handle virtual meeting location (line 128 branch 1)', async () => {
+    // Test branch 1 of line 128: when locationType === 'virtual', use meetingLink
+    const virtualMeeting: Meeting = {
+      ...mockMeetings[0],
+      locationType: 'virtual',
+      meetingLink: 'https://zoom.us/j/123456',
+      location: '',
+    };
+
+    await AsyncStorage.setItem('user', JSON.stringify(mockUser));
+    mockHybridGetUpcomingMeetings.mockResolvedValue([virtualMeeting]);
+    mockRequestCalendarPermissions.mockResolvedValue({ status: 'granted' } as any);
+    mockGetCalendars.mockResolvedValue([{ id: 'calendar1', title: 'Test Calendar' }] as any);
+    mockCreateEvent.mockResolvedValue('event-id');
+
+    const { getAllByLabelText } = render(<UpcomingMeetingsScreen />);
+
+    await waitFor(() => {
+      const calendarButtons = getAllByLabelText('Add to calendar');
+      fireEvent.press(calendarButtons[0]);
+    });
+
+    const alertCalls = (Alert.alert as jest.Mock).mock.calls;
+    const lastCall = alertCalls[alertCalls.length - 1];
+    const phoneCalendarOption = lastCall[2].find((opt: any) => opt.text === 'Phone Calendar');
+    
+    await phoneCalendarOption.onPress();
+
+    await waitFor(() => {
+      // Should use meetingLink for virtual meetings (line 128 branch 1)
+      expect(mockCreateEvent).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          location: 'https://zoom.us/j/123456', // Virtual meeting uses meetingLink
+        })
+      );
+    });
+  });
+
+  it('should handle location in Google Calendar URL (line 157 branch 1)', async () => {
+    // Test branch 1 of line 157: when location exists, include it in URL
+    const inPersonMeeting: Meeting = {
+      ...mockMeetings[0],
+      locationType: 'in-person',
+      location: 'Starbucks, 123 Main St',
+      meetingLink: '',
+    };
+
+    await AsyncStorage.setItem('user', JSON.stringify(mockUser));
+    mockHybridGetUpcomingMeetings.mockResolvedValue([inPersonMeeting]);
+
+    const { getAllByLabelText } = render(<UpcomingMeetingsScreen />);
+
+    await waitFor(() => {
+      const calendarButtons = getAllByLabelText('Add to calendar');
+      fireEvent.press(calendarButtons[0]);
+    });
+
+    const alertCalls = (Alert.alert as jest.Mock).mock.calls;
+    const lastCall = alertCalls[alertCalls.length - 1];
+    const googleCalendarOption = lastCall[2].find((opt: any) => opt.text === 'Google Calendar');
+    
+    await googleCalendarOption.onPress();
+
+    await waitFor(() => {
+      // Should include location in Google Calendar URL (line 157 branch 1)
+      expect(Linking.openURL).toHaveBeenCalledWith(
+        expect.stringContaining(encodeURIComponent('Starbucks, 123 Main St'))
+      );
+    });
+  });
+
   it('should handle meeting load error (line 60)', async () => {
     await AsyncStorage.setItem('user', JSON.stringify(mockUser));
     mockHybridGetUpcomingMeetings.mockRejectedValue(new Error('Load failed'));
