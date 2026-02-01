@@ -22,16 +22,7 @@ import { useFocusEffect } from 'expo-router';
 import { orderProfilesForUser } from '@/utils/profileOrdering';
 import { hybridGetAllProfiles, hybridGetProfile } from '@/services/hybridProfileService';
 import { initializeFirebase } from '@/config/firebase.config';
-
-interface Profile {
-  name: string;
-  expertise: string;
-  interest: string;
-  expertiseYears: number;
-  interestYears: number;
-  email: string;
-  phoneNumber: string;
-}
+import { Profile } from '@/types/types';
 
 /**
  * Home Screen Component (Discover Tab)
