@@ -459,13 +459,46 @@ describe('Data Migration', () => {
   // rather than mocking individual function calls
 
   describe('migrateV1ToV2 - User Migration Branches', () => {
-    it.skip('should migrate user when user does not exist (line 73 branch 0)', async () => {
-      // SKIPPED: This test is difficult to verify reliably because:
-      // 1. Dynamic imports bypass Jest mocks, so we can't mock getUserByEmail
-      // 2. The actual getUserByEmail checks AsyncStorage, which may have existing data from other tests
-      // 3. The migration path is already covered by integration tests in "migrateV1ToV2 edge cases"
-      // The branch coverage for line 73 branch 0 is effectively covered by the existing test
-      // "should handle user migration when user has id and createdAt" which tests the same path
+    it('should migrate user when user does not exist (line 73 branch 0)', async () => {
+      // Test branch 0 of line 73: when !existingUser is true (user doesn't exist)
+      // This tests the actual migration behavior by ensuring no user exists in the users array
+      await AsyncStorage.clear();
+      await AsyncStorage.setItem('dataVersion', '1');
+      
+      const oldUser = {
+        email: 'migrateuser@example.com',
+        password: 'plaintextpassword',
+        id: 'migrate123',
+        createdAt: '2026-01-01T00:00:00Z',
+      };
+      await AsyncStorage.setItem('user', JSON.stringify(oldUser));
+      
+      // Ensure users array is empty (no existing user)
+      await AsyncStorage.removeItem('users');
+      
+      await runMigrations();
+      
+      // Verify user was migrated: should exist in users array
+      const usersData = await AsyncStorage.getItem('users');
+      expect(usersData).toBeTruthy();
+      const users = JSON.parse(usersData!);
+      
+      // Find the migrated user
+      const migratedUser = users.find((u: any) => u.email === 'migrateuser@example.com');
+      expect(migratedUser).toBeTruthy();
+      expect(migratedUser.passwordHash).toBeTruthy(); // Password should be hashed
+      expect(migratedUser.id).toBe('migrate123');
+      expect(migratedUser.createdAt).toBe('2026-01-01T00:00:00Z');
+      
+      // Verify migration completed
+      const version = await AsyncStorage.getItem('dataVersion');
+      expect(version).toBe('2');
+      
+      // Verify logger was called for successful migration
+      expect(mockLogger.logger.info).toHaveBeenCalledWith(
+        'Migrated user to new system',
+        { email: 'migrateuser@example.com' }
+      );
     });
 
     it('should skip migration when user already exists (line 73 branch 1)', async () => {
