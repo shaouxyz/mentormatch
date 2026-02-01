@@ -352,5 +352,41 @@ describe('Profile Ordering Utils', () => {
       
       expect(result).toHaveLength(2);
     });
+
+    it('should handle medium match weight (line 154)', () => {
+      // Create a profile with match score between 25 and 49 to trigger medium weight (line 154)
+      // Profile2 has score = 25 (one direction match) which should trigger weight = 2
+      const mediumMatchProfile: Profile = {
+        name: 'Medium Match',
+        expertise: 'Machine Learning', // Matches current user's interest
+        interest: 'Other Field', // No match
+        expertiseYears: 5,
+        interestYears: 2,
+        email: 'medium@example.com',
+        phoneNumber: '555-0003',
+      };
+      
+      // This should have a match score of 25 (one direction match)
+      // Which should trigger the else if (matchScore >= 25) branch at line 154
+      const profiles = [mockProfile4, mediumMatchProfile]; // mockProfile4 has score 0
+      
+      // Run multiple times to ensure the medium weight branch is hit
+      let mediumMatchFirstCount = 0;
+      const iterations = 50;
+      for (let i = 0; i < iterations; i++) {
+        const result = orderProfilesSmartly(
+          profiles,
+          mockCurrentProfile,
+          `seed${i}`
+        );
+        if (result[0].email === mediumMatchProfile.email) {
+          mediumMatchFirstCount++;
+        }
+      }
+      
+      // Medium match should appear first more often than no match (>= 27 out of 50)
+      // With 2x weight vs 1x weight, medium match has 67% probability
+      expect(mediumMatchFirstCount).toBeGreaterThanOrEqual(27);
+    });
   });
 });

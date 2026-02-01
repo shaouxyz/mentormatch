@@ -6,6 +6,8 @@ import SendRequestScreen from '../request/send';
 import * as expoRouter from 'expo-router';
 import * as hybridProfileService from '@/services/hybridProfileService';
 import * as logger from '@/utils/logger';
+import * as errorHandler from '@/utils/errorHandler';
+import * as schemaValidation from '@/utils/schemaValidation';
 
 // Mock useLocalSearchParams
 const mockParams = { profile: '' };
@@ -23,12 +25,46 @@ jest.mock('@/services/requestService', () => ({
   getAllRequests: jest.fn(),
 }));
 
+// Mock schemaValidation
+jest.mock('@/utils/schemaValidation', () => ({
+  safeParseJSON: jest.fn((jsonString, validator, fallback) => {
+    try {
+      const parsed = JSON.parse(jsonString);
+      if (validator(parsed)) {
+        return parsed;
+      }
+      return fallback;
+    } catch (error) {
+      const logger = require('@/utils/logger').logger;
+      logger.error('JSON parse error', error instanceof Error ? error : new Error(String(error)));
+      return fallback;
+    }
+  }),
+  validateMentorshipRequestSchema: jest.fn((data) => {
+    // Default implementation - can be overridden in tests
+    return data && typeof data === 'object' && 'requesterEmail' in data && 'mentorEmail' in data;
+  }),
+}));
+
+// Mock errorHandler
+jest.mock('@/utils/errorHandler', () => ({
+  ErrorHandler: {
+    handleStorageError: jest.fn(),
+    handleError: jest.fn((error, userMessage) => {
+      // ErrorHandler.handleError shows an Alert, so we need to call it
+      const Alert = require('react-native').Alert;
+      Alert.alert('Error', userMessage || 'An unexpected error occurred');
+    }),
+  },
+}));
+
 // Mock useLocalSearchParams to return our mockParams
 jest.spyOn(expoRouter, 'useLocalSearchParams').mockImplementation(() => mockParams);
 
 // Get mock router (from global mock in jest.setup.js)
 const mockRouter = expoRouter.useRouter();
 const mockLogger = logger.logger as jest.Mocked<typeof logger.logger>;
+const mockErrorHandler = errorHandler.ErrorHandler as jest.Mocked<typeof errorHandler.ErrorHandler>;
 
 describe('SendRequestScreen', () => {
   const mockProfile = {
@@ -79,6 +115,15 @@ describe('SendRequestScreen', () => {
     mockLogger.error = jest.fn();
     mockLogger.warn = jest.fn();
     mockLogger.info = jest.fn();
+    mockErrorHandler.handleStorageError = jest.fn();
+    mockErrorHandler.handleError = jest.fn((error, userMessage) => {
+      // ErrorHandler.handleError shows an Alert, so we need to call it
+      Alert.alert('Error', userMessage || 'An unexpected error occurred');
+    });
+    // Reset schemaValidation mock to default behavior
+    (schemaValidation.validateMentorshipRequestSchema as jest.Mock).mockImplementation((data) => {
+      return data && typeof data === 'object' && 'requesterEmail' in data && 'mentorEmail' in data;
+    });
   });
 
   it('should render request form correctly', async () => {
@@ -366,13 +411,14 @@ describe('SendRequestScreen', () => {
   });
 
   it('should handle error when checking existing requests', async () => {
-    // Mock AsyncStorage.getItem to throw error for mentorshipRequests
+    // Mock AsyncStorage.getItem to throw error for mentorshipRequests when checking existing requests
     const originalGetItem = AsyncStorage.getItem;
     let callCount = 0;
     AsyncStorage.getItem = jest.fn().mockImplementation((key) => {
       callCount++;
-      if (key === 'mentorshipRequests' && callCount > 1) {
-        throw new Error('Storage error');
+      // First call is for checking existing requests (line 258), second is for loading requests (line 289)
+      if (key === 'mentorshipRequests' && callCount === 1) {
+        return Promise.reject(new Error('Storage error'));
       }
       return originalGetItem(key);
     });
@@ -384,38 +430,57 @@ describe('SendRequestScreen', () => {
     fireEvent.press(getByText('Send Request'));
 
     // Should still attempt to send request despite error checking existing requests
+    // Error is logged but request continues (line 270-272 catch block)
     await waitFor(() => {
+      // Request should still be sent successfully despite error checking
+      // The error is caught and logged, but the request continues and shows "Request Sent" alert
       expect(Alert.alert).toHaveBeenCalled();
-    }, { timeout: 3000 });
+      // Check that it was called with "Request Sent" (success) not an error
+      const alertCalls = (Alert.alert as jest.Mock).mock.calls;
+      const hasRequestSent = alertCalls.some((call) => call[0] === 'Request Sent');
+      expect(hasRequestSent).toBe(true);
+    }, { timeout: 5000 });
 
     AsyncStorage.getItem = originalGetItem;
   });
 
   it('should handle request validation failure', async () => {
-    // Mock validateMentorshipRequestSchema to return false
-    const originalValidate = require('../../utils/schemaValidation').validateMentorshipRequestSchema;
-    jest.spyOn(require('../../utils/schemaValidation'), 'validateMentorshipRequestSchema').mockReturnValue(false);
+    // Make validateMentorshipRequestSchema return false to simulate validation failure
+    // This will cause the validation at line 302 to fail
+    // We need to reset the mock first to clear any previous calls
+    (schemaValidation.validateMentorshipRequestSchema as jest.Mock).mockReset();
+    (schemaValidation.validateMentorshipRequestSchema as jest.Mock).mockReturnValue(false);
 
     const { getByText } = render(<SendRequestScreen />);
 
     await waitForScreenReady(getByText);
 
+    // Clear any previous calls before pressing the button
+    (Alert.alert as jest.Mock).mockClear();
+    mockErrorHandler.handleError = jest.fn((error, userMessage) => {
+      Alert.alert('Error', userMessage || 'An unexpected error occurred');
+    });
+
     fireEvent.press(getByText('Send Request'));
 
     await waitFor(() => {
-      // Should show error
+      // When validation fails, ErrorHandler.handleError is called (line 303)
+      // ErrorHandler.handleError shows an Alert, so we check for that
+      expect(mockErrorHandler.handleError).toHaveBeenCalledWith(
+        expect.any(Error),
+        'Request data validation failed'
+      );
       expect(Alert.alert).toHaveBeenCalled();
     }, { timeout: 3000 });
-
-    jest.spyOn(require('../../utils/schemaValidation'), 'validateMentorshipRequestSchema').mockImplementation(originalValidate);
   });
 
   it('should handle storage error when sending request', async () => {
-    // Mock AsyncStorage.setItem to throw error
+    // Mock AsyncStorage.setItem to throw error when saving mentorshipRequests
     const originalSetItem = AsyncStorage.setItem;
     AsyncStorage.setItem = jest.fn().mockImplementation((key, value) => {
       if (key === 'mentorshipRequests') {
-        throw new Error('Storage error');
+        // Throw error when trying to save the request (line 308)
+        return Promise.reject(new Error('Storage error'));
       }
       return originalSetItem(key, value);
     });
@@ -427,8 +492,11 @@ describe('SendRequestScreen', () => {
     fireEvent.press(getByText('Send Request'));
 
     await waitFor(() => {
-      // Should handle error gracefully
-      expect(Alert.alert).toHaveBeenCalled();
+      // Should handle error gracefully - ErrorHandler.handleStorageError should be called (line 317)
+      expect(mockErrorHandler.handleStorageError).toHaveBeenCalledWith(
+        expect.any(Error),
+        'send request'
+      );
     }, { timeout: 3000 });
 
     AsyncStorage.setItem = originalSetItem;
@@ -711,6 +779,55 @@ describe('SendRequestScreen', () => {
       // Should have at least 1 call (the failing one triggers error path)
       expect(setItemCalls.length).toBeGreaterThanOrEqual(1);
     }, { timeout: 5000 });
+
+    // Restore
+    AsyncStorage.setItem = originalSetItem;
+  });
+
+  // Test Case 26.15.3: Request Submission Error Handling (line 215)
+  // Note: Line 215 in the code is actually the return prev statement in setCurrentUser callback
+  // The actual error handling for request submission is at line 316-317 (catch block)
+  // This test covers the error handling when AsyncStorage.setItem fails
+  it('should handle request submission error (line 316-317 catch block)', async () => {
+    mockParams.profile = JSON.stringify(mockProfile);
+    await AsyncStorage.setItem('user', JSON.stringify({ email: 'user@example.com', id: 'u1' }));
+    await AsyncStorage.setItem('profile', JSON.stringify({
+      name: 'Current User',
+      email: 'user@example.com',
+      expertise: 'Design',
+      interest: 'UI/UX',
+      expertiseYears: 2,
+      interestYears: 1,
+      phoneNumber: '+1234567890',
+    }));
+
+    // Mock AsyncStorage.setItem to throw error when saving request to trigger catch block
+    const originalSetItem = AsyncStorage.setItem;
+    let mentorshipRequestsCallCount = 0;
+    AsyncStorage.setItem = jest.fn((key, value) => {
+      if (key === 'mentorshipRequests') {
+        mentorshipRequestsCallCount++;
+        // Throw error when saving the new request (line 308)
+        // This is the call that happens after loading existing requests
+        return Promise.reject(new Error('Storage error'));
+      }
+      return originalSetItem(key, value);
+    });
+
+    const { getByText } = render(<SendRequestScreen />);
+
+    await waitForScreenReady(getByText);
+
+    fireEvent.press(getByText('Send Request'));
+
+    await waitFor(() => {
+      // Error should be caught and handled (line 316-317 catch block)
+      // ErrorHandler.handleStorageError should be called
+      expect(mockErrorHandler.handleStorageError).toHaveBeenCalledWith(
+        expect.any(Error),
+        'send request'
+      );
+    }, { timeout: 3000 });
 
     // Restore
     AsyncStorage.setItem = originalSetItem;

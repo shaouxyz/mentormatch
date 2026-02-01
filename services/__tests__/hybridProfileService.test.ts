@@ -461,11 +461,20 @@ describe('Hybrid Profile Service', () => {
       expect(result[0]).toEqual(mockProfile);
     });
 
-    it('should handle non-Error thrown in outer catch block of getAllProfiles', async () => {
+    it('should handle non-Error thrown in outer catch block of getAllProfiles (line 254)', async () => {
       (firebaseConfig.isFirebaseConfigured as jest.Mock).mockReturnValue(false);
       jest.spyOn(AsyncStorage, 'getItem').mockRejectedValueOnce('Storage error string');
 
       await expect(hybridGetAllProfiles()).rejects.toBe('Storage error string');
+    });
+
+    it('should handle error in hybridGetAllProfiles catch block (line 254)', async () => {
+      (firebaseConfig.isFirebaseConfigured as jest.Mock).mockReturnValue(false);
+      // Mock AsyncStorage.getItem to fail to trigger catch block at line 254
+      jest.spyOn(AsyncStorage, 'getItem').mockRejectedValueOnce(new Error('Storage error'));
+
+      // Should throw error (line 254 catch block)
+      await expect(hybridGetAllProfiles()).rejects.toThrow('Storage error');
     });
 
     it('should return empty array if no profiles exist', async () => {

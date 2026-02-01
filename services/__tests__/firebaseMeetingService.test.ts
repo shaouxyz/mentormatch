@@ -551,4 +551,44 @@ describe('Firebase Meeting Service', () => {
       expect(mockLogger.logger.error).toHaveBeenCalled();
     });
   });
+
+  describe('subscribeToUserMeetings Error Handling', () => {
+    it('should handle error in participant subscription (line 308-309)', () => {
+      const mockWhere1 = {};
+      const mockWhere2 = {};
+      const mockOrderBy = {};
+      const mockQuery1 = {};
+      const mockQuery2 = {};
+      mockFirestore.where
+        .mockReturnValueOnce(mockWhere1)
+        .mockReturnValueOnce(mockWhere2);
+      mockFirestore.orderBy.mockReturnValue(mockOrderBy);
+      mockFirestore.query
+        .mockReturnValueOnce(mockQuery1)
+        .mockReturnValueOnce(mockQuery2);
+      
+      const callback = jest.fn();
+      let participantErrorCallback: any;
+      mockFirestore.onSnapshot.mockImplementation((query, onNext, onErr) => {
+        // Second call is for participant subscription
+        if (query === mockQuery2) {
+          participantErrorCallback = onErr;
+        }
+        return jest.fn();
+      });
+
+      subscribeToUserMeetings('user@example.com', callback);
+
+      const error = new Error('Participant subscription error');
+      if (participantErrorCallback) {
+        participantErrorCallback(error);
+      }
+
+      // Error should be logged (line 308-309)
+      expect(mockLogger.logger.error).toHaveBeenCalledWith(
+        'Error in meetings subscription (participant)',
+        error
+      );
+    });
+  });
 });

@@ -391,4 +391,64 @@ describe('connectionUtils', () => {
       expect(result1).toEqual([]);
     });
   });
+
+  describe('Error Handling', () => {
+    it('should handle error in areUsersMatched (line 48)', async () => {
+      const originalGetItem = AsyncStorage.getItem;
+      AsyncStorage.getItem = jest.fn().mockRejectedValue(new Error('Storage error'));
+
+      const result = await areUsersMatched('user1@example.com', 'user2@example.com');
+
+      expect(result).toBe(false);
+      const logger = require('../logger').logger;
+      expect(logger.error).toHaveBeenCalledWith(
+        'Error checking if users are matched',
+        expect.any(Error)
+      );
+
+      AsyncStorage.getItem = originalGetItem;
+    });
+
+    it('should handle non-Error exception in areUsersMatched (line 48)', async () => {
+      const originalGetItem = AsyncStorage.getItem;
+      AsyncStorage.getItem = jest.fn().mockRejectedValue('Storage error string');
+
+      const result = await areUsersMatched('user1@example.com', 'user2@example.com');
+
+      expect(result).toBe(false);
+      const logger = require('../logger').logger;
+      expect(logger.error).toHaveBeenCalled();
+
+      AsyncStorage.getItem = originalGetItem;
+    });
+
+    it('should handle error in getMatchedUserEmails (line 88)', async () => {
+      const originalGetItem = AsyncStorage.getItem;
+      AsyncStorage.getItem = jest.fn().mockRejectedValue(new Error('Storage error'));
+
+      const result = await getMatchedUserEmails('user1@example.com');
+
+      expect(result).toEqual([]);
+      const logger = require('../logger').logger;
+      expect(logger.error).toHaveBeenCalledWith(
+        'Error getting matched user emails',
+        expect.any(Error)
+      );
+
+      AsyncStorage.getItem = originalGetItem;
+    });
+
+    it('should handle non-Error exception in getMatchedUserEmails (line 88)', async () => {
+      const originalGetItem = AsyncStorage.getItem;
+      AsyncStorage.getItem = jest.fn().mockRejectedValue('Storage error string');
+
+      const result = await getMatchedUserEmails('user1@example.com');
+
+      expect(result).toEqual([]);
+      const logger = require('../logger').logger;
+      expect(logger.error).toHaveBeenCalled();
+
+      AsyncStorage.getItem = originalGetItem;
+    });
+  });
 });

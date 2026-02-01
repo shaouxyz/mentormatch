@@ -681,4 +681,29 @@ describe('RespondRequestScreen', () => {
     // Restore
     AsyncStorage.setItem = originalSetItem;
   });
+
+  // Test Case 26.14.2: Response Submission - Validation (line 93)
+  // Note: Line 93 is the catch block for request parsing error in useEffect
+  // This test covers the error handling when request parsing fails
+  it('should handle response validation error (line 93)', async () => {
+    // Set invalid request data to trigger parsing error
+    // safeParseJSON will log "JSON parse error" internally and return null,
+    // which triggers ErrorHandler.handleError at line 75
+    mockParams.request = 'invalid-json-that-causes-error';
+
+    render(<RespondRequestScreen />);
+
+    await waitFor(() => {
+      // safeParseJSON logs "JSON parse error" internally (line 153 of schemaValidation.ts)
+      // Then ErrorHandler.handleError is called at line 75
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'JSON parse error',
+        expect.any(Error)
+      );
+      expect(mockErrorHandler.handleError).toHaveBeenCalledWith(
+        expect.any(Error),
+        'Failed to load request.'
+      );
+    }, { timeout: 3000 });
+  });
 });

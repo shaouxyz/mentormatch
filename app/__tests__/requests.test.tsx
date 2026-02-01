@@ -775,5 +775,25 @@ describe('RequestsScreen', () => {
     }, { timeout: 3000 });
   });
 
+  it('should handle tab press (line 403)', async () => {
+    await AsyncStorage.setItem('user', JSON.stringify(mockUser));
+    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([]));
+
+    const screen = render(<RequestsScreen />);
+    
+    await waitFor(() => {
+      expect(screen.queryByText('Incoming (0)')).toBeTruthy();
+    }, { timeout: 3000 });
+
+    // Press the incoming tab button to trigger onPress handler (line 403)
+    const incomingTab = screen.getByLabelText('Incoming requests tab');
+    fireEvent.press(incomingTab);
+
+    // Tab should remain active (or switch if it wasn't already)
+    await waitFor(() => {
+      expect(screen.queryByText('Incoming (0)')).toBeTruthy();
+    }, { timeout: 1000 });
+  });
+
 
 });

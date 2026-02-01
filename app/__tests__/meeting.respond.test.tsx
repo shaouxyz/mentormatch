@@ -9,6 +9,7 @@ import MeetingResponseScreen from '../meeting/respond';
 import { hybridGetMeeting, hybridUpdateMeeting } from '@/services/hybridMeetingService';
 import * as meetingNotificationService from '@/services/meetingNotificationService';
 import { Meeting } from '@/types/types';
+import * as logger from '@/utils/logger';
 
 // Mock dependencies
 jest.mock('@/services/hybridMeetingService');
@@ -16,6 +17,7 @@ jest.mock('@/services/meetingNotificationService', () => ({
   scheduleMeetingNotifications: jest.fn(),
   cancelMeetingNotifications: jest.fn(),
 }));
+jest.mock('@/utils/logger');
 
 const mockRouterInstance = {
   back: jest.fn(),
@@ -32,6 +34,7 @@ jest.mock('expo-router', () => ({
 
 const mockHybridGetMeeting = hybridGetMeeting as jest.MockedFunction<typeof hybridGetMeeting>;
 const mockHybridUpdateMeeting = hybridUpdateMeeting as jest.MockedFunction<typeof hybridUpdateMeeting>;
+const mockLogger = logger.logger as jest.Mocked<typeof logger.logger>;
 
 describe('MeetingResponseScreen', () => {
   const mockMeeting: Meeting = {
@@ -61,6 +64,9 @@ describe('MeetingResponseScreen', () => {
     jest.spyOn(Alert, 'alert');
     mockHybridGetMeeting.mockResolvedValue(mockMeeting);
     mockHybridUpdateMeeting.mockResolvedValue();
+    mockLogger.warn = jest.fn();
+    mockLogger.error = jest.fn();
+    mockLogger.info = jest.fn();
   });
 
   it('should show loading state initially', () => {
@@ -355,6 +361,31 @@ describe('MeetingResponseScreen', () => {
     }, { timeout: 3000 });
   });
 
+  it('should handle notification cancellation error on decline (line 93)', async () => {
+    mockHybridGetMeeting.mockResolvedValue(mockMeeting);
+    mockHybridUpdateMeeting.mockResolvedValue({ ...mockMeeting, status: 'declined' });
+    const mockCancelNotifications = meetingNotificationService.cancelMeetingNotifications as jest.Mock;
+    mockCancelNotifications.mockRejectedValue(new Error('Notification cancellation failed'));
+
+    const { getByText } = render(<MeetingResponseScreen />);
+
+    await waitFor(() => {
+      expect(getByText('Decline')).toBeTruthy();
+    }, { timeout: 3000 });
+
+    fireEvent.press(getByText('Decline'));
+
+    await waitFor(() => {
+      // Notification cancellation error should be caught and logged (line 93)
+      // The response should still succeed despite notification error
+      expect(mockCancelNotifications).toHaveBeenCalledWith(mockMeeting.id);
+      // Verify logger.warn was called (line 93)
+      expect(mockLogger.warn).toHaveBeenCalled();
+      // Verify success alert is shown
+      expect(Alert.alert).toHaveBeenCalled();
+    }, { timeout: 5000 });
+  });
+
   it('should handle notification scheduling error on accept', async () => {
     mockHybridGetMeeting.mockResolvedValue(mockMeeting);
     mockHybridUpdateMeeting.mockResolvedValue({ ...mockMeeting, status: 'accepted' });
@@ -413,7 +444,30 @@ describe('MeetingResponseScreen', () => {
       // Error should be caught and handled (line 109)
       expect(mockHybridUpdateMeeting).toHaveBeenCalled();
       // Error alert should be shown
-      expect(Alert.alert).toHaveBeenCalled();
+      expect(Alert.alert).toHaveBeenCalledWith('Error', 'Failed to respond to meeting. Please try again.');
+    });
+  });
+
+  // Test Case 26.7.2: Response Submission - Error Handling (line 109)
+  it('should handle response submission error with proper error handling (line 109)', async () => {
+    mockHybridGetMeeting.mockResolvedValue(mockMeeting);
+    // Mock hybridUpdateMeeting to throw error to trigger line 109 catch block
+    mockHybridUpdateMeeting.mockRejectedValue(new Error('Network error during update'));
+
+    const { getByLabelText, queryByText } = render(<MeetingResponseScreen />);
+
+    await waitFor(() => {
+      expect(queryByText('Loading meeting details...')).toBeNull();
+    });
+
+    const acceptButton = getByLabelText('Accept meeting');
+    fireEvent.press(acceptButton);
+
+    await waitFor(() => {
+      // Verify error is caught at line 109 and error alert is shown
+      expect(Alert.alert).toHaveBeenCalledWith('Error', 'Failed to respond to meeting. Please try again.');
+      // Verify logger.error is called
+      expect(mockHybridUpdateMeeting).toHaveBeenCalled();
     });
   });
 });

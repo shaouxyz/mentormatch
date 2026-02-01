@@ -309,4 +309,38 @@ describe('Profile Service', () => {
       AsyncStorage.setItem = originalSetItem;
     });
   });
+
+  it('should handle non-array data in getAllProfiles (line 86 validator)', async () => {
+    // Set allProfiles to non-array data to trigger validator false branch at line 86
+    await AsyncStorage.setItem(STORAGE_KEYS.ALL_PROFILES, JSON.stringify({ profiles: [mockProfile] }));
+    
+    const result = await getAllProfiles();
+    
+    // Validator at line 86 should return false for non-array, safeParseJSON returns []
+    expect(result).toEqual([]);
+  });
+
+  it('should handle error in getProfileByEmail (line 114)', async () => {
+    // Mock AsyncStorage.getItem to throw error to trigger catch block at line 114
+    const originalGetItem = AsyncStorage.getItem;
+    AsyncStorage.getItem = jest.fn().mockRejectedValue(new Error('Storage error'));
+    
+    const result = await getProfileByEmail('test@example.com');
+    
+    // Error should be caught and logged (line 114), return null
+    expect(result).toBeNull();
+    expect(mockLogger.logger.error).toHaveBeenCalled();
+    
+    // Restore
+    AsyncStorage.getItem = originalGetItem;
+  });
+
+  it('should handle non-array data in deleteProfile (line 135 validator)', async () => {
+    // Set allProfiles to non-array data to trigger validator false branch at line 135
+    await AsyncStorage.setItem(STORAGE_KEYS.ALL_PROFILES, JSON.stringify({ profiles: [mockProfile] }));
+    
+    // Should handle gracefully - validator returns false, safeParseJSON returns []
+    // The function should complete without throwing
+    await expect(deleteProfile('test@example.com')).resolves.not.toThrow();
+  });
 });

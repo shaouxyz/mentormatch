@@ -175,7 +175,7 @@ describe('testAccounts', () => {
       expect(account?.email).toBe('t0@example.com');
     });
 
-    it('should handle errors gracefully', async () => {
+    it('should handle errors gracefully (line 161-162)', async () => {
       // Since test accounts are now in-memory, they should still be available
       // even if AsyncStorage fails
       const originalGetItem = AsyncStorage.getItem;
@@ -190,6 +190,7 @@ describe('testAccounts', () => {
 
       AsyncStorage.getItem = originalGetItem;
     });
+
 
     it('should support both short form (t0) and full email (t0@example.com)', async () => {
       // Test with short form

@@ -437,4 +437,47 @@ describe('Firebase Message Service', () => {
       expect(mockLogger.logger.error).toHaveBeenCalled();
     });
   });
+
+  describe('subscribeToMessages Error Handling', () => {
+    it('should handle error in subscribeToMessages catch block (line 205-206)', async () => {
+      // Mock query to throw error to trigger catch block at line 205-206
+      const mockWhere = {};
+      const mockOrderBy = {};
+      mockFirestore.where.mockReturnValue(mockWhere);
+      mockFirestore.orderBy.mockReturnValue(mockOrderBy);
+      mockFirestore.query.mockImplementation(() => {
+        throw new Error('Query error');
+      });
+
+      const callback = jest.fn();
+      
+      await expect(() => {
+        subscribeToMessages('conv123', callback);
+      }).toThrow('Query error');
+
+      expect(mockLogger.logger.error).toHaveBeenCalledWith(
+        'Error subscribing to messages',
+        expect.any(Error)
+      );
+    });
+
+    it('should handle non-Error exception in subscribeToMessages (line 205-206)', async () => {
+      // Mock query to throw non-Error
+      const mockWhere = {};
+      const mockOrderBy = {};
+      mockFirestore.where.mockReturnValue(mockWhere);
+      mockFirestore.orderBy.mockReturnValue(mockOrderBy);
+      mockFirestore.query.mockImplementation(() => {
+        throw 'Query error string';
+      });
+
+      const callback = jest.fn();
+      
+      await expect(() => {
+        subscribeToMessages('conv123', callback);
+      }).toThrow();
+
+      expect(mockLogger.logger.error).toHaveBeenCalled();
+    });
+  });
 });

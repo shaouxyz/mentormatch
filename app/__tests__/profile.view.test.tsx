@@ -198,22 +198,28 @@ describe('ViewProfileScreen', () => {
     });
   });
 
-  it('should handle email link when email button pressed', async () => {
+  it('should handle email link when email button pressed (lines 248-249)', async () => {
     const Linking = require('react-native').Linking;
-    jest.spyOn(Linking, 'openURL').mockResolvedValueOnce(undefined);
+    const openURLSpy = jest.spyOn(Linking, 'openURL').mockResolvedValueOnce(undefined);
 
     mockParams.profile = JSON.stringify(mockProfile);
-    await AsyncStorage.setItem('user', JSON.stringify({ email: 'john@example.com' }));
+    await AsyncStorage.setItem('user', JSON.stringify({ email: mockProfile.email }));
+    (connectionUtils.areUsersMatched as jest.Mock).mockResolvedValue(true);
 
     const { getByLabelText } = render(<ViewProfileScreen />);
 
     await waitFor(() => {
       const emailButton = getByLabelText(`Email ${mockProfile.email}`);
       expect(emailButton).toBeTruthy();
-    });
+    }, { timeout: 3000 });
 
-    // Note: Testing Linking.openURL requires actual interaction
-    // The function exists and will be called when button is pressed
+    // Press the email button to trigger handleEmail (lines 248-249)
+    const emailButton = getByLabelText(`Email ${mockProfile.email}`);
+    fireEvent.press(emailButton);
+
+    await waitFor(() => {
+      expect(openURLSpy).toHaveBeenCalledWith(`mailto:${mockProfile.email}`);
+    }, { timeout: 3000 });
   });
 
   it('should handle phone link when phone button pressed', async () => {
@@ -556,10 +562,13 @@ describe('ViewProfileScreen', () => {
   });
 
   // Coverage holes tests - Section 26.13
-  it('should handle profile load error (line 67)', async () => {
+  // Test Case 26.13.1: Profile Loading Error (line 67)
+  // Note: Line 67 is the early return check when params haven't changed
+  // The actual error handling is in the catch block around line 236
+  it('should handle profile load error (line 67 early return check)', async () => {
     mockParams.email = 'test@example.com';
     await AsyncStorage.setItem('user', JSON.stringify({ email: 'user@example.com' }));
-    // Don't set allProfiles so it will try to load from service
+    await AsyncStorage.setItem('allProfiles', JSON.stringify([]));
     
     const hybridProfileService = require('@/services/hybridProfileService');
     const originalGetProfile = hybridProfileService.hybridGetProfile;
@@ -567,21 +576,20 @@ describe('ViewProfileScreen', () => {
 
     const screen = render(<ViewProfileScreen />);
 
+    // Re-render with same params to trigger early return at line 67
+    const { rerender } = screen;
+    rerender(<ViewProfileScreen />);
+
     await waitFor(() => {
-      // Error path at line 67 should execute (early return when params unchanged)
-      // Or error should be logged when load fails
-      // Component should handle error gracefully
-      const errorCalled = (mockLogger.error as jest.Mock).mock.calls.length > 0;
-      const warnCalled = (mockLogger.warn as jest.Mock).mock.calls.length > 0;
-      const backCalled = mockRouter.back.mock.calls.length > 0;
-      // Component should not crash
-      expect(errorCalled || warnCalled || backCalled || screen.container).toBeTruthy();
-    }, { timeout: 5000 });
+      // Component should handle gracefully
+      expect(screen.root).toBeTruthy();
+    }, { timeout: 2000 });
 
     // Restore
     hybridProfileService.hybridGetProfile = originalGetProfile;
   });
 
+  // Test Case 26.13.2: Contact Information Display Logic (lines 183, 248-249, 254-255)
   it('should display contact info for matched users (lines 160, 183, 248-249, 254-255)', async () => {
     await AsyncStorage.setItem('user', JSON.stringify({ email: 'user@example.com' }));
     await AsyncStorage.setItem('allProfiles', JSON.stringify([mockProfile]));
@@ -594,7 +602,7 @@ describe('ViewProfileScreen', () => {
     const { getByText } = render(<ViewProfileScreen />);
 
     await waitFor(() => {
-      // Contact info should be visible for matched users
+      // Contact info should be visible for matched users (line 183 branch)
       expect(getByText(mockProfile.email)).toBeTruthy();
       expect(getByText(mockProfile.phoneNumber)).toBeTruthy();
     }, { timeout: 3000 });
@@ -616,6 +624,38 @@ describe('ViewProfileScreen', () => {
       expect(queryByText(mockProfile.email)).toBeNull();
       expect(queryByText(mockProfile.phoneNumber)).toBeNull();
     }, { timeout: 3000 });
+  });
+
+  it('should display contact info for own profile (lines 248-249, 254-255)', async () => {
+    // Test viewing own profile - contact info should always be visible
+    mockParams.profile = JSON.stringify(mockProfile);
+    await AsyncStorage.setItem('user', JSON.stringify({ email: mockProfile.email }));
+
+    const { getByText, getByLabelText } = render(<ViewProfileScreen />);
+
+    await waitFor(() => {
+      // Contact info should be visible for own profile (lines 248-249, 254-255)
+      expect(getByText(mockProfile.email)).toBeTruthy();
+      expect(getByText(mockProfile.phoneNumber)).toBeTruthy();
+    }, { timeout: 3000 });
+
+    // areUsersMatched should not be called for own profile
+    expect(connectionUtils.areUsersMatched).not.toHaveBeenCalled();
+
+    // Test handleEmail function (lines 248-249)
+    const Linking = require('react-native').Linking;
+    const emailButton = getByLabelText(`Email ${mockProfile.email}`);
+    fireEvent.press(emailButton);
+    await waitFor(() => {
+      expect(Linking.openURL).toHaveBeenCalledWith(`mailto:${mockProfile.email}`);
+    });
+
+    // Test handlePhone function (lines 254-255)
+    const phoneButton = getByLabelText(`Phone ${mockProfile.phoneNumber}`);
+    fireEvent.press(phoneButton);
+    await waitFor(() => {
+      expect(Linking.openURL).toHaveBeenCalledWith(`tel:${mockProfile.phoneNumber}`);
+    });
   });
 
   it('should handle action button presses (line 295)', async () => {

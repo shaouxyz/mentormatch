@@ -337,6 +337,118 @@ describe('Hybrid Message Service', () => {
       expect(conversations[0].unreadCount['user2@example.com']).toBe(1);
     });
 
+    it('should initialize unreadCount when conversation exists without unreadCount (line 221)', async () => {
+      // Create a conversation without unreadCount property
+      const conversationWithoutUnreadCount: Conversation = {
+        id: 'conv123',
+        participants: ['user1@example.com', 'user2@example.com'],
+        lastMessage: '',
+        lastMessageAt: '',
+        updatedAt: new Date().toISOString(),
+        // No unreadCount property
+      };
+      await AsyncStorage.setItem('conversations', JSON.stringify([conversationWithoutUnreadCount]));
+
+      const message = await hybridSendMessage(
+        'conv123',
+        'user1@example.com',
+        'User 1',
+        'user2@example.com',
+        'User 2',
+        'Test message'
+      );
+
+      // Verify unreadCount was initialized (line 221)
+      const conversationsData = await AsyncStorage.getItem('conversations');
+      const conversations = JSON.parse(conversationsData || '[]');
+      expect(conversations[0].unreadCount).toBeDefined();
+      expect(conversations[0].unreadCount).toEqual({ 'user2@example.com': 1 });
+    });
+
+    it('should sort messages by createdAt (line 251)', async () => {
+      // Create messages with different timestamps to test sorting
+      const message1: Message = {
+        id: 'msg1',
+        conversationId: 'conv123',
+        senderEmail: 'user1@example.com',
+        senderName: 'User 1',
+        receiverEmail: 'user2@example.com',
+        receiverName: 'User 2',
+        text: 'First message',
+        createdAt: '2026-01-20T10:00:00Z',
+        read: false,
+      };
+      const message2: Message = {
+        id: 'msg2',
+        conversationId: 'conv123',
+        senderEmail: 'user1@example.com',
+        senderName: 'User 1',
+        receiverEmail: 'user2@example.com',
+        receiverName: 'User 2',
+        text: 'Second message',
+        createdAt: '2026-01-20T11:00:00Z',
+        read: false,
+      };
+      const message3: Message = {
+        id: 'msg3',
+        conversationId: 'conv123',
+        senderEmail: 'user1@example.com',
+        senderName: 'User 1',
+        receiverEmail: 'user2@example.com',
+        receiverName: 'User 2',
+        text: 'Third message',
+        createdAt: '2026-01-20T09:00:00Z', // Earliest
+        read: false,
+      };
+
+      // Store messages in reverse order to test sorting
+      await AsyncStorage.setItem('messages', JSON.stringify([message2, message1, message3]));
+
+      const messages = await hybridGetMessages('conv123');
+
+      // Messages should be sorted by createdAt ascending (line 251)
+      expect(messages).toHaveLength(3);
+      expect(messages[0].id).toBe('msg3'); // Earliest
+      expect(messages[1].id).toBe('msg1');
+      expect(messages[2].id).toBe('msg2'); // Latest
+    });
+
+    it('should sort conversations by updatedAt descending (line 297)', async () => {
+      // Create conversations with different updatedAt timestamps
+      const conversation1: Conversation = {
+        id: 'conv1',
+        participants: ['user1@example.com', 'user2@example.com'],
+        lastMessage: 'Message 1',
+        lastMessageAt: '2026-01-20T10:00:00Z',
+        updatedAt: '2026-01-20T10:00:00Z',
+      };
+      const conversation2: Conversation = {
+        id: 'conv2',
+        participants: ['user1@example.com', 'user3@example.com'],
+        lastMessage: 'Message 2',
+        lastMessageAt: '2026-01-20T11:00:00Z',
+        updatedAt: '2026-01-20T11:00:00Z', // Latest
+      };
+      const conversation3: Conversation = {
+        id: 'conv3',
+        participants: ['user1@example.com', 'user4@example.com'],
+        lastMessage: 'Message 3',
+        lastMessageAt: '2026-01-20T09:00:00Z',
+        updatedAt: '2026-01-20T09:00:00Z', // Earliest
+      };
+
+      // Store conversations in random order to test sorting
+      await AsyncStorage.setItem('conversations', JSON.stringify([conversation1, conversation3, conversation2]));
+
+      const conversations = await hybridGetUserConversations('user1@example.com');
+
+      // Conversations should be sorted by updatedAt descending (line 297)
+      expect(conversations).toHaveLength(3);
+      expect(conversations[0].id).toBe('conv2'); // Latest updatedAt
+      expect(conversations[1].id).toBe('conv1');
+      expect(conversations[2].id).toBe('conv3'); // Earliest updatedAt
+    });
+
     it('should handle errors and throw', async () => {
       const originalSetItem = AsyncStorage.setItem;
       AsyncStorage.setItem = jest.fn().mockRejectedValue(new Error('Storage error'));

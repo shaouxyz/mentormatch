@@ -225,5 +225,63 @@ describe('CASPA Profiles', () => {
       
       expect(mockLogger.logger.info).toHaveBeenCalledWith('CASPA profiles reset');
     });
+
+    it('should handle error in initializeCaspaProfiles (line 371)', async () => {
+      // Mock AsyncStorage.setItem to throw error to trigger catch block at line 371
+      const originalSetItem = AsyncStorage.setItem;
+      AsyncStorage.setItem = jest.fn().mockRejectedValue(new Error('Storage error'));
+
+      await initializeCaspaProfiles();
+
+      // Error should be caught and logged (line 371)
+      expect(mockLogger.logger.error).toHaveBeenCalledWith(
+        'Error initializing CASPA profiles',
+        expect.any(Error)
+      );
+
+      AsyncStorage.setItem = originalSetItem;
+    });
+
+    it('should handle non-Error exception in initializeCaspaProfiles (line 371)', async () => {
+      // Mock AsyncStorage.setItem to reject with string
+      const originalSetItem = AsyncStorage.setItem;
+      AsyncStorage.setItem = jest.fn().mockRejectedValue('Storage error string');
+
+      await initializeCaspaProfiles();
+
+      // Error should be caught and logged (line 371)
+      expect(mockLogger.logger.error).toHaveBeenCalled();
+
+      AsyncStorage.setItem = originalSetItem;
+    });
+
+    it('should handle error in resetCaspaProfiles (line 395)', async () => {
+      // Mock AsyncStorage.removeItem to throw error to trigger catch block at line 395
+      const originalRemoveItem = AsyncStorage.removeItem;
+      AsyncStorage.removeItem = jest.fn().mockRejectedValue(new Error('Storage error'));
+
+      await resetCaspaProfiles();
+
+      // Error should be caught and logged (line 395)
+      expect(mockLogger.logger.error).toHaveBeenCalledWith(
+        'Error resetting CASPA profiles',
+        expect.any(Error)
+      );
+
+      AsyncStorage.removeItem = originalRemoveItem;
+    });
+
+    it('should handle non-Error exception in resetCaspaProfiles (line 395)', async () => {
+      // Mock AsyncStorage.removeItem to reject with string
+      const originalRemoveItem = AsyncStorage.removeItem;
+      AsyncStorage.removeItem = jest.fn().mockRejectedValue('Storage error string');
+
+      await resetCaspaProfiles();
+
+      // Error should be caught and logged (line 395)
+      expect(mockLogger.logger.error).toHaveBeenCalled();
+
+      AsyncStorage.removeItem = originalRemoveItem;
+    });
   });
 });
