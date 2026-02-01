@@ -27,6 +27,10 @@ export default function RootLayout() {
           <Stack.Screen name="profile/view" />
           <Stack.Screen name="request/send" />
           <Stack.Screen name="request/respond" />
+          <Stack.Screen name="meeting/schedule" />
+          <Stack.Screen name="meeting/respond" />
+          <Stack.Screen name="meeting/upcoming" />
+          <Stack.Screen name="messages/chat" />
         </Stack>
       </AuthProvider>
     </ErrorBoundary>
