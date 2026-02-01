@@ -450,5 +450,45 @@ describe('connectionUtils', () => {
 
       AsyncStorage.getItem = originalGetItem;
     });
+
+    it('should handle invalid JSON data in areUsersMatched (lines 26-29 branch 1)', async () => {
+      // Test branch 1 of lines 26-29: when safeParseJSON type guard fails (non-array data)
+      await AsyncStorage.setItem('mentorshipRequests', JSON.stringify({ notAnArray: true }));
+
+      const result = await areUsersMatched('user1@example.com', 'user2@example.com');
+
+      // Should return false when data is not an array (type guard fails)
+      expect(result).toBe(false);
+    });
+
+    it('should handle invalid request schema in areUsersMatched (lines 26-29 branch 1)', async () => {
+      // Test branch 1 of lines 26-29: when safeParseJSON type guard fails (invalid schema)
+      await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([{ invalid: 'request' }]));
+
+      const result = await areUsersMatched('user1@example.com', 'user2@example.com');
+
+      // Should return false when request schema is invalid (type guard fails)
+      expect(result).toBe(false);
+    });
+
+    it('should handle invalid JSON data in getMatchedUserEmails (lines 66-69 branch 1)', async () => {
+      // Test branch 1 of lines 66-69: when safeParseJSON type guard fails (non-array data)
+      await AsyncStorage.setItem('mentorshipRequests', JSON.stringify({ notAnArray: true }));
+
+      const result = await getMatchedUserEmails('user1@example.com');
+
+      // Should return empty array when data is not an array (type guard fails)
+      expect(result).toEqual([]);
+    });
+
+    it('should handle invalid request schema in getMatchedUserEmails (lines 66-69 branch 1)', async () => {
+      // Test branch 1 of lines 66-69: when safeParseJSON type guard fails (invalid schema)
+      await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([{ invalid: 'request' }]));
+
+      const result = await getMatchedUserEmails('user1@example.com');
+
+      // Should return empty array when request schema is invalid (type guard fails)
+      expect(result).toEqual([]);
+    });
   });
 });

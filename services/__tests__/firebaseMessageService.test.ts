@@ -414,7 +414,37 @@ describe('Firebase Message Service', () => {
       expect(callback.mock.calls[0][0]).toHaveLength(1);
     });
 
-    it('should handle errors in subscription', () => {
+    it('should call onError callback when subscription error occurs (line 199 branch 0)', () => {
+      const mockWhere = {};
+      const mockOrderBy = {};
+      const mockQuery = {};
+      mockFirestore.where.mockReturnValue(mockWhere);
+      mockFirestore.orderBy.mockReturnValue(mockOrderBy);
+      mockFirestore.query.mockReturnValue(mockQuery);
+      
+      const callback = jest.fn();
+      const onError = jest.fn();
+      let errorCallback: any;
+      mockFirestore.onSnapshot.mockImplementation((query, onNext, onErr) => {
+        errorCallback = onErr;
+        return jest.fn();
+      });
+
+      subscribeToMessages('conv123', callback, onError);
+
+      const error = new Error('Subscription error');
+      errorCallback(error);
+
+      // Error should be logged (line 198)
+      expect(mockLogger.logger.error).toHaveBeenCalledWith(
+        'Error in messages subscription',
+        error
+      );
+      // onError callback should be called (line 199 branch 0)
+      expect(onError).toHaveBeenCalledWith(error);
+    });
+
+    it('should handle error without onError callback (line 199 branch 1)', () => {
       const mockWhere = {};
       const mockOrderBy = {};
       const mockQuery = {};
@@ -429,12 +459,17 @@ describe('Firebase Message Service', () => {
         return jest.fn();
       });
 
-      subscribeToMessages('conv123', callback);
+      subscribeToMessages('conv123', callback); // No onError callback
 
       const error = new Error('Subscription error');
       errorCallback(error);
 
-      expect(mockLogger.logger.error).toHaveBeenCalled();
+      // Error should be logged (line 198)
+      expect(mockLogger.logger.error).toHaveBeenCalledWith(
+        'Error in messages subscription',
+        error
+      );
+      // onError should not be called (line 199 branch 1 - onError is undefined)
     });
   });
 

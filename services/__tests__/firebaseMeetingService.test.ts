@@ -568,6 +568,7 @@ describe('Firebase Meeting Service', () => {
         .mockReturnValueOnce(mockQuery2);
       
       const callback = jest.fn();
+      const onError = jest.fn();
       let participantErrorCallback: any;
       mockFirestore.onSnapshot.mockImplementation((query, onNext, onErr) => {
         // Second call is for participant subscription
@@ -577,18 +578,59 @@ describe('Firebase Meeting Service', () => {
         return jest.fn();
       });
 
-      subscribeToUserMeetings('user@example.com', callback);
+      subscribeToUserMeetings('user@example.com', callback, onError);
 
       const error = new Error('Participant subscription error');
       if (participantErrorCallback) {
         participantErrorCallback(error);
       }
 
-      // Error should be logged (line 308-309)
+      // Error should be logged (line 308)
       expect(mockLogger.logger.error).toHaveBeenCalledWith(
         'Error in meetings subscription (participant)',
         error
       );
+      // onError callback should be called (line 309 branch 0)
+      expect(onError).toHaveBeenCalledWith(error);
+    });
+
+    it('should handle error in participant subscription without onError (line 309 branch 1)', () => {
+      const mockWhere1 = {};
+      const mockWhere2 = {};
+      const mockOrderBy = {};
+      const mockQuery1 = {};
+      const mockQuery2 = {};
+      mockFirestore.where
+        .mockReturnValueOnce(mockWhere1)
+        .mockReturnValueOnce(mockWhere2);
+      mockFirestore.orderBy.mockReturnValue(mockOrderBy);
+      mockFirestore.query
+        .mockReturnValueOnce(mockQuery1)
+        .mockReturnValueOnce(mockQuery2);
+      
+      const callback = jest.fn();
+      let participantErrorCallback: any;
+      mockFirestore.onSnapshot.mockImplementation((query, onNext, onErr) => {
+        // Second call is for participant subscription
+        if (query === mockQuery2) {
+          participantErrorCallback = onErr;
+        }
+        return jest.fn();
+      });
+
+      subscribeToUserMeetings('user@example.com', callback); // No onError callback
+
+      const error = new Error('Participant subscription error');
+      if (participantErrorCallback) {
+        participantErrorCallback(error);
+      }
+
+      // Error should be logged (line 308)
+      expect(mockLogger.logger.error).toHaveBeenCalledWith(
+        'Error in meetings subscription (participant)',
+        error
+      );
+      // onError should not be called (line 309 branch 1 - onError is undefined)
     });
   });
 });

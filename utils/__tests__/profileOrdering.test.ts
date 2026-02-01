@@ -299,6 +299,12 @@ describe('Profile Ordering Utils', () => {
     });
   });
 
+  // Note: weightedShuffle is not exported, so we can't test it directly
+  // The error case (line 75) is an internal implementation detail
+  // that would only occur if there's a bug in orderProfilesSmartly
+  // Since orderProfilesSmartly always creates matching arrays, this branch
+  // is effectively unreachable in normal operation
+
   describe('Edge Cases', () => {
     it('should handle profiles with missing optional fields', () => {
       const profile: Profile = {

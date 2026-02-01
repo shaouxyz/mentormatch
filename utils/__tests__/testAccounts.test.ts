@@ -10,9 +10,20 @@ jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock')
 );
 
+// Mock logger
+jest.mock('../logger', () => ({
+  logger: {
+    error: jest.fn(),
+    warn: jest.fn(),
+    info: jest.fn(),
+    debug: jest.fn(),
+  },
+}));
+
 describe('testAccounts', () => {
   beforeEach(() => {
     AsyncStorage.clear();
+    jest.clearAllMocks();
   });
 
   describe('TEST_ACCOUNTS', () => {
@@ -175,20 +186,63 @@ describe('testAccounts', () => {
       expect(account?.email).toBe('t0@example.com');
     });
 
-    it('should handle errors gracefully (line 161-162)', async () => {
-      // Since test accounts are now in-memory, they should still be available
-      // even if AsyncStorage fails
-      const originalGetItem = AsyncStorage.getItem;
-      AsyncStorage.getItem = jest.fn(() => {
-        throw new Error('Storage error');
-      });
-
-      const account = await getTestAccount('t0');
-      // Should still return the in-memory test account
+    it('should handle getLegacyAlias when email does not include @ (line 61 branch 0)', async () => {
+      // Test branch 0 of line 61: when !email.includes('@') is true
+      // This is tested indirectly through getTestAccount
+      await initializeTestAccounts();
+      
+      // Test with alias that doesn't include @
+      const account = await getTestAccount('t0'); // 't0' doesn't include '@'
       expect(account).toBeDefined();
       expect(account?.email).toBe('t0@example.com');
+    });
 
-      AsyncStorage.getItem = originalGetItem;
+    it('should handle errors gracefully in getTestAccount (line 161-162)', async () => {
+      // Test error handling in getTestAccount (lines 161-162)
+      // Mock TEST_ACCOUNTS.find to throw an error
+      const originalFind = Array.prototype.find;
+      const TEST_ACCOUNTS = require('../testAccounts').TEST_ACCOUNTS;
+      const originalFindMethod = TEST_ACCOUNTS.find;
+      
+      // Create a spy that throws an error
+      TEST_ACCOUNTS.find = jest.fn(() => {
+        throw new Error('Find error');
+      });
+
+      const result = await getTestAccount('t0@example.com');
+
+      // Should return null and log error (line 161-162)
+      expect(result).toBeNull();
+      const logger = require('../logger').logger;
+      expect(logger.error).toHaveBeenCalledWith(
+        'Error getting test account',
+        expect.any(Error)
+      );
+
+      // Restore
+      TEST_ACCOUNTS.find = originalFindMethod;
+      Array.prototype.find = originalFind;
+    });
+
+    it('should handle non-Error exception in getTestAccount (line 161-162)', async () => {
+      // Test non-Error exception handling in getTestAccount (lines 161-162)
+      const TEST_ACCOUNTS = require('../testAccounts').TEST_ACCOUNTS;
+      const originalFindMethod = TEST_ACCOUNTS.find;
+      
+      // Create a spy that throws a non-Error
+      TEST_ACCOUNTS.find = jest.fn(() => {
+        throw 'Find error string';
+      });
+
+      const result = await getTestAccount('t0@example.com');
+
+      // Should return null and log error (line 161-162)
+      expect(result).toBeNull();
+      const logger = require('../logger').logger;
+      expect(logger.error).toHaveBeenCalled();
+
+      // Restore
+      TEST_ACCOUNTS.find = originalFindMethod;
     });
 
 

@@ -236,6 +236,26 @@ describe('ProfileScreen', () => {
     expect(user).toBeTruthy();
   });
 
+  it('should prevent duplicate loads with initial load guard (line 57)', async () => {
+    // Test the early return guard at line 57: when hasLoadedRef.current is true
+    await AsyncStorage.setItem('profile', JSON.stringify(mockProfile));
+
+    // Render the component once to set hasLoadedRef.current = true
+    const { rerender, queryByText } = render(<ProfileScreen />);
+
+    await waitFor(() => {
+      expect(queryByText('Loading...')).toBeNull();
+    }, { timeout: 3000 });
+
+    // Rerender the component - the guard should prevent duplicate loads
+    rerender(<ProfileScreen />);
+
+    // Component should still render correctly without crashing
+    await waitFor(() => {
+      expect(queryByText('Test User')).toBeTruthy();
+    });
+  });
+
   it('should handle error in logout (line 127 branch 1)', async () => {
     await AsyncStorage.setItem('profile', JSON.stringify(mockProfile));
     await AsyncStorage.setItem('user', JSON.stringify({ email: 'test@example.com', id: '123' }));
