@@ -477,6 +477,47 @@ describe('Hybrid Profile Service', () => {
       await expect(hybridGetAllProfiles()).rejects.toThrow('Storage error');
     });
 
+    it('should update profile in allProfiles when index found (line 114 branch 0)', async () => {
+      (firebaseConfig.isFirebaseConfigured as jest.Mock).mockReturnValue(false);
+      
+      // Set up existing profile in allProfiles and profile
+      await AsyncStorage.setItem('profile', JSON.stringify(mockProfile));
+      await AsyncStorage.setItem('allProfiles', JSON.stringify([mockProfile]));
+      
+      // Update with partial update object
+      const updates = { name: 'Updated Name' };
+      await hybridUpdateProfile(mockProfile.email, updates);
+      
+      // Profile should be updated in allProfiles (line 114: index !== -1 branch)
+      const allProfilesData = await AsyncStorage.getItem('allProfiles');
+      const allProfiles = JSON.parse(allProfilesData!);
+      expect(allProfiles[0].name).toBe('Updated Name');
+    });
+
+    it('should return Firebase profile when found (line 174 branch 0)', async () => {
+      (firebaseConfig.isFirebaseConfigured as jest.Mock).mockReturnValue(true);
+      const firebaseProfile = { ...mockProfile, name: 'Firebase Profile' };
+      (firebaseProfileService.getFirebaseProfile as jest.Mock).mockResolvedValue(firebaseProfile);
+      
+      const result = await hybridGetProfile(mockProfile.email);
+      
+      // Should return Firebase profile (line 174: if (firebaseProfile) branch)
+      expect(result).toEqual(firebaseProfile);
+      expect(firebaseProfileService.getFirebaseProfile).toHaveBeenCalledWith(mockProfile.email);
+    });
+
+    it('should return local profile when found in allProfiles (line 201 branch 0)', async () => {
+      (firebaseConfig.isFirebaseConfigured as jest.Mock).mockReturnValue(false);
+      
+      // Set profile in allProfiles
+      await AsyncStorage.setItem('allProfiles', JSON.stringify([mockProfile]));
+      
+      const result = await hybridGetProfile(mockProfile.email);
+      
+      // Should return local profile (line 201: if (profile) branch)
+      expect(result).toEqual(mockProfile);
+    });
+
     it('should return empty array if no profiles exist', async () => {
       (firebaseConfig.isFirebaseConfigured as jest.Mock).mockReturnValue(false);
 

@@ -454,6 +454,106 @@ describe('Firebase Request Service', () => {
       await expect(getFirebaseRequestsByStatus('user@example.com', 'accepted')).rejects.toBe('Get by status failed string');
       expect(mockLogger.logger.error).toHaveBeenCalled();
     });
+
+    it('should process receivedSnapshot requests (line 230)', async () => {
+      const mockWhere1 = {};
+      const mockWhere2 = {};
+      const mockWhere3 = {};
+      const mockWhere4 = {};
+      const mockOrderBy = {};
+      const mockQuery1 = {};
+      const mockQuery2 = {};
+      mockFirestore.where.mockReturnValueOnce(mockWhere1).mockReturnValueOnce(mockWhere2).mockReturnValueOnce(mockWhere3).mockReturnValueOnce(mockWhere4);
+      mockFirestore.orderBy.mockReturnValue(mockOrderBy);
+      mockFirestore.query.mockReturnValueOnce(mockQuery1).mockReturnValueOnce(mockQuery2);
+      
+      const receivedRequest: MentorshipRequest = {
+        ...mockRequest,
+        id: 'request456',
+        requesterEmail: 'other@example.com',
+        mentorEmail: 'user@example.com',
+        createdAt: '2024-01-02T00:00:00.000Z',
+      };
+      
+      const mockSnapshot1 = {
+        forEach: jest.fn(),
+        docs: [],
+      };
+      const mockSnapshot2 = {
+        forEach: jest.fn((callback) => {
+          mockSnapshot2.docs.forEach(callback);
+        }),
+        docs: [
+          {
+            id: 'request456',
+            data: () => receivedRequest,
+          },
+        ],
+      };
+      mockFirestore.getDocs.mockResolvedValueOnce(mockSnapshot1).mockResolvedValueOnce(mockSnapshot2);
+
+      const requests = await getFirebaseRequestsByStatus('user@example.com', 'accepted');
+
+      // Should include request from receivedSnapshot (line 230)
+      expect(requests).toHaveLength(1);
+      expect(requests[0].id).toBe('request456');
+    });
+
+    it('should sort requests by createdAt descending (line 235)', async () => {
+      const mockWhere1 = {};
+      const mockWhere2 = {};
+      const mockWhere3 = {};
+      const mockWhere4 = {};
+      const mockOrderBy = {};
+      const mockQuery1 = {};
+      const mockQuery2 = {};
+      mockFirestore.where.mockReturnValueOnce(mockWhere1).mockReturnValueOnce(mockWhere2).mockReturnValueOnce(mockWhere3).mockReturnValueOnce(mockWhere4);
+      mockFirestore.orderBy.mockReturnValue(mockOrderBy);
+      mockFirestore.query.mockReturnValueOnce(mockQuery1).mockReturnValueOnce(mockQuery2);
+      
+      const request1: MentorshipRequest = {
+        ...mockRequest,
+        id: 'request1',
+        createdAt: '2024-01-01T00:00:00.000Z',
+      };
+      const request2: MentorshipRequest = {
+        ...mockRequest,
+        id: 'request2',
+        createdAt: '2024-01-03T00:00:00.000Z', // Later date
+      };
+      const request3: MentorshipRequest = {
+        ...mockRequest,
+        id: 'request3',
+        createdAt: '2024-01-02T00:00:00.000Z',
+      };
+      
+      const mockSnapshot1 = {
+        forEach: jest.fn((callback) => {
+          mockSnapshot1.docs.forEach(callback);
+        }),
+        docs: [
+          { id: 'request1', data: () => request1 },
+          { id: 'request2', data: () => request2 },
+        ],
+      };
+      const mockSnapshot2 = {
+        forEach: jest.fn((callback) => {
+          mockSnapshot2.docs.forEach(callback);
+        }),
+        docs: [
+          { id: 'request3', data: () => request3 },
+        ],
+      };
+      mockFirestore.getDocs.mockResolvedValueOnce(mockSnapshot1).mockResolvedValueOnce(mockSnapshot2);
+
+      const requests = await getFirebaseRequestsByStatus('user@example.com', 'accepted');
+
+      // Should be sorted by createdAt descending (line 235)
+      expect(requests).toHaveLength(3);
+      expect(requests[0].id).toBe('request2'); // Latest
+      expect(requests[1].id).toBe('request3');
+      expect(requests[2].id).toBe('request1'); // Earliest
+    });
   });
 
   describe('acceptFirebaseRequest', () => {

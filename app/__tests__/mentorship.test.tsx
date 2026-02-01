@@ -766,4 +766,54 @@ describe('MentorshipScreen', () => {
     // safeParseJSON will return [] for invalid data, so component should render
     expect(screen.root).toBeTruthy();
   });
+
+  it('should handle array data with invalid profiles (line 123 branch 0)', async () => {
+    // Test branch 0 of line 123: when allProfilesData exists but contains invalid profiles
+    const acceptedRequest = createRequest({
+      requesterEmail: 'user@example.com',
+      requesterName: 'Current User',
+      mentorEmail: 'mentor@example.com',
+      mentorName: 'Mentor User',
+      status: 'accepted',
+      respondedAt: new Date().toISOString(),
+    });
+
+    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([acceptedRequest]));
+    // Set array data with invalid profile (triggers branch 0: data is array, but validation fails)
+    await AsyncStorage.setItem('allProfiles', JSON.stringify([
+      { invalid: 'profile data' }, // Invalid profile schema
+    ]));
+
+    const screen = render(<MentorshipScreen />);
+
+    await waitFor(() => {
+      // Component should handle invalid data gracefully
+      expect(screen.root).toBeTruthy();
+    }, { timeout: 3000 });
+  });
+
+  it('should handle array data with invalid profiles for mentee (line 166 branch 0)', async () => {
+    // Test branch 0 of line 166: when allProfilesData exists but contains invalid profiles for mentee
+    const acceptedRequest = createRequest({
+      requesterEmail: 'mentee@example.com',
+      requesterName: 'Mentee User',
+      mentorEmail: 'user@example.com',
+      mentorName: 'Current User',
+      status: 'accepted',
+      respondedAt: new Date().toISOString(),
+    });
+
+    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([acceptedRequest]));
+    // Set array data with invalid profile (triggers branch 0: data is array, but validation fails)
+    await AsyncStorage.setItem('allProfiles', JSON.stringify([
+      { invalid: 'profile data' }, // Invalid profile schema
+    ]));
+
+    const screen = render(<MentorshipScreen />);
+
+    await waitFor(() => {
+      // Component should handle invalid data gracefully
+      expect(screen.root).toBeTruthy();
+    }, { timeout: 3000 });
+  });
 });

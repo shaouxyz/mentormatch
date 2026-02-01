@@ -15,6 +15,12 @@ import * as logger from '@/utils/logger';
 
 // Mock dependencies
 jest.mock('@/utils/sessionManager');
+jest.mock('@/utils/errorHandler', () => ({
+  ErrorHandler: {
+    handleStorageError: jest.fn(),
+    handleError: jest.fn(),
+  },
+}));
 
 const mockRouter = {
   push: jest.fn(),
@@ -194,6 +200,79 @@ describe('ProfileScreen', () => {
 
     await waitFor(() => {
       expect(mockRouter.replace).toHaveBeenCalledWith('/');
+    });
+  });
+
+  it('should handle cancel button in logout alert (line 112 branch 0)', async () => {
+    await AsyncStorage.setItem('profile', JSON.stringify(mockProfile));
+    await AsyncStorage.setItem('user', JSON.stringify({ email: 'test@example.com', id: '123' }));
+
+    const { getByText, queryByText } = render(<ProfileScreen />);
+
+    await waitFor(() => {
+      expect(queryByText('Loading...')).toBeNull();
+    }, { timeout: 3000 });
+
+    await waitFor(() => {
+      const logoutButton = getByText('Log Out');
+      fireEvent.press(logoutButton);
+    });
+
+    // Get the alert callback
+    await waitFor(() => {
+      expect(Alert.alert).toHaveBeenCalled();
+    });
+
+    const alertCall = (Alert.alert as jest.Mock).mock.calls[0];
+    const cancelButton = alertCall[2][0]; // Get the "Cancel" button (first button)
+    
+    // Cancel button should not have onPress, or it should be a no-op
+    // This covers branch 0 at line 112 (the Cancel button path)
+    expect(cancelButton.text).toBe('Cancel');
+    expect(cancelButton.style).toBe('cancel');
+    
+    // User should not be logged out
+    const user = await AsyncStorage.getItem('user');
+    expect(user).toBeTruthy();
+  });
+
+  it('should handle error in logout (line 127 branch 1)', async () => {
+    await AsyncStorage.setItem('profile', JSON.stringify(mockProfile));
+    await AsyncStorage.setItem('user', JSON.stringify({ email: 'test@example.com', id: '123' }));
+    
+    // Mock endSession to throw an error
+    mockEndSession.mockRejectedValue(new Error('Logout error'));
+
+    const { getByText, queryByText } = render(<ProfileScreen />);
+
+    await waitFor(() => {
+      expect(queryByText('Loading...')).toBeNull();
+    }, { timeout: 3000 });
+
+    await waitFor(() => {
+      const logoutButton = getByText('Log Out');
+      fireEvent.press(logoutButton);
+    });
+
+    // Get the alert callback and call it
+    await waitFor(() => {
+      expect(Alert.alert).toHaveBeenCalled();
+    });
+
+    const alertCall = (Alert.alert as jest.Mock).mock.calls[0];
+    const confirmCallback = alertCall[2][1].onPress; // Get the "Log Out" button callback
+
+    await confirmCallback();
+
+    // Error should be handled (line 127 branch 1 - error handling path)
+    await waitFor(() => {
+      expect(mockEndSession).toHaveBeenCalled();
+    });
+    
+    // ErrorHandler.handleStorageError should be called
+    const ErrorHandler = require('@/utils/errorHandler').ErrorHandler;
+    await waitFor(() => {
+      expect(ErrorHandler.handleStorageError).toHaveBeenCalled();
     });
   });
 
