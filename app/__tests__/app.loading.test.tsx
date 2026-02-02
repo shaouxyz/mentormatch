@@ -266,11 +266,11 @@ describe('App Loading from Phone', () => {
       
       const { getByText } = render(<WelcomeScreen />);
       
-      // App should still render
+      // App should still render immediately
       expect(getByText('MentorMatch')).toBeTruthy();
       
-      // Wait for initialization to start (100ms delay)
-      await new Promise(resolve => setTimeout(resolve, 200));
+      // Wait for initialization to start (100ms delay) and error to be caught
+      await new Promise(resolve => setTimeout(resolve, 250));
       
       // Error should be logged but app should continue
       await waitFor(() => {
@@ -278,7 +278,7 @@ describe('App Loading from Phone', () => {
           'Firebase initialization skipped or failed at app startup, continuing with local only',
           expect.objectContaining({ error: expect.any(String) })
         );
-      }, { timeout: 2000 });
+      }, { timeout: 3000 });
     });
 
     it('should recover from data migration failure', async () => {

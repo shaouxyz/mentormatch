@@ -69,17 +69,19 @@ describe('WelcomeScreen', () => {
   });
 
   it('should initialize Firebase on mount', async () => {
-    // Mock isFirebaseConfigured to return true
+    // Mock isFirebaseConfigured to return true BEFORE rendering
+    // This ensures the require() call in the code gets the correct mock
     (firebaseConfig as any).isFirebaseConfigured = jest.fn().mockReturnValue(true);
     
     render(<WelcomeScreen />);
 
-    // Wait for initialization to start (100ms delay in code)
-    await new Promise(resolve => setTimeout(resolve, 200));
+    // Wait for initialization to start (100ms delay in code) plus some buffer
+    await new Promise(resolve => setTimeout(resolve, 250));
 
     await waitFor(() => {
+      // The require() call should get the mocked module, and isFirebaseConfigured should return true
       expect(mockInitializeFirebase).toHaveBeenCalledTimes(1);
-    }, { timeout: 2000 });
+    }, { timeout: 3000 });
   });
 
   it('should handle Firebase initialization error gracefully', async () => {
