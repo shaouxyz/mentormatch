@@ -245,13 +245,20 @@ describe('WelcomeScreen', () => {
     expect(mockInitializeTestAccounts).toHaveBeenCalledTimes(initialTestAccountsCalls);
   });
 
-  it.skip('should execute init guard false-branch under StrictMode (double-invoked effects)', async () => {
-    // SKIPPED: This test is flaky due to React StrictMode's double-invocation behavior
-    // which can cause timing issues with the initialization guard.
-    // The guard is already tested in other scenarios (re-render test above).
-    // StrictMode behavior is non-deterministic and can interfere with async initialization timing.
+  it('should execute init guard false-branch under StrictMode (double-invoked effects)', async () => {
+    // Test that the hasInitialized ref guard works correctly in StrictMode
+    // StrictMode may cause effects to run twice, but the guard should prevent double initialization
+    // The key insight: hasInitialized is a useRef, which persists across StrictMode remounts
+    // So even if StrictMode unmounts and remounts, the ref should prevent re-initialization
+    
     // Mock isFirebaseConfigured to return true so Firebase initializes
     mockIsFirebaseConfigured.mockReturnValue(true);
+    
+    // Clear mocks to ensure clean state
+    jest.clearAllMocks();
+    mockInitializeDataMigration.mockResolvedValue(undefined);
+    mockInitializeTestAccounts.mockResolvedValue(undefined);
+    mockInitializeFirebase.mockImplementation(() => {});
     
     render(
       <React.StrictMode>
@@ -259,38 +266,41 @@ describe('WelcomeScreen', () => {
       </React.StrictMode>
     );
 
-    // Wait for initialization to start (100ms delay) plus buffer for StrictMode
-    // StrictMode may cause effects to run twice, so we need to wait longer
-    await new Promise(resolve => setTimeout(resolve, 400));
+    // Wait for initialization to start (100ms delay in code) plus buffer for StrictMode
+    // StrictMode may cause effects to run twice, but the guard should prevent double init
+    await new Promise(resolve => setTimeout(resolve, 500));
 
     // In StrictMode, effects may run twice; the ref guard should prevent double init.
-    // Wait for at least one initialization to complete - use a longer timeout for StrictMode
+    // Wait for at least one initialization to complete
     await waitFor(() => {
       // Verify initialization happened at least once
       // Data migration and test accounts should always initialize
-      // In StrictMode, the component may unmount/remount, but initialization should still happen
       expect(mockInitializeDataMigration).toHaveBeenCalled();
       expect(mockInitializeTestAccounts).toHaveBeenCalled();
-    }, { timeout: 6000, interval: 100 });
+    }, { timeout: 8000, interval: 200 });
 
     // The hasInitialized ref should prevent multiple calls
     // Even though StrictMode may invoke effects twice, the guard should prevent re-initialization
+    // Note: In StrictMode, React may unmount and remount the component, creating a new component instance
+    // with a new ref. However, within a single mount cycle, the guard should work.
     const firebaseCalls = mockInitializeFirebase.mock.calls.length;
     const migrationCalls = mockInitializeDataMigration.mock.calls.length;
     const testAccountsCalls = mockInitializeTestAccounts.mock.calls.length;
     
-    // Should be called at least once due to hasInitialized ref guard
-    // In StrictMode, if the component unmounts and remounts, we might get 2 calls
-    // But the guard should prevent multiple calls within the same mount cycle
-    // The key test is that the guard works - we should get at least 1 call, at most 2 (for remount)
+    // Should be called at least once
     expect(migrationCalls).toBeGreaterThanOrEqual(1);
-    expect(migrationCalls).toBeLessThanOrEqual(2); // Allow for StrictMode remount
     expect(testAccountsCalls).toBeGreaterThanOrEqual(1);
-    expect(testAccountsCalls).toBeLessThanOrEqual(2); // Allow for StrictMode remount
+    
+    // The guard should prevent multiple calls within the same mount cycle
+    // In StrictMode, if the component is unmounted and remounted, we might get 2 calls
+    // But typically, the guard should ensure only 1 call per component instance
+    // Allow up to 2 calls to account for StrictMode remount behavior
+    expect(migrationCalls).toBeLessThanOrEqual(2);
+    expect(testAccountsCalls).toBeLessThanOrEqual(2);
     
     // Firebase is optional - if configured and called, it should be at most once per mount
     if (firebaseCalls > 0) {
-      expect(firebaseCalls).toBeLessThanOrEqual(2); // Allow for StrictMode remount
+      expect(firebaseCalls).toBeLessThanOrEqual(2);
     }
   });
 
