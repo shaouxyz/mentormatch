@@ -74,6 +74,9 @@ describe('WelcomeScreen', () => {
     
     render(<WelcomeScreen />);
 
+    // Wait for initialization to start (100ms delay in code)
+    await new Promise(resolve => setTimeout(resolve, 200));
+
     await waitFor(() => {
       expect(mockInitializeFirebase).toHaveBeenCalledTimes(1);
     }, { timeout: 2000 });
