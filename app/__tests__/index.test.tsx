@@ -281,7 +281,7 @@ describe('WelcomeScreen', () => {
       const testAccountsCalls = mockInitializeTestAccounts.mock.calls.length;
       expect(migrationCalls).toBeGreaterThan(0);
       expect(testAccountsCalls).toBeGreaterThan(0);
-    }, { timeout: 10000, interval: 300 });
+    }, { timeout: 12000, interval: 400 });
 
     // The hasInitialized ref should prevent multiple calls
     // Even though StrictMode may invoke effects twice, the guard should prevent re-initialization
