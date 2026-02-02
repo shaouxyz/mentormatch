@@ -49,16 +49,20 @@ const mockInitializeDataMigration = dataMigration.initializeDataMigration as jes
 const mockIsSessionValid = sessionManager.isSessionValid as jest.Mock;
 const mockRefreshSession = sessionManager.refreshSession as jest.Mock;
 
-// Mock console.log for __DEV__ checks
+// Mock console.log and console.warn for __DEV__ checks
 const originalConsoleLog = console.log;
+const originalConsoleWarn = console.warn;
 const mockConsoleLog = jest.fn();
+const mockConsoleWarn = jest.fn();
 beforeAll(() => {
   (global as any).__DEV__ = true;
   console.log = mockConsoleLog;
+  console.warn = mockConsoleWarn;
 });
 
 afterAll(() => {
   console.log = originalConsoleLog;
+  console.warn = originalConsoleWarn;
   delete (global as any).__DEV__;
 });
 
