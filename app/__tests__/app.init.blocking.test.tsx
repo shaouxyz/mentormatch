@@ -185,13 +185,22 @@ describe('App Initialization Blocking Prevention', () => {
       
       render(<WelcomeScreen />);
       
-      // Wait for timeout warning (should log after 5 seconds)
+      // Wait for initialization to start (100ms delay in code)
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      // Verify migration was called
+      expect(mockInitializeDataMigration).toHaveBeenCalled();
+      
+      // Wait for timeout warning (should log after 5 seconds from when migration starts)
+      // The timeout uses console.warn, so check mockConsoleWarn
       await waitFor(() => {
-        expect(mockConsoleLog).toHaveBeenCalledWith(
-          expect.stringContaining('[APP_INIT] Data migration taking longer than expected')
-        );
-      }, { timeout: 6000 });
-    });
+        const hasWarning = mockConsoleWarn.mock.calls.some(call => {
+          const message = Array.isArray(call) ? call[0] : call;
+          return typeof message === 'string' && message.includes('Data migration taking longer than expected');
+        });
+        expect(hasWarning).toBe(true);
+      }, { timeout: 5500 });
+    }, 12000); // Increase Jest test timeout to 12 seconds
 
     it('should log warning if test accounts init takes too long', async () => {
       // Make test accounts init take longer than 5 seconds
@@ -201,14 +210,22 @@ describe('App Initialization Blocking Prevention', () => {
       
       render(<WelcomeScreen />);
       
-      // Wait for timeout warning
+      // Wait for initialization to start (100ms delay in code)
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      // Verify test accounts init was called
+      expect(mockInitializeTestAccounts).toHaveBeenCalled();
+      
+      // Wait for timeout warning (should log after 5 seconds from when test accounts init starts)
+      // The timeout uses console.warn, so check mockConsoleWarn
       await waitFor(() => {
-        const logCalls = mockConsoleLog.mock.calls.map(call => call[0]);
-        expect(logCalls.some(log => 
-          typeof log === 'string' && log.includes('[APP_INIT] Test accounts initialization taking longer than expected')
-        )).toBe(true);
-      }, { timeout: 6000 });
-    });
+        const hasWarning = mockConsoleWarn.mock.calls.some(call => {
+          const message = Array.isArray(call) ? call[0] : call;
+          return typeof message === 'string' && message.includes('Test accounts initialization taking longer than expected');
+        });
+        expect(hasWarning).toBe(true);
+      }, { timeout: 5500 });
+    }, 12000); // Increase Jest test timeout to 12 seconds
   });
 
   describe('Firebase Initialization Error Handling', () => {
