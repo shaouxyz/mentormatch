@@ -91,12 +91,34 @@ npm run test:coverage
 - ✅ Verify 100% passing AND 100% coverage
 - ✅ Then proceed to commit
 
-### 7. Commit to GitHub (ONLY after 100% test passing)
+### 7. Verify Fix Actually Works (MANDATORY)
+- **MANDATORY**: Before committing, verify that your fix actually solves the problem
+- Test the specific issue/feature manually if possible
+- Verify the fix is meaningful and not just a workaround
+- **DO NOT commit** if:
+  - The fix doesn't actually solve the problem
+  - The fix is incomplete or partial
+  - The fix introduces new issues
+  - The fix is just a workaround that doesn't address root cause
+- **ONLY commit** when:
+  - The fix actually works and solves the problem
+  - All tests pass
+  - The fix is complete and meaningful
+  - The fix doesn't introduce regressions
+
+### 8. Commit to GitHub (ONLY after fix is verified to work)
 ```bash
 git add -A
-git commit -m "Descriptive commit message"
+git commit -m "Descriptive commit message explaining the meaningful fix"
 git push
 ```
+
+**Commit Message Guidelines:**
+- Describe what problem was fixed
+- Explain how the fix works
+- Only commit when the fix is complete and verified
+- Do NOT commit intermediate attempts that don't work
+- Do NOT commit "fixes" that don't actually fix anything
 
 ## Example Workflow
 
@@ -135,7 +157,13 @@ npm test
 # 10. Verify 100% passing (0 failures, 0 skipped)
 # Expected: "Test Suites: X passed, X total" and "Tests: X passed, X total"
 
-# 11. ONLY after 100% passing: Commit
+# 11. Verify fix actually works (MANDATORY)
+# - Test the specific issue manually if possible
+# - Verify the fix solves the problem completely
+# - Ensure the fix is meaningful, not just a workaround
+# - DO NOT commit if fix doesn't work or is incomplete
+
+# 12. ONLY after fix is verified to work AND 100% tests passing: Commit
 git add -A
 git commit -m "Fix: Case-insensitive email filtering for current user profile exclusion"
 git push
@@ -146,6 +174,10 @@ git push
 - **100% Test Passing Required**: Never commit with failing or skipped tests
 - **No Skipped Tests**: If a test is skipped, fix it or remove it - don't leave it skipped
 - **Fix Flaky Tests**: If a test is flaky, investigate and fix the root cause instead of skipping
+- **Only Commit Working Fixes**: Never commit fixes that don't work or don't solve the problem
+- **Meaningful Fixes Only**: Only commit when the fix is complete, meaningful, and actually solves the problem
+- **No Intermediate Commits**: Don't commit intermediate attempts that don't work - wait until you have a working solution
+- **Verify Before Committing**: Always verify the fix works before committing
 - **Test coverage**: Aim to maintain or improve test coverage with each change
 - **Test quality**: Tests should be meaningful and verify actual functionality
 - **Documentation**: Update relevant documentation if the change affects user-facing features
@@ -162,7 +194,21 @@ If you cannot achieve 100% test passing, you must:
 2. Fix the issue (code or test)
 3. Re-run tests
 4. Verify 100% passing
-5. Only then proceed with commit
+5. Verify the fix actually works and solves the problem
+6. Only then proceed with commit
+
+**DO NOT commit if:**
+- Tests fail or are skipped
+- The fix doesn't actually work
+- The fix is incomplete or partial
+- The fix introduces new issues
+- The fix is just a workaround
+
+**ONLY commit when:**
+- All tests pass (100%)
+- The fix actually works and solves the problem
+- The fix is complete and meaningful
+- The fix doesn't introduce regressions
 
 ## Quick Reference
 
