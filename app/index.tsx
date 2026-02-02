@@ -30,21 +30,20 @@ export default function WelcomeScreen() {
         if (!hasInitialized.current) {
           hasInitialized.current = true;
           // Initialize services asynchronously to avoid blocking app startup
-          // Use setImmediate to defer all initialization to next event loop tick
-          setImmediate(() => {
-            (async () => {
-              // Initialize Firebase first (if configured) - only if properly configured
-              try {
-                const { isFirebaseConfigured } = require('@/config/firebase.config');
-                if (isFirebaseConfigured && isFirebaseConfigured()) {
-                  initializeFirebase();
-                  logger.info('Firebase initialized at app startup');
-                }
-              } catch (error) {
-                logger.warn('Firebase initialization skipped or failed at app startup, continuing with local only', {
-                  error: error instanceof Error ? error.message : String(error)
-                });
+          // Use Promise.resolve().then() to defer initialization to next tick
+          Promise.resolve().then(async () => {
+            // Initialize Firebase first (if configured) - only if properly configured
+            try {
+              const { isFirebaseConfigured } = require('@/config/firebase.config');
+              if (isFirebaseConfigured && isFirebaseConfigured()) {
+                initializeFirebase();
+                logger.info('Firebase initialized at app startup');
               }
+            } catch (error) {
+              logger.warn('Firebase initialization skipped or failed at app startup, continuing with local only', {
+                error: error instanceof Error ? error.message : String(error)
+              });
+            }
             // Initialize data migration
             initializeDataMigration().catch((error) => {
               logger.error('Failed to initialize data migration', error instanceof Error ? error : new Error(String(error)));
@@ -53,9 +52,8 @@ export default function WelcomeScreen() {
             initializeTestAccounts().catch((error) => {
               logger.error('Failed to initialize test accounts', error instanceof Error ? error : new Error(String(error)));
             });
-              // CASPA profiles initialization is now lazy - call initializeCaspaProfiles() manually when needed
-              // This improves app startup performance
-            })();
+            // CASPA profiles initialization is now lazy - call initializeCaspaProfiles() manually when needed
+            // This improves app startup performance
           });
         }
   }, []);
