@@ -144,10 +144,16 @@ describe('App Loading from Phone', () => {
       // App should still render despite initialization errors
       expect(getByText('MentorMatch')).toBeTruthy();
       
+      // Wait for initialization attempts (they will fail but be caught)
+      await waitFor(() => {
+        expect(mockInitializeDataMigration).toHaveBeenCalled();
+        expect(mockInitializeTestAccounts).toHaveBeenCalled();
+      });
+      
       // Errors should be logged but not crash the app
       await waitFor(() => {
         expect(logger.error).toHaveBeenCalled();
-      });
+      }, { timeout: 2000 });
     });
   });
 
