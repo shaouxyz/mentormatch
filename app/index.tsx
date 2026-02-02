@@ -29,25 +29,31 @@ export default function WelcomeScreen() {
   useEffect(() => {
         if (!hasInitialized.current) {
           hasInitialized.current = true;
-          // Initialize Firebase first (if configured)
-          try {
-            initializeFirebase();
-            logger.info('Firebase initialized at app startup');
-          } catch (error) {
-            logger.warn('Firebase initialization failed at app startup, continuing with local only', {
-              error: error instanceof Error ? error.message : String(error)
+          // Initialize services asynchronously to avoid blocking app startup
+          (async () => {
+            // Initialize Firebase first (if configured) - only if properly configured
+            try {
+              const { isFirebaseConfigured } = await import('@/config/firebase.config');
+              if (isFirebaseConfigured()) {
+                initializeFirebase();
+                logger.info('Firebase initialized at app startup');
+              }
+            } catch (error) {
+              logger.warn('Firebase initialization skipped or failed at app startup, continuing with local only', {
+                error: error instanceof Error ? error.message : String(error)
+              });
+            }
+            // Initialize data migration
+            initializeDataMigration().catch((error) => {
+              logger.error('Failed to initialize data migration', error instanceof Error ? error : new Error(String(error)));
             });
-          }
-          // Initialize data migration
-          initializeDataMigration().catch((error) => {
-            logger.error('Failed to initialize data migration', error instanceof Error ? error : new Error(String(error)));
-          });
-          // Then initialize test accounts
-          initializeTestAccounts().catch((error) => {
-            logger.error('Failed to initialize test accounts', error instanceof Error ? error : new Error(String(error)));
-          });
-          // CASPA profiles initialization is now lazy - call initializeCaspaProfiles() manually when needed
-          // This improves app startup performance
+            // Then initialize test accounts
+            initializeTestAccounts().catch((error) => {
+              logger.error('Failed to initialize test accounts', error instanceof Error ? error : new Error(String(error)));
+            });
+            // CASPA profiles initialization is now lazy - call initializeCaspaProfiles() manually when needed
+            // This improves app startup performance
+          })();
         }
   }, []);
 
