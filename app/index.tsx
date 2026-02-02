@@ -29,32 +29,121 @@ export default function WelcomeScreen() {
   useEffect(() => {
         if (!hasInitialized.current) {
           hasInitialized.current = true;
+          
+          // LOG: Mark initialization start
+          if (__DEV__) {
+            console.log('[APP_INIT] Starting initialization');
+          }
+          
           // Initialize services asynchronously to avoid blocking app startup
-          // Use Promise.resolve().then() to defer initialization to next tick
-          Promise.resolve().then(async () => {
-            // Initialize Firebase first (if configured) - only if properly configured
+          // Use InteractionManager to defer until after first render
+          // This ensures UI renders before any initialization happens
+          const initTimeout = setTimeout(async () => {
             try {
-              const { isFirebaseConfigured } = require('@/config/firebase.config');
-              if (isFirebaseConfigured && isFirebaseConfigured()) {
-                initializeFirebase();
-                logger.info('Firebase initialized at app startup');
+              // LOG: Firebase check start
+              if (__DEV__) {
+                console.log('[APP_INIT] Checking Firebase configuration');
+              }
+              
+              // Initialize Firebase first (if configured) - only if properly configured
+              // Use dynamic import to avoid blocking module loading
+              try {
+                const firebaseModule = await import('@/config/firebase.config');
+                if (firebaseModule.isFirebaseConfigured && firebaseModule.isFirebaseConfigured()) {
+                  if (__DEV__) {
+                    console.log('[APP_INIT] Firebase configured, initializing...');
+                  }
+                  firebaseModule.initializeFirebase();
+                  logger.info('Firebase initialized at app startup');
+                  if (__DEV__) {
+                    console.log('[APP_INIT] Firebase initialized successfully');
+                  }
+                } else {
+                  if (__DEV__) {
+                    console.log('[APP_INIT] Firebase not configured, skipping');
+                  }
+                }
+              } catch (error) {
+                logger.warn('Firebase initialization skipped or failed at app startup, continuing with local only', {
+                  error: error instanceof Error ? error.message : String(error)
+                });
+                if (__DEV__) {
+                  console.log('[APP_INIT] Firebase initialization failed:', error);
+                }
+              }
+              
+              // LOG: Data migration start
+              if (__DEV__) {
+                console.log('[APP_INIT] Starting data migration');
+              }
+              
+              // Initialize data migration with timeout
+              const migrationPromise = initializeDataMigration();
+              const migrationTimeout = setTimeout(() => {
+                if (__DEV__) {
+                  console.warn('[APP_INIT] Data migration taking longer than expected');
+                }
+              }, 5000);
+              
+              migrationPromise
+                .then(() => {
+                  clearTimeout(migrationTimeout);
+                  if (__DEV__) {
+                    console.log('[APP_INIT] Data migration completed');
+                  }
+                })
+                .catch((error) => {
+                  clearTimeout(migrationTimeout);
+                  logger.error('Failed to initialize data migration', error instanceof Error ? error : new Error(String(error)));
+                  if (__DEV__) {
+                    console.error('[APP_INIT] Data migration failed:', error);
+                  }
+                });
+              
+              // LOG: Test accounts start
+              if (__DEV__) {
+                console.log('[APP_INIT] Starting test accounts initialization');
+              }
+              
+              // Then initialize test accounts with timeout
+              const testAccountsPromise = initializeTestAccounts();
+              const testAccountsTimeout = setTimeout(() => {
+                if (__DEV__) {
+                  console.warn('[APP_INIT] Test accounts initialization taking longer than expected');
+                }
+              }, 5000);
+              
+              testAccountsPromise
+                .then(() => {
+                  clearTimeout(testAccountsTimeout);
+                  if (__DEV__) {
+                    console.log('[APP_INIT] Test accounts initialized');
+                  }
+                })
+                .catch((error) => {
+                  clearTimeout(testAccountsTimeout);
+                  logger.error('Failed to initialize test accounts', error instanceof Error ? error : new Error(String(error)));
+                  if (__DEV__) {
+                    console.error('[APP_INIT] Test accounts initialization failed:', error);
+                  }
+                });
+              
+              // LOG: Initialization complete
+              if (__DEV__) {
+                console.log('[APP_INIT] All initialization tasks started');
               }
             } catch (error) {
-              logger.warn('Firebase initialization skipped or failed at app startup, continuing with local only', {
-                error: error instanceof Error ? error.message : String(error)
-              });
+              logger.error('Error during app initialization', error instanceof Error ? error : new Error(String(error)));
+              if (__DEV__) {
+                console.error('[APP_INIT] Fatal initialization error:', error);
+              }
             }
-            // Initialize data migration
-            initializeDataMigration().catch((error) => {
-              logger.error('Failed to initialize data migration', error instanceof Error ? error : new Error(String(error)));
-            });
-            // Then initialize test accounts
-            initializeTestAccounts().catch((error) => {
-              logger.error('Failed to initialize test accounts', error instanceof Error ? error : new Error(String(error)));
-            });
-            // CASPA profiles initialization is now lazy - call initializeCaspaProfiles() manually when needed
-            // This improves app startup performance
-          });
+          }, 100); // Defer by 100ms to ensure first render completes
+          
+          // Cleanup timeout on unmount
+          return () => {
+            clearTimeout(initTimeout);
+          };
         }
   }, []);
 
