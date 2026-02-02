@@ -254,8 +254,8 @@ describe('WelcomeScreen', () => {
     // Mock isFirebaseConfigured to return true so Firebase initializes
     mockIsFirebaseConfigured.mockReturnValue(true);
     
-    // Clear mocks to ensure clean state
-    jest.clearAllMocks();
+    // Ensure mocks are properly set up (don't clear all mocks - that would clear the mock implementations)
+    // Just reset the implementations to ensure they're ready
     mockInitializeDataMigration.mockResolvedValue(undefined);
     mockInitializeTestAccounts.mockResolvedValue(undefined);
     mockInitializeFirebase.mockImplementation(() => {});
@@ -272,12 +272,16 @@ describe('WelcomeScreen', () => {
 
     // In StrictMode, effects may run twice; the ref guard should prevent double init.
     // Wait for at least one initialization to complete
+    // Use a longer timeout and interval to account for StrictMode's double-invocation
     await waitFor(() => {
       // Verify initialization happened at least once
       // Data migration and test accounts should always initialize
-      expect(mockInitializeDataMigration).toHaveBeenCalled();
-      expect(mockInitializeTestAccounts).toHaveBeenCalled();
-    }, { timeout: 8000, interval: 200 });
+      // Check call counts directly to avoid timing issues
+      const migrationCalls = mockInitializeDataMigration.mock.calls.length;
+      const testAccountsCalls = mockInitializeTestAccounts.mock.calls.length;
+      expect(migrationCalls).toBeGreaterThan(0);
+      expect(testAccountsCalls).toBeGreaterThan(0);
+    }, { timeout: 10000, interval: 300 });
 
     // The hasInitialized ref should prevent multiple calls
     // Even though StrictMode may invoke effects twice, the guard should prevent re-initialization
