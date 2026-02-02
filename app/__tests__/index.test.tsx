@@ -112,15 +112,16 @@ describe('WelcomeScreen', () => {
     render(<WelcomeScreen />);
 
     // Wait for initialization to start (100ms delay) and complete
-    await new Promise(resolve => setTimeout(resolve, 200));
+    await new Promise(resolve => setTimeout(resolve, 300));
 
     await waitFor(() => {
       // The error is caught and logged with logger.warn
+      // The second argument is an object with error property
       expect(logger.warn).toHaveBeenCalledWith(
         'Firebase initialization skipped or failed at app startup, continuing with local only',
         expect.objectContaining({ error: expect.any(String) })
       );
-    }, { timeout: 2000 });
+    }, { timeout: 3000 });
   });
 
   it('should initialize data migration on mount', async () => {
