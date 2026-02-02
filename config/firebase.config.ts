@@ -52,30 +52,88 @@ let db: Firestore;
 /**
  * Initialize Firebase
  * Only initializes once, even if called multiple times
+ * Wrapped in try-catch to prevent blocking on errors
  */
 export function initializeFirebase(): void {
   try {
+    if (__DEV__) {
+      console.log('[FIREBASE] Starting initialization');
+    }
+    
     // Check if Firebase is already initialized
     if (getApps().length === 0) {
+      if (__DEV__) {
+        console.log('[FIREBASE] Creating new Firebase app instance');
+      }
+      
       app = initializeApp(firebaseConfig);
       logger.info('Firebase initialized successfully');
       
+      if (__DEV__) {
+        console.log('[FIREBASE] Firebase app created, initializing Auth');
+      }
+      
       // Initialize Auth with AsyncStorage persistence for React Native
-      auth = initializeAuth(app, {
-        persistence: getReactNativePersistence(AsyncStorage)
-      });
-      logger.info('Firebase Auth initialized with AsyncStorage persistence');
+      // Wrap in try-catch to prevent blocking if AsyncStorage fails
+      try {
+        auth = initializeAuth(app, {
+          persistence: getReactNativePersistence(AsyncStorage)
+        });
+        logger.info('Firebase Auth initialized with AsyncStorage persistence');
+        if (__DEV__) {
+          console.log('[FIREBASE] Auth initialized successfully');
+        }
+      } catch (authError) {
+        logger.error('Error initializing Firebase Auth', authError instanceof Error ? authError : new Error(String(authError)));
+        if (__DEV__) {
+          console.error('[FIREBASE] Auth initialization failed:', authError);
+        }
+        // Continue without Auth - app can still work with Firestore
+      }
     } else {
+      if (__DEV__) {
+        console.log('[FIREBASE] Using existing Firebase app instance');
+      }
       app = getApps()[0];
-      auth = getAuth(app);
-      logger.info('Firebase already initialized');
+      try {
+        auth = getAuth(app);
+        logger.info('Firebase already initialized');
+      } catch (authError) {
+        logger.warn('Could not get existing Auth instance', authError instanceof Error ? authError : new Error(String(authError)));
+        if (__DEV__) {
+          console.warn('[FIREBASE] Could not get Auth:', authError);
+        }
+      }
     }
 
-    // Initialize Firestore
-    db = getFirestore(app);
+    if (__DEV__) {
+      console.log('[FIREBASE] Initializing Firestore');
+    }
+    
+    // Initialize Firestore - wrap in try-catch to prevent blocking
+    try {
+      db = getFirestore(app);
+      if (__DEV__) {
+        console.log('[FIREBASE] Firestore initialized successfully');
+      }
+    } catch (firestoreError) {
+      logger.error('Error initializing Firestore', firestoreError instanceof Error ? firestoreError : new Error(String(firestoreError)));
+      if (__DEV__) {
+        console.error('[FIREBASE] Firestore initialization failed:', firestoreError);
+      }
+      // Continue without Firestore - app can still work with local storage
+    }
+    
+    if (__DEV__) {
+      console.log('[FIREBASE] Initialization complete');
+    }
   } catch (error) {
     logger.error('Error initializing Firebase', error instanceof Error ? error : new Error(String(error)));
-    throw error;
+    if (__DEV__) {
+      console.error('[FIREBASE] Fatal initialization error:', error);
+    }
+    // Don't throw - allow app to continue without Firebase
+    // throw error; // Removed to prevent blocking
   }
 }
 
