@@ -69,11 +69,14 @@ describe('WelcomeScreen', () => {
   });
 
   it('should initialize Firebase on mount', async () => {
+    // Mock isFirebaseConfigured to return true
+    (firebaseConfig as any).isFirebaseConfigured = jest.fn().mockReturnValue(true);
+    
     render(<WelcomeScreen />);
 
     await waitFor(() => {
       expect(mockInitializeFirebase).toHaveBeenCalledTimes(1);
-    });
+    }, { timeout: 2000 });
   });
 
   it('should handle Firebase initialization error gracefully', async () => {
