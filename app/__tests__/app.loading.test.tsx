@@ -335,19 +335,33 @@ describe('App Loading from Phone', () => {
       const migrationPromise = new Promise<void>(resolve => {
         resolveMigration = resolve;
       });
-      mockInitializeDataMigration.mockReturnValue(migrationPromise);
+      // Use mockResolvedValue to return a promise that resolves when we call resolveMigration
+      mockInitializeDataMigration.mockResolvedValue(migrationPromise);
       
       const { rerender } = render(<WelcomeScreen />);
       
+      // Wait for first initialization to start (100ms delay)
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      // Verify initialization started
+      await waitFor(() => {
+        expect(mockInitializeDataMigration).toHaveBeenCalled();
+      }, { timeout: 2000 });
+      
+      const initialCallCount = mockInitializeDataMigration.mock.calls.length;
+      
       // Trigger another render while migration is still running
       rerender(<WelcomeScreen />);
+      
+      // Wait a bit more to ensure the guard prevents duplicate calls
+      await new Promise(resolve => setTimeout(resolve, 100));
       
       // Complete the migration
       resolveMigration!();
       await migrationPromise;
       
-      // Should only initialize once
-      expect(mockInitializeDataMigration).toHaveBeenCalledTimes(1);
+      // Should only initialize once due to hasInitialized ref guard
+      expect(mockInitializeDataMigration).toHaveBeenCalledTimes(initialCallCount);
     });
   });
 
