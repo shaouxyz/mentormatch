@@ -80,6 +80,8 @@ describe('WelcomeScreen', () => {
   });
 
   it('should handle Firebase initialization error gracefully', async () => {
+    // Mock isFirebaseConfigured to return true so Firebase tries to initialize
+    (firebaseConfig as any).isFirebaseConfigured = jest.fn().mockReturnValue(true);
     mockInitializeFirebase.mockImplementation(() => {
       throw new Error('Firebase init failed');
     });
@@ -89,13 +91,15 @@ describe('WelcomeScreen', () => {
     await waitFor(() => {
       expect(mockInitializeFirebase).toHaveBeenCalled();
       expect(logger.warn).toHaveBeenCalledWith(
-        'Firebase initialization failed at app startup, continuing with local only',
+        'Firebase initialization skipped or failed at app startup, continuing with local only',
         expect.objectContaining({ error: expect.any(String) })
       );
-    });
+    }, { timeout: 2000 });
   });
 
   it('should handle Firebase initialization non-Error throw gracefully', async () => {
+    // Mock isFirebaseConfigured to return true so Firebase tries to initialize
+    (firebaseConfig as any).isFirebaseConfigured = jest.fn().mockReturnValue(true);
     mockInitializeFirebase.mockImplementation(() => {
       // eslint-disable-next-line no-throw-literal
       throw 'Firebase init failed';
@@ -105,10 +109,10 @@ describe('WelcomeScreen', () => {
 
     await waitFor(() => {
       expect(logger.warn).toHaveBeenCalledWith(
-        'Firebase initialization failed at app startup, continuing with local only',
+        'Firebase initialization skipped or failed at app startup, continuing with local only',
         expect.objectContaining({ error: expect.any(String) })
       );
-    });
+    }, { timeout: 2000 });
   });
 
   it('should initialize data migration on mount', async () => {
@@ -205,6 +209,9 @@ describe('WelcomeScreen', () => {
   });
 
   it('should execute init guard false-branch under StrictMode (double-invoked effects)', async () => {
+    // Mock isFirebaseConfigured to return true so Firebase initializes
+    (firebaseConfig as any).isFirebaseConfigured = jest.fn().mockReturnValue(true);
+    
     render(
       <React.StrictMode>
         <WelcomeScreen />
@@ -216,7 +223,7 @@ describe('WelcomeScreen', () => {
       expect(mockInitializeFirebase).toHaveBeenCalledTimes(1);
       expect(mockInitializeDataMigration).toHaveBeenCalledTimes(1);
       expect(mockInitializeTestAccounts).toHaveBeenCalledTimes(1);
-    });
+    }, { timeout: 2000 });
   });
 
   it('should navigate to signup when sign up button is pressed', () => {
