@@ -104,7 +104,9 @@ describe('WelcomeScreen', () => {
   it('should handle Firebase initialization non-Error throw gracefully', async () => {
     // Mock isFirebaseConfigured to return true so Firebase tries to initialize
     (firebaseConfig as any).isFirebaseConfigured = jest.fn().mockReturnValue(true);
-    mockInitializeFirebase.mockImplementation(() => {
+    // Mock initializeFirebase to throw a non-Error when called via require()
+    const firebaseModule = require('@/config/firebase.config');
+    jest.spyOn(firebaseModule, 'initializeFirebase').mockImplementation(() => {
       // eslint-disable-next-line no-throw-literal
       throw 'Firebase init failed';
     });
