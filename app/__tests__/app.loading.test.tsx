@@ -274,10 +274,14 @@ describe('App Loading from Phone', () => {
       
       // Error should be logged but app should continue
       await waitFor(() => {
-        expect(logger.warn).toHaveBeenCalledWith(
-          'Firebase initialization skipped or failed at app startup, continuing with local only',
-          expect.objectContaining({ error: expect.any(String) })
+        // Check that logger.warn was called with the correct message
+        const warnCalls = (logger.warn as jest.Mock).mock.calls;
+        const hasCorrectCall = warnCalls.some(call => 
+          call[0] === 'Firebase initialization skipped or failed at app startup, continuing with local only' &&
+          call[1] &&
+          typeof call[1].error === 'string'
         );
+        expect(hasCorrectCall).toBe(true);
       }, { timeout: 3000 });
     });
 
