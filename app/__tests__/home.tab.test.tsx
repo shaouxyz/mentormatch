@@ -967,8 +967,11 @@ describe('HomeScreen', () => {
     const currentUserEmail = 'current@example.com';
     await AsyncStorage.setItem('user', JSON.stringify({ email: currentUserEmail }));
     
-    // Create profiles that include the current user (duplicate)
-    // The profile will be in uniqueProfiles but filtered out in finalFilteredProfiles
+    // Create profiles that include the current user
+    // The key is: the current user profile must be in uniqueProfiles (after deduplication)
+    // but then removed in finalFilteredProfiles, causing the length difference
+    // To ensure this, we need the current user profile to survive deduplication
+    // but be filtered out in the final filter
     const profilesWithCurrentUser = [
       ...mockProfiles,
       {
@@ -979,16 +982,6 @@ describe('HomeScreen', () => {
         expertiseYears: 5,
         interestYears: 2,
         phoneNumber: '+1111111111',
-      },
-      // Add duplicate to ensure deduplication happens
-      {
-        name: 'Current User Duplicate',
-        email: currentUserEmail, // Same email
-        expertise: 'Software',
-        interest: 'Design',
-        expertiseYears: 5,
-        interestYears: 2,
-        phoneNumber: '+1111111112',
       },
     ];
     
@@ -1012,24 +1005,24 @@ describe('HomeScreen', () => {
 
     // Wait for the deduplication warning to be triggered
     // This happens when finalFilteredProfiles.length !== uniqueProfiles.length
-    // The current user profile will be in uniqueProfiles but removed in finalFilteredProfiles
+    // Condition: normalizedCurrentUserEmail && finalFilteredProfiles.length !== uniqueProfiles.length
+    // The current user profile will be in uniqueProfiles (after deduplication removes duplicates)
+    // but then removed in finalFilteredProfiles (by the filter that excludes current user)
     await waitFor(() => {
       const warnCalls = mockLogger.warn.mock.calls;
       const deduplicationWarning = warnCalls.find(call => 
         call[0] === 'Current user profile was found after deduplication and removed'
       );
-      // The warning should be called when current user is filtered out
-      // Note: This may not always trigger depending on the exact deduplication logic
-      // The important thing is that the code path exists and can be triggered
-      if (deduplicationWarning) {
-        expect(deduplicationWarning[1]).toMatchObject({
-          currentUserEmail: expect.any(String),
-          beforeFinalFilter: expect.any(Number),
-          afterFinalFilter: expect.any(Number),
-        });
-      }
-      // Even if warning doesn't trigger, the code path should be covered
-      // by the test setup above
+      // The warning MUST be called when current user is filtered out after deduplication
+      // This is the exact condition: uniqueProfiles contains current user, finalFilteredProfiles doesn't
+      expect(deduplicationWarning).toBeDefined();
+      expect(deduplicationWarning![1]).toMatchObject({
+        currentUserEmail: currentUserEmail.toLowerCase().trim(),
+        beforeFinalFilter: expect.any(Number),
+        afterFinalFilter: expect.any(Number),
+      });
+      // Verify the counts make sense: before should be greater than after
+      expect(deduplicationWarning![1].beforeFinalFilter).toBeGreaterThan(deduplicationWarning![1].afterFinalFilter);
     }, { timeout: 5000 });
   });
 
