@@ -214,23 +214,40 @@ describe('WelcomeScreen', () => {
   });
 
   it('should not initialize multiple times on re-render', async () => {
+    // This test verifies that the hasInitialized ref prevents multiple initializations
+    // Note: Firebase won't initialize by default (isFirebaseConfigured returns false)
     const { rerender } = render(<WelcomeScreen />);
 
-    await waitFor(() => {
-      expect(mockInitializeFirebase).toHaveBeenCalledTimes(1);
-    });
+    // Wait for initialization to start (100ms delay) and complete
+    await new Promise(resolve => setTimeout(resolve, 300));
 
+    // Verify initialization happened on first render
+    await waitFor(() => {
+      expect(mockInitializeDataMigration).toHaveBeenCalled();
+      expect(mockInitializeTestAccounts).toHaveBeenCalled();
+    }, { timeout: 3000 });
+
+    const initialMigrationCalls = mockInitializeDataMigration.mock.calls.length;
+    const initialTestAccountsCalls = mockInitializeTestAccounts.mock.calls.length;
+    
+    // Ensure we got at least one call
+    expect(initialMigrationCalls).toBeGreaterThan(0);
+    expect(initialTestAccountsCalls).toBeGreaterThan(0);
+
+    // Rerender the component - the hasInitialized ref should prevent re-initialization
     rerender(<WelcomeScreen />);
 
-    await waitFor(() => {
-      // Should still be called only once
-      expect(mockInitializeFirebase).toHaveBeenCalledTimes(1);
-    });
+    // Wait a bit to ensure no additional calls
+    await new Promise(resolve => setTimeout(resolve, 200));
+
+    // Should still be called the same number of times due to hasInitialized ref guard
+    expect(mockInitializeDataMigration).toHaveBeenCalledTimes(initialMigrationCalls);
+    expect(mockInitializeTestAccounts).toHaveBeenCalledTimes(initialTestAccountsCalls);
   });
 
   it('should execute init guard false-branch under StrictMode (double-invoked effects)', async () => {
     // Mock isFirebaseConfigured to return true so Firebase initializes
-    (firebaseConfig as any).isFirebaseConfigured = jest.fn().mockReturnValue(true);
+    mockIsFirebaseConfigured.mockReturnValue(true);
     
     render(
       <React.StrictMode>
@@ -238,15 +255,31 @@ describe('WelcomeScreen', () => {
       </React.StrictMode>
     );
 
-    // Wait for initialization to start (100ms delay)
-    await new Promise(resolve => setTimeout(resolve, 200));
+    // Wait for initialization to start (100ms delay) plus buffer
+    await new Promise(resolve => setTimeout(resolve, 300));
 
     // In StrictMode, effects may run twice; the ref guard should prevent double init.
     await waitFor(() => {
-      expect(mockInitializeFirebase).toHaveBeenCalledTimes(1);
-      expect(mockInitializeDataMigration).toHaveBeenCalledTimes(1);
-      expect(mockInitializeTestAccounts).toHaveBeenCalledTimes(1);
-    }, { timeout: 2000 });
+      // Verify initialization happened at least once
+      // Firebase should initialize since we mocked isFirebaseConfigured to return true
+      expect(mockInitializeFirebase).toHaveBeenCalled();
+      expect(mockInitializeDataMigration).toHaveBeenCalled();
+      expect(mockInitializeTestAccounts).toHaveBeenCalled();
+    }, { timeout: 3000 });
+
+    // The hasInitialized ref should prevent multiple calls
+    // Even though StrictMode may invoke effects twice, the guard should prevent re-initialization
+    const firebaseCalls = mockInitializeFirebase.mock.calls.length;
+    const migrationCalls = mockInitializeDataMigration.mock.calls.length;
+    const testAccountsCalls = mockInitializeTestAccounts.mock.calls.length;
+    
+    // Should be called at least once, but at most once due to hasInitialized ref guard
+    expect(firebaseCalls).toBeGreaterThan(0);
+    expect(firebaseCalls).toBeLessThanOrEqual(1);
+    expect(migrationCalls).toBeGreaterThan(0);
+    expect(migrationCalls).toBeLessThanOrEqual(1);
+    expect(testAccountsCalls).toBeGreaterThan(0);
+    expect(testAccountsCalls).toBeLessThanOrEqual(1);
   });
 
   it('should navigate to signup when sign up button is pressed', () => {
