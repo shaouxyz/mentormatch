@@ -229,6 +229,9 @@ describe('WelcomeScreen', () => {
       </React.StrictMode>
     );
 
+    // Wait for initialization to start (100ms delay)
+    await new Promise(resolve => setTimeout(resolve, 200));
+
     // In StrictMode, effects may run twice; the ref guard should prevent double init.
     await waitFor(() => {
       expect(mockInitializeFirebase).toHaveBeenCalledTimes(1);
