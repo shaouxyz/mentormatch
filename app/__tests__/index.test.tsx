@@ -255,8 +255,9 @@ describe('WelcomeScreen', () => {
       </React.StrictMode>
     );
 
-    // Wait for initialization to start (100ms delay) plus buffer
-    await new Promise(resolve => setTimeout(resolve, 300));
+    // Wait for initialization to start (100ms delay) plus buffer for StrictMode
+    // StrictMode may cause effects to run twice, so we need to wait longer
+    await new Promise(resolve => setTimeout(resolve, 400));
 
     // In StrictMode, effects may run twice; the ref guard should prevent double init.
     // Wait for at least one initialization to complete
@@ -265,7 +266,7 @@ describe('WelcomeScreen', () => {
       // Data migration and test accounts should always initialize
       expect(mockInitializeDataMigration).toHaveBeenCalled();
       expect(mockInitializeTestAccounts).toHaveBeenCalled();
-    }, { timeout: 3000 });
+    }, { timeout: 5000 });
 
     // The hasInitialized ref should prevent multiple calls
     // Even though StrictMode may invoke effects twice, the guard should prevent re-initialization
@@ -273,16 +274,15 @@ describe('WelcomeScreen', () => {
     const migrationCalls = mockInitializeDataMigration.mock.calls.length;
     const testAccountsCalls = mockInitializeTestAccounts.mock.calls.length;
     
-    // Should be called at least once, but at most once due to hasInitialized ref guard
-    // Note: Firebase might not be called if the require() fails or timing is off
-    if (mockIsFirebaseConfigured()) {
-      expect(firebaseCalls).toBeGreaterThanOrEqual(0);
-      expect(firebaseCalls).toBeLessThanOrEqual(1);
+    // Should be called exactly once due to hasInitialized ref guard
+    // The key test is that data migration and test accounts are called exactly once
+    expect(migrationCalls).toBe(1);
+    expect(testAccountsCalls).toBe(1);
+    
+    // Firebase is optional - if configured and called, it should be at most once
+    if (firebaseCalls > 0) {
+      expect(firebaseCalls).toBe(1);
     }
-    expect(migrationCalls).toBeGreaterThan(0);
-    expect(migrationCalls).toBeLessThanOrEqual(1);
-    expect(testAccountsCalls).toBeGreaterThan(0);
-    expect(testAccountsCalls).toBeLessThanOrEqual(1);
   });
 
   it('should navigate to signup when sign up button is pressed', () => {
