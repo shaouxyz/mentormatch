@@ -88,8 +88,12 @@ describe('WelcomeScreen', () => {
 
     render(<WelcomeScreen />);
 
+    // Wait for initialization to start (100ms delay) and complete
+    await new Promise(resolve => setTimeout(resolve, 200));
+
     await waitFor(() => {
       expect(mockInitializeFirebase).toHaveBeenCalled();
+      // The error is caught and logged with logger.warn
       expect(logger.warn).toHaveBeenCalledWith(
         'Firebase initialization skipped or failed at app startup, continuing with local only',
         expect.objectContaining({ error: expect.any(String) })
@@ -107,7 +111,11 @@ describe('WelcomeScreen', () => {
 
     render(<WelcomeScreen />);
 
+    // Wait for initialization to start (100ms delay) and complete
+    await new Promise(resolve => setTimeout(resolve, 200));
+
     await waitFor(() => {
+      // The error is caught and logged with logger.warn
       expect(logger.warn).toHaveBeenCalledWith(
         'Firebase initialization skipped or failed at app startup, continuing with local only',
         expect.objectContaining({ error: expect.any(String) })

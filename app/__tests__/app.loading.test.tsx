@@ -11,7 +11,7 @@
  */
 
 import React from 'react';
-import { render, waitFor } from '@testing-library/react-native';
+import { render, waitFor, fireEvent } from '@testing-library/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import WelcomeScreen from '../index';
 import RootLayout from '../_layout';
