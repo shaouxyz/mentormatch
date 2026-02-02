@@ -4216,7 +4216,119 @@ This section addresses **every uncovered statement, branch, and function** ident
 
 ---
 
-## 27. SIGN-OFF
+## 27. APP LOADING FROM PHONE TESTS
+
+### Purpose
+Verify that the Expo app can load successfully from a phone without hanging, blocking, or crashing.
+
+### Test Cases
+
+#### 27.1 App Initialization Performance
+- **Test**: App should load without hanging or blocking
+  - **Priority**: CRITICAL
+  - **Expected**: App renders welcome screen within 1 second
+  - **Trigger**: App starts from phone
+  
+- **Test**: App should render immediately without waiting for initialization
+  - **Priority**: HIGH
+  - **Expected**: UI renders before async initialization completes
+  - **Trigger**: Slow initialization (500ms delay)
+
+- **Test**: All initialization should complete without errors
+  - **Priority**: HIGH
+  - **Expected**: Data migration and test accounts initialize successfully
+  - **Trigger**: Normal app startup
+
+#### 27.2 Firebase Initialization
+- **Test**: App should handle Firebase when not configured
+  - **Priority**: HIGH
+  - **Expected**: App works without Firebase, no errors
+  - **Trigger**: Firebase not configured
+
+- **Test**: App should initialize Firebase when configured
+  - **Priority**: HIGH
+  - **Expected**: Firebase initializes successfully
+  - **Trigger**: Firebase properly configured
+
+#### 27.3 Error Recovery
+- **Test**: App should recover from Firebase initialization failure
+  - **Priority**: HIGH
+  - **Expected**: App continues to work, error logged
+  - **Trigger**: Firebase init throws error
+
+- **Test**: App should recover from data migration failure
+  - **Priority**: HIGH
+  - **Expected**: App continues to work, error logged
+  - **Trigger**: Migration fails
+
+- **Test**: App should recover from test accounts initialization failure
+  - **Priority**: MEDIUM
+  - **Expected**: App continues to work, error logged
+  - **Trigger**: Test accounts init fails
+
+#### 27.4 Navigation After Load
+- **Test**: App should allow navigation to signup
+  - **Priority**: HIGH
+  - **Expected**: Sign up button navigates correctly
+  - **Trigger**: Press sign up button
+
+- **Test**: App should allow navigation to login
+  - **Priority**: HIGH
+  - **Expected**: Log in button navigates correctly
+  - **Trigger**: Press log in button
+
+#### 27.5 Session Management
+- **Test**: App should check session validity on load
+  - **Priority**: HIGH
+  - **Expected**: Session check runs on app focus
+  - **Trigger**: App loads
+
+- **Test**: App should navigate to home if user logged in
+  - **Priority**: HIGH
+  - **Expected**: Auto-navigate to home screen
+  - **Trigger**: User logged in, session valid
+
+- **Test**: App should not navigate if user not logged in
+  - **Priority**: HIGH
+  - **Expected**: Stay on welcome screen
+  - **Trigger**: No user logged in
+
+#### 27.6 Performance
+- **Test**: Initialization should complete within reasonable time
+  - **Priority**: MEDIUM
+  - **Expected**: All init completes within 2 seconds
+  - **Trigger**: Normal app startup
+
+- **Test**: UI should not block during initialization
+  - **Priority**: HIGH
+  - **Expected**: UI renders before async init completes
+  - **Trigger**: Slow initialization
+
+#### 27.7 Concurrent Load Scenarios
+- **Test**: App should handle multiple rapid loads
+  - **Priority**: MEDIUM
+  - **Expected**: Initialization only happens once
+  - **Trigger**: Multiple rapid re-renders
+
+- **Test**: App should handle load while previous init running
+  - **Priority**: MEDIUM
+  - **Expected**: No duplicate initialization
+  - **Trigger**: Load while migration in progress
+
+#### 27.8 Memory Management
+- **Test**: App should not leak memory during initialization
+  - **Priority**: MEDIUM
+  - **Expected**: No excessive initialization calls
+  - **Trigger**: Multiple mount/unmount cycles
+
+- **Test**: App should clean up resources on unmount
+  - **Priority**: MEDIUM
+  - **Expected**: No errors after unmount
+  - **Trigger**: Component unmounts
+
+---
+
+## 28. SIGN-OFF
 
 ### Test Completion Criteria
 

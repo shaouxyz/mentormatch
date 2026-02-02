@@ -165,7 +165,7 @@ describe('App Loading from Phone', () => {
       const { getByText } = render(<WelcomeScreen />);
       
       const signUpButton = getByText('Sign Up');
-      signUpButton.props.onPress();
+      fireEvent.press(signUpButton);
       
       expect(mockRouter.push).toHaveBeenCalledWith('/signup');
     });
@@ -174,7 +174,7 @@ describe('App Loading from Phone', () => {
       const { getByText } = render(<WelcomeScreen />);
       
       const logInButton = getByText('Log In');
-      logInButton.props.onPress();
+      fireEvent.press(logInButton);
       
       expect(mockRouter.push).toHaveBeenCalledWith('/login');
     });
