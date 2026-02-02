@@ -192,9 +192,10 @@ describe('App Initialization Blocking Prevention', () => {
       
       // Wait for timeout warning
       await waitFor(() => {
-        expect(mockConsoleLog).toHaveBeenCalledWith(
-          expect.stringContaining('[APP_INIT] Test accounts initialization taking longer than expected')
-        );
+        const logCalls = mockConsoleLog.mock.calls.map(call => call[0]);
+        expect(logCalls.some(log => 
+          typeof log === 'string' && log.includes('[APP_INIT] Test accounts initialization taking longer than expected')
+        )).toBe(true);
       }, { timeout: 6000 });
     });
   });

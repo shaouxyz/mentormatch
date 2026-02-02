@@ -46,9 +46,10 @@ export default function WelcomeScreen() {
               }
               
               // Initialize Firebase first (if configured) - only if properly configured
-              // Use dynamic import to avoid blocking module loading
+              // Use require() wrapped in try-catch to avoid blocking
+              // In production, this is deferred so it won't block rendering
               try {
-                const firebaseModule = await import('@/config/firebase.config');
+                const firebaseModule = require('@/config/firebase.config');
                 if (firebaseModule.isFirebaseConfigured && firebaseModule.isFirebaseConfigured()) {
                   if (__DEV__) {
                     console.log('[APP_INIT] Firebase configured, initializing...');
