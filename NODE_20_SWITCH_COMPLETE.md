@@ -3,8 +3,9 @@
 ## Current Status
 
 - **Previous**: Node v25.2.1 from Miniconda (incompatible)
-- **Current**: Node 20 LTS from `C:\Program Files\nodejs\` ✅
+- **Current**: Node v24.13.0 from `C:\Program Files\nodejs\` ✅
 - **Tests**: ✅ All passing (52 suites, 1533 tests)
+- **Note**: Node 24 is installed (within acceptable range >=20 <=26). Node 20 LTS can be installed if preferred.
 
 ## What Was Done
 
@@ -48,7 +49,7 @@ After restarting:
 
 ```powershell
 node --version
-# Should show: v20.x.x (NOT v25.2.1)
+# Should show: v24.x.x or v20.x.x (NOT v25.2.1)
 
 Get-Command node | Select-Object -ExpandProperty Source
 # Should show: C:\Program Files\nodejs\node.exe (NOT Miniconda)
