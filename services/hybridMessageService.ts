@@ -205,27 +205,46 @@ async function saveMessageLocally(message: Message): Promise<void> {
   messages.push(message);
   await AsyncStorage.setItem(STORAGE_KEYS.MESSAGES, JSON.stringify(messages));
   
-  // Update conversation's last message
+  // Update or create conversation's last message
   const conversationsData = await AsyncStorage.getItem(STORAGE_KEYS.CONVERSATIONS);
-  if (conversationsData) {
-    let conversations: Conversation[] = JSON.parse(conversationsData);
-    const conversationIndex = conversations.findIndex(c => c.id === message.conversationId);
+  let conversations: Conversation[] = conversationsData ? JSON.parse(conversationsData) : [];
+  const conversationIndex = conversations.findIndex(c => c.id === message.conversationId);
+  
+  if (conversationIndex !== -1) {
+    // Update existing conversation
+    conversations[conversationIndex].lastMessage = message.text;
+    conversations[conversationIndex].lastMessageAt = message.createdAt;
+    conversations[conversationIndex].updatedAt = message.createdAt;
     
-    if (conversationIndex !== -1) {
-      conversations[conversationIndex].lastMessage = message.text;
-      conversations[conversationIndex].lastMessageAt = message.createdAt;
-      conversations[conversationIndex].updatedAt = message.createdAt;
-      
-      // Increment unread count for receiver
-      if (!conversations[conversationIndex].unreadCount) {
-        conversations[conversationIndex].unreadCount = {};
-      }
-      conversations[conversationIndex].unreadCount[message.receiverEmail] = 
-        (conversations[conversationIndex].unreadCount[message.receiverEmail] || 0) + 1;
-      
-      await AsyncStorage.setItem(STORAGE_KEYS.CONVERSATIONS, JSON.stringify(conversations));
+    // Increment unread count for receiver
+    if (!conversations[conversationIndex].unreadCount) {
+      conversations[conversationIndex].unreadCount = {};
     }
+    conversations[conversationIndex].unreadCount[message.receiverEmail] = 
+      (conversations[conversationIndex].unreadCount[message.receiverEmail] || 0) + 1;
+  } else {
+    // Create conversation if it doesn't exist (shouldn't happen, but handle it)
+    const newConversation: Conversation = {
+      id: message.conversationId,
+      participants: [message.senderEmail, message.receiverEmail],
+      participantNames: {
+        [message.senderEmail]: message.senderName,
+        [message.receiverEmail]: message.receiverName,
+      },
+      lastMessage: message.text,
+      lastMessageAt: message.createdAt,
+      unreadCount: {
+        [message.senderEmail]: 0,
+        [message.receiverEmail]: 1,
+      },
+      createdAt: message.createdAt,
+      updatedAt: message.createdAt,
+    };
+    conversations.push(newConversation);
+    logger.info('Conversation created from message', { conversationId: message.conversationId });
   }
+  
+  await AsyncStorage.setItem(STORAGE_KEYS.CONVERSATIONS, JSON.stringify(conversations));
 }
 
 async function saveMessagesLocally(conversationId: string, messages: Message[]): Promise<void> {

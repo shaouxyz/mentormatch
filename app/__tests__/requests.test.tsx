@@ -5,6 +5,11 @@ import RequestsScreen from '../(tabs)/requests';
 import { useRouter } from 'expo-router';
 import * as logger from '@/utils/logger';
 
+// Mock hybrid meeting service
+jest.mock('../../services/hybridMeetingService', () => ({
+  hybridGetUserMeetings: jest.fn(() => Promise.resolve([])),
+}));
+
 // Get mock router (from global mock in jest.setup.js)
 const mockRouter = useRouter();
 const mockLogger = logger.logger as jest.Mocked<typeof logger.logger>;
@@ -41,9 +46,12 @@ describe('RequestsScreen', () => {
     ...overrides,
   });
 
+  const { hybridGetUserMeetings } = require('../../services/hybridMeetingService');
+
   beforeEach(async () => {
     AsyncStorage.clear();
     jest.clearAllMocks();
+    (hybridGetUserMeetings as jest.Mock).mockResolvedValue([]);
     await AsyncStorage.setItem('user', JSON.stringify(mockUser));
     await AsyncStorage.setItem('profile', JSON.stringify({
       name: 'Current User',

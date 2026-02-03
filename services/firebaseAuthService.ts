@@ -48,12 +48,40 @@ export async function firebaseSignUp(
 export async function firebaseSignIn(email: string, password: string): Promise<UserCredential> {
   try {
     const auth = getFirebaseAuth();
+    
+    // Check if auth is properly initialized
+    if (!auth) {
+      const error = new Error('Firebase Auth not initialized');
+      logger.error('Firebase Auth not initialized when attempting sign in', { email });
+      throw error;
+    }
+    
+    logger.info('Attempting Firebase sign in', { email, authInitialized: !!auth });
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     
-    logger.info('User signed in with Firebase', { email });
+    logger.info('User signed in with Firebase', { 
+      email,
+      uid: userCredential.user?.uid,
+      emailVerified: userCredential.user?.emailVerified
+    });
     return userCredential;
-  } catch (error) {
-    logger.error('Error signing in with Firebase', error instanceof Error ? error : new Error(String(error)));
+  } catch (error: any) {
+    const errorCode = error?.code || 'unknown';
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    
+    logger.error('Error signing in with Firebase', {
+      email,
+      error: errorMessage,
+      errorCode,
+      errorName: error?.name,
+      fullError: error,
+    });
+    
+    // Preserve Firebase error code for better error handling upstream
+    if (error && typeof error === 'object') {
+      (error as any).code = errorCode;
+    }
+    
     throw error;
   }
 }

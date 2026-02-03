@@ -219,14 +219,47 @@ export default function LoginScreen() {
       // Handle authentication failure
       const sanitizedEmail = sanitizeEmail(email);
       
+      // Log detailed error information for debugging
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const firebaseErrorCode = (error as any)?.firebaseErrorCode;
+      const firebaseError = (error as any)?.firebaseError;
+      
+      logger.error('Login failed', {
+        email: sanitizedEmail,
+        error: errorMessage,
+        firebaseErrorCode,
+        firebaseError,
+        fullError: error,
+      });
+      
       // Increment rate limit on failed attempt
       await isRateLimited(sanitizedEmail);
       const remainingAttempts = await getRemainingAttempts(sanitizedEmail);
       
+      // Create user-friendly error message
+      let userMessage = ERROR_MESSAGES.INVALID_PASSWORD;
+      
+      // Add Firebase-specific error context if available
+      if (firebaseErrorCode) {
+        if (firebaseErrorCode === 'auth/user-not-found') {
+          userMessage = 'Email not found. Please sign up first or check your email address.';
+        } else if (firebaseErrorCode === 'auth/wrong-password') {
+          userMessage = 'Incorrect password. Please check your password and try again.';
+        } else if (firebaseErrorCode === 'auth/invalid-credential') {
+          userMessage = 'Invalid email or password. Please check your credentials.';
+        } else if (firebaseErrorCode === 'auth/network-request-failed') {
+          userMessage = 'Network error. Please check your internet connection and try again.';
+        } else if (firebaseErrorCode === 'auth/too-many-requests') {
+          userMessage = 'Too many login attempts. Please try again later.';
+        } else {
+          userMessage = `Login failed: ${errorMessage}`;
+        }
+      }
+      
       if (remainingAttempts > 0) {
         ErrorHandler.handleError(
           error, 
-          `${ERROR_MESSAGES.INVALID_PASSWORD}\n${remainingAttempts} attempt${remainingAttempts > 1 ? 's' : ''} remaining.`,
+          `${userMessage}\n${remainingAttempts} attempt${remainingAttempts > 1 ? 's' : ''} remaining.`,
           { email }
         );
       } else {

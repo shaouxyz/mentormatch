@@ -41,11 +41,13 @@ describe('MessagesScreen', () => {
   it('should show empty state when no conversations', async () => {
     await AsyncStorage.setItem('user', JSON.stringify({ email: 'test@example.com' }));
     hybridGetUserConversations.mockResolvedValue([]);
+    // No requests in storage
+    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([]));
 
     const { getByText } = render(<MessagesScreen />);
 
     await waitFor(() => {
-      expect(getByText('No conversations yet')).toBeTruthy();
+      expect(getByText('No messages or requests yet')).toBeTruthy();
       expect(getByText('Connect with mentors or mentees to start messaging')).toBeTruthy();
     });
   });
@@ -140,11 +142,12 @@ describe('MessagesScreen', () => {
   it('should refresh conversations on pull to refresh', async () => {
     await AsyncStorage.setItem('user', JSON.stringify({ email: 'test@example.com' }));
     hybridGetUserConversations.mockResolvedValue([]);
+    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([]));
 
     const { getByTestId, queryByText } = render(<MessagesScreen />);
 
     await waitFor(() => {
-      expect(queryByText('No conversations yet')).toBeTruthy();
+      expect(queryByText('No messages or requests yet')).toBeTruthy();
     });
 
     // Note: RefreshControl testing is limited in react-native-testing-library

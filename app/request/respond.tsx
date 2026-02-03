@@ -20,8 +20,7 @@ import { sanitizeString } from '@/utils/security';
 import { safeParseJSON, validateMentorshipRequestSchema } from '@/utils/schemaValidation';
 import { createInvitationCode } from '@/services/invitationCodeService';
 import { addInvitationCodeToInbox } from '@/services/inboxService';
-import { updateFirebaseRequest } from '@/services/firebaseRequestService';
-import { isFirebaseConfigured } from '@/config/firebase.config';
+import { hybridUpdateRequestStatus } from '@/services/hybridRequestService';
 
 interface MentorshipRequest {
   id: string;
@@ -101,50 +100,8 @@ export default function RespondRequestScreen() {
     setLoading(true);
 
     try {
-      const requestsData = await AsyncStorage.getItem('mentorshipRequests');
-      const requests = requestsData
-        ? safeParseJSON<MentorshipRequest[]>(
-            requestsData,
-            (data): data is MentorshipRequest[] => {
-              if (!Array.isArray(data)) return false;
-              return data.every((req) => validateMentorshipRequestSchema(req));
-            },
-            []
-          ) || []
-        : [];
-
-      const requestIndex = requests.findIndex((r) => r.id === request.id);
-      if (requestIndex === -1) {
-        ErrorHandler.handleError(new Error('Request not found'), 'Request no longer exists.');
-        return;
-      }
-
-      requests[requestIndex] = {
-        ...requests[requestIndex],
-        status,
-        responseNote: sanitizeString(responseNote.trim()),
-        respondedAt: new Date().toISOString(),
-      };
-
-      await AsyncStorage.setItem('mentorshipRequests', JSON.stringify(requests));
-      
-      // Update in Firebase if configured
-      if (isFirebaseConfigured() && request.id && !request.id.startsWith('local_')) {
-        try {
-          await updateFirebaseRequest(request.id, {
-            status,
-            responseNote: sanitizeString(responseNote.trim()),
-            respondedAt: new Date().toISOString(),
-          });
-          logger.info('Request updated in Firebase', { requestId: request.id, status });
-        } catch (firebaseError) {
-          logger.error('Failed to update request in Firebase, continuing with local only', {
-            error: firebaseError instanceof Error ? firebaseError.message : String(firebaseError),
-            requestId: request.id
-          });
-          // Continue with local update even if Firebase fails
-        }
-      }
+      // Use hybrid service to update request status (updates locally and syncs to Firebase)
+      await hybridUpdateRequestStatus(request.id, status, sanitizeString(responseNote.trim()));
       
       // If accepted, generate a new invitation code for the mentor
       if (status === 'accepted') {

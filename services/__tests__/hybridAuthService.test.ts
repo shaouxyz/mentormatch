@@ -339,7 +339,15 @@ describe('Hybrid Auth Service', () => {
       });
       (authenticateUser as jest.Mock).mockRejectedValue('Invalid credentials string');
 
-      await expect(hybridSignIn('test@example.com', 'wrong')).rejects.toBe('Invalid credentials string');
+      await expect(hybridSignIn('test@example.com', 'wrong')).rejects.toThrow();
+      // The error should be wrapped in a new Error with descriptive message
+      try {
+        await hybridSignIn('test@example.com', 'wrong');
+      } catch (error: any) {
+        expect(error).toBeInstanceOf(Error);
+        expect(error.message).toContain('Login failed');
+        expect(error.firebaseErrorCode).toBe('auth/wrong-password');
+      }
     });
 
     it('should handle non-Error thrown in outer catch block of signin', async () => {

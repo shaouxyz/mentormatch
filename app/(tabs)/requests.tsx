@@ -13,6 +13,9 @@ import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { logger } from '@/utils/logger';
 import { safeParseJSON, validateMentorshipRequestSchema } from '@/utils/schemaValidation';
+import { hybridGetUserMeetings } from '@/services/hybridMeetingService';
+import { hybridGetAllRequestsForUser } from '@/services/hybridRequestService';
+import { Meeting } from '@/types/types';
 
 interface MentorshipRequest {
   id: string;
@@ -44,11 +47,15 @@ interface MentorshipRequest {
  * @component
  * @returns {JSX.Element} Requests screen with tabbed interface
  */
+type RequestItem = 
+  | { type: 'mentorship'; data: MentorshipRequest }
+  | { type: 'meeting'; data: Meeting };
+
 export default function RequestsScreen() {
   const router = useRouter();
-  const [incomingRequests, setIncomingRequests] = useState<MentorshipRequest[]>([]);
-  const [outgoingRequests, setOutgoingRequests] = useState<MentorshipRequest[]>([]);
-  const [processedRequests, setProcessedRequests] = useState<MentorshipRequest[]>([]);
+  const [incomingRequests, setIncomingRequests] = useState<RequestItem[]>([]);
+  const [outgoingRequests, setOutgoingRequests] = useState<RequestItem[]>([]);
+  const [processedRequests, setProcessedRequests] = useState<RequestItem[]>([]);
   const [activeTab, setActiveTab] = useState<'incoming' | 'outgoing' | 'processed'>('incoming');
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -87,48 +94,124 @@ export default function RequestsScreen() {
       const userEmail = user.email;
       setUserEmail(userEmail);
 
-      const requestsData = await AsyncStorage.getItem('mentorshipRequests');
-      if (requestsData) {
-        const allRequests = safeParseJSON<MentorshipRequest[]>(
-          requestsData,
-          (data): data is MentorshipRequest[] => {
-            if (!Array.isArray(data)) return false;
-            return data.every(req => validateMentorshipRequestSchema(req));
-          },
-          []
-        ) || [];
-        
-        // Incoming: requests where user is mentor and status is pending
-        const incoming = allRequests.filter(
-          (r) => r.mentorEmail === userEmail && r.status === 'pending'
-        );
-        
-        // Outgoing: all requests where user is requester (including pending)
-        const outgoing = allRequests.filter(
-          (r) => r.requesterEmail === userEmail && r.status === 'pending'
-        );
+      // Use hybrid service to get requests (Firebase first, then local fallback)
+      const { all: allRequests } = await hybridGetAllRequestsForUser(userEmail);
+      
+      // Incoming: requests where user is mentor and status is pending
+      const incoming = allRequests.filter(
+        (r) => r.mentorEmail === userEmail && r.status === 'pending'
+      );
+      
+      // Outgoing: all requests where user is requester (including pending)
+      const outgoing = allRequests.filter(
+        (r) => r.requesterEmail === userEmail && r.status === 'pending'
+      );
 
-        // Processed: requests that are accepted or declined (both incoming and outgoing)
-        // Sort by respondedAt (most recent first)
-        const processed = allRequests
-          .filter(
-            (r) => 
-              (r.status === 'accepted' || r.status === 'declined') &&
-              (r.mentorEmail === userEmail || r.requesterEmail === userEmail)
+      // Processed: requests that are accepted or declined (both incoming and outgoing)
+      // Sort by respondedAt (most recent first)
+      const processed = allRequests
+        .filter(
+          (r) => 
+            (r.status === 'accepted' || r.status === 'declined') &&
+            (r.mentorEmail === userEmail || r.requesterEmail === userEmail)
+        )
+        .sort((a, b) => {
+          const dateA = new Date(a.respondedAt || a.createdAt).getTime();
+          const dateB = new Date(b.respondedAt || b.createdAt).getTime();
+          return dateB - dateA; // Most recent first
+        });
+
+        // Load meetings and combine with requests
+        let allMeetings: Meeting[] = [];
+        try {
+          allMeetings = await hybridGetUserMeetings(userEmail);
+          logger.info('Meetings loaded for requests tab', { count: allMeetings.length });
+        } catch (error) {
+          logger.warn('Failed to load meetings for requests tab', {
+            error: error instanceof Error ? error.message : String(error),
+          });
+          // Continue with empty meetings array if loading fails
+          allMeetings = [];
+        }
+        
+        // Separate meetings by status and role
+        const incomingMeetings = allMeetings
+          .filter(m => m.participantEmail === userEmail && m.status === 'pending')
+          .map(m => ({ type: 'meeting' as const, data: m }));
+        
+        const outgoingMeetings = allMeetings
+          .filter(m => m.organizerEmail === userEmail && m.status === 'pending')
+          .map(m => ({ type: 'meeting' as const, data: m }));
+        
+        const processedMeetings = allMeetings
+          .filter(m => 
+            (m.status === 'accepted' || m.status === 'declined' || m.status === 'cancelled') &&
+            (m.organizerEmail === userEmail || m.participantEmail === userEmail)
           )
           .sort((a, b) => {
-            const dateA = new Date(a.respondedAt || a.createdAt).getTime();
-            const dateB = new Date(b.respondedAt || b.createdAt).getTime();
-            return dateB - dateA; // Most recent first
-          });
-
-        setIncomingRequests(incoming);
-        setOutgoingRequests(outgoing);
-        setProcessedRequests(processed);
+            const dateA = new Date(a.respondedAt || a.updatedAt || a.createdAt).getTime();
+            const dateB = new Date(b.respondedAt || b.updatedAt || b.createdAt).getTime();
+            return dateB - dateA;
+          })
+          .map(m => ({ type: 'meeting' as const, data: m }));
+        
+        // Combine mentorship requests and meetings
+        const combinedIncoming = [
+          ...incoming.map(r => ({ type: 'mentorship' as const, data: r })),
+          ...incomingMeetings,
+        ].sort((a, b) => {
+          const dateA = new Date(a.data.createdAt).getTime();
+          const dateB = new Date(b.data.createdAt).getTime();
+          return dateB - dateA;
+        });
+        
+        const combinedOutgoing = [
+          ...outgoing.map(r => ({ type: 'mentorship' as const, data: r })),
+          ...outgoingMeetings,
+        ].sort((a, b) => {
+          const dateA = new Date(a.data.createdAt).getTime();
+          const dateB = new Date(b.data.createdAt).getTime();
+          return dateB - dateA;
+        });
+        
+        const combinedProcessed = [
+          ...processed.map(r => ({ type: 'mentorship' as const, data: r })),
+          ...processedMeetings,
+        ];
+        
+        setIncomingRequests(combinedIncoming);
+        setOutgoingRequests(combinedOutgoing);
+        setProcessedRequests(combinedProcessed);
       } else {
-        setIncomingRequests([]);
-        setOutgoingRequests([]);
-        setProcessedRequests([]);
+        // Still load meetings even if no mentorship requests
+        let allMeetings: Meeting[] = [];
+        try {
+          allMeetings = await hybridGetUserMeetings(userEmail);
+          const incomingMeetings = allMeetings
+            .filter(m => m.participantEmail === userEmail && m.status === 'pending')
+            .map(m => ({ type: 'meeting' as const, data: m }));
+          const outgoingMeetings = allMeetings
+            .filter(m => m.organizerEmail === userEmail && m.status === 'pending')
+            .map(m => ({ type: 'meeting' as const, data: m }));
+          const processedMeetings = allMeetings
+            .filter(m => 
+              (m.status === 'accepted' || m.status === 'declined' || m.status === 'cancelled') &&
+              (m.organizerEmail === userEmail || m.participantEmail === userEmail)
+            )
+            .map(m => ({ type: 'meeting' as const, data: m }));
+          
+          setIncomingRequests(incomingMeetings);
+          setOutgoingRequests(outgoingMeetings);
+          setProcessedRequests(processedMeetings);
+        } catch (error) {
+          logger.warn('Failed to load meetings', {
+            error: error instanceof Error ? error.message : String(error),
+          });
+          // Set empty arrays but don't crash
+          setIncomingRequests([]);
+          setOutgoingRequests([]);
+          setProcessedRequests([]);
+        }
       }
     } catch (error) {
       logger.error('Error loading requests', error instanceof Error ? error : new Error(String(error)));
@@ -173,134 +256,230 @@ export default function RequestsScreen() {
     });
   };
 
-
-  const renderIncomingRequest = useCallback(({ item }: { item: MentorshipRequest }) => (
-    <View style={styles.requestCard}>
-      <View style={styles.requestHeader}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>
-            {item.requesterName.charAt(0).toUpperCase()}
-          </Text>
+  const renderMeetingItem = useCallback(({ item }: { item: Meeting }) => {
+    const isReceiver = item.participantEmail === userEmail;
+    const otherPerson = isReceiver 
+      ? { name: item.organizerName, email: item.organizerEmail }
+      : { name: item.participantName, email: item.participantEmail };
+    
+    const meetingDate = new Date(item.date);
+    const dateStr = meetingDate.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric',
+      year: 'numeric'
+    });
+    const timeStr = meetingDate.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
+    
+    return (
+      <View style={styles.requestCard}>
+        <View style={styles.requestHeader}>
+          <View style={[styles.avatar, { backgroundColor: '#10b981' }]}>
+            <Ionicons name="calendar" size={24} color="#fff" />
+          </View>
+          <View style={styles.requestInfo}>
+            <Text style={styles.requestName}>{item.title}</Text>
+            <Text style={styles.requestEmail}>
+              {isReceiver ? `From: ${otherPerson.name}` : `To: ${otherPerson.name}`}
+            </Text>
+            <Text style={styles.requestDate}>
+              {dateStr} at {timeStr}
+            </Text>
+          </View>
         </View>
-        <View style={styles.requestInfo}>
-          <Text style={styles.requestName}>{item.requesterName}</Text>
-          <Text style={styles.requestEmail}>{item.requesterEmail}</Text>
-          <Text style={styles.requestDate}>
-            {new Date(item.createdAt).toLocaleDateString()}
-          </Text>
-        </View>
-      </View>
 
-      {item.note && (
-        <View style={styles.noteContainer}>
-          <Text style={styles.noteLabel}>Message:</Text>
-          <Text style={styles.noteText}>{item.note}</Text>
-        </View>
-      )}
-
-      <View style={styles.actions}>
-        <TouchableOpacity
-          style={[styles.actionButton, styles.acceptButton]}
-          onPress={() => handleAccept(item)}
-          accessibilityLabel={`Accept request from ${item.requesterName}`}
-          accessibilityHint="Tap to accept this mentorship request"
-        >
-          <Ionicons name="checkmark-circle" size={20} color="#fff" />
-          <Text style={styles.acceptButtonText}>Accept</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.actionButton, styles.declineButton]}
-          onPress={() => handleDecline(item)}
-          accessibilityLabel={`Decline request from ${item.requesterName}`}
-          accessibilityHint="Tap to decline this mentorship request"
-        >
-          <Ionicons name="close-circle" size={20} color="#fff" />
-          <Text style={styles.declineButtonText}>Decline</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  ), [handleAccept, handleDecline]);
-
-  const renderOutgoingRequest = useCallback(({ item }: { item: MentorshipRequest }) => (
-    <View style={styles.requestCard}>
-      <View style={styles.requestHeader}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>
-            {item.mentorName.charAt(0).toUpperCase()}
-          </Text>
-        </View>
-        <View style={styles.requestInfo}>
-          <Text style={styles.requestName}>{item.mentorName}</Text>
-          <Text style={styles.requestEmail}>{item.mentorEmail}</Text>
-          <Text style={styles.requestDate}>
-            {new Date(item.createdAt).toLocaleDateString()}
-          </Text>
-        </View>
-      </View>
-
-      {item.note && (
-        <View style={styles.noteContainer}>
-          <Text style={styles.noteLabel}>Your message:</Text>
-          <Text style={styles.noteText}>{item.note}</Text>
-        </View>
-      )}
-
-      <View style={styles.statusContainer}>
-        {item.status === 'pending' && (
-          <View style={styles.statusBadge}>
-            <Ionicons name="time-outline" size={16} color="#f59e0b" />
-            <Text style={styles.statusTextPending}>Pending</Text>
+        {item.description && (
+          <View style={styles.noteContainer}>
+            <Text style={styles.noteLabel}>Description:</Text>
+            <Text style={styles.noteText}>{item.description}</Text>
           </View>
         )}
+
+        {item.status === 'pending' && isReceiver && (
+          <View style={styles.actions}>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.acceptButton]}
+              onPress={() => router.push({
+                pathname: '/meeting/respond',
+                params: { meetingId: item.id },
+              })}
+              accessibilityLabel={`Respond to meeting request from ${otherPerson.name}`}
+            >
+              <Ionicons name="checkmark-circle" size={20} color="#fff" />
+              <Text style={styles.acceptButtonText}>Respond</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {item.status === 'accepted' && (
-          <View style={[styles.statusBadge, styles.statusBadgeAccepted]}>
-            <Ionicons name="checkmark-circle" size={16} color="#10b981" />
-            <Text style={styles.statusTextAccepted}>Accepted</Text>
+          <View style={styles.statusContainer}>
+            <View style={[styles.statusBadge, styles.statusBadgeAccepted]}>
+              <Ionicons name="checkmark-circle" size={16} color="#10b981" />
+              <Text style={styles.statusTextAccepted}>Accepted</Text>
+            </View>
           </View>
         )}
+
         {item.status === 'declined' && (
-          <View style={[styles.statusBadge, styles.statusBadgeDeclined]}>
-            <Ionicons name="close-circle" size={16} color="#ef4444" />
-            <Text style={styles.statusTextDeclined}>Declined</Text>
+          <View style={styles.statusContainer}>
+            <View style={[styles.statusBadge, styles.statusBadgeDeclined]}>
+              <Ionicons name="close-circle" size={16} color="#ef4444" />
+              <Text style={styles.statusTextDeclined}>Declined</Text>
+            </View>
           </View>
         )}
       </View>
+    );
+  }, [userEmail, router]);
 
-      {item.responseNote && (
-        <View style={styles.responseContainer}>
-          <Text style={styles.responseLabel}>Response:</Text>
-          <Text style={styles.responseText}>{item.responseNote}</Text>
+  const renderIncomingRequest = useCallback(({ item }: { item: RequestItem }) => {
+    if (item.type === 'meeting') {
+      return renderMeetingItem({ item: item.data });
+    }
+    // It's a MentorshipRequest
+    const request = item.data;
+    return (
+      <View style={styles.requestCard}>
+        <View style={styles.requestHeader}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>
+              {request.requesterName.charAt(0).toUpperCase()}
+            </Text>
+          </View>
+          <View style={styles.requestInfo}>
+            <Text style={styles.requestName}>{request.requesterName}</Text>
+            <Text style={styles.requestEmail}>{request.requesterEmail}</Text>
+            <Text style={styles.requestDate}>
+              {new Date(request.createdAt).toLocaleDateString()}
+            </Text>
+          </View>
         </View>
-      )}
-    </View>
-  ), []);
 
-  const renderProcessedRequest = useCallback(({ item }: { item: MentorshipRequest }) => {
+        {request.note && (
+          <View style={styles.noteContainer}>
+            <Text style={styles.noteLabel}>Message:</Text>
+            <Text style={styles.noteText}>{request.note}</Text>
+          </View>
+        )}
+
+        <View style={styles.actions}>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.acceptButton]}
+            onPress={() => handleAccept(request)}
+            accessibilityLabel={`Accept request from ${request.requesterName}`}
+            accessibilityHint="Tap to accept this mentorship request"
+          >
+            <Ionicons name="checkmark-circle" size={20} color="#fff" />
+            <Text style={styles.acceptButtonText}>Accept</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.declineButton]}
+            onPress={() => handleDecline(request)}
+            accessibilityLabel={`Decline request from ${request.requesterName}`}
+            accessibilityHint="Tap to decline this mentorship request"
+          >
+            <Ionicons name="close-circle" size={20} color="#fff" />
+            <Text style={styles.declineButtonText}>Decline</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }, [handleAccept, handleDecline, renderMeetingItem]);
+
+  const renderOutgoingRequest = useCallback(({ item }: { item: RequestItem }) => {
+    if (item.type === 'meeting') {
+      return renderMeetingItem({ item: item.data });
+    }
+    // It's a MentorshipRequest
+    const request = item.data;
+      return (
+        <View style={styles.requestCard}>
+          <View style={styles.requestHeader}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>
+                {request.mentorName.charAt(0).toUpperCase()}
+              </Text>
+            </View>
+            <View style={styles.requestInfo}>
+              <Text style={styles.requestName}>{request.mentorName}</Text>
+              <Text style={styles.requestEmail}>{request.mentorEmail}</Text>
+              <Text style={styles.requestDate}>
+                {new Date(request.createdAt).toLocaleDateString()}
+              </Text>
+            </View>
+          </View>
+
+          {request.note && (
+            <View style={styles.noteContainer}>
+              <Text style={styles.noteLabel}>Your message:</Text>
+              <Text style={styles.noteText}>{request.note}</Text>
+            </View>
+          )}
+
+          <View style={styles.statusContainer}>
+            {request.status === 'pending' && (
+              <View style={styles.statusBadge}>
+                <Ionicons name="time-outline" size={16} color="#f59e0b" />
+                <Text style={styles.statusTextPending}>Pending</Text>
+              </View>
+            )}
+            {request.status === 'accepted' && (
+              <View style={[styles.statusBadge, styles.statusBadgeAccepted]}>
+                <Ionicons name="checkmark-circle" size={16} color="#10b981" />
+                <Text style={styles.statusTextAccepted}>Accepted</Text>
+              </View>
+            )}
+            {request.status === 'declined' && (
+              <View style={[styles.statusBadge, styles.statusBadgeDeclined]}>
+                <Ionicons name="close-circle" size={16} color="#ef4444" />
+                <Text style={styles.statusTextDeclined}>Declined</Text>
+              </View>
+            )}
+          </View>
+
+          {request.responseNote && (
+            <View style={styles.responseContainer}>
+              <Text style={styles.responseLabel}>Response:</Text>
+              <Text style={styles.responseText}>{request.responseNote}</Text>
+            </View>
+          )}
+        </View>
+      );
+  }, [renderMeetingItem]);
+
+  const renderProcessedRequest = useCallback(({ item }: { item: RequestItem }) => {
+    if (item.type === 'meeting') {
+      return renderMeetingItem({ item: item.data });
+    }
+    // It's a MentorshipRequest
+    const request = item.data;
     // Determine if this was an incoming or outgoing request
     let otherPersonName = '';
     let otherPersonEmail = '';
     let isRequester = false;
 
     if (userEmail) {
-      if (item.mentorEmail === userEmail) {
+      if (request.mentorEmail === userEmail) {
         // User was the mentor, so requester is the other person
-        otherPersonName = item.requesterName;
-        otherPersonEmail = item.requesterEmail;
+        otherPersonName = request.requesterName;
+        otherPersonEmail = request.requesterEmail;
         isRequester = false;
-      } else if (item.requesterEmail === userEmail) {
+      } else if (request.requesterEmail === userEmail) {
         // User was the requester, so mentor is the other person
-        otherPersonName = item.mentorName;
-        otherPersonEmail = item.mentorEmail;
+        otherPersonName = request.mentorName;
+        otherPersonEmail = request.mentorEmail;
         isRequester = true;
       } else {
         // Fallback
-        otherPersonName = item.requesterName;
-        otherPersonEmail = item.requesterEmail;
+        otherPersonName = request.requesterName;
+        otherPersonEmail = request.requesterEmail;
       }
     } else {
       // Fallback if userEmail not loaded yet
-      otherPersonName = item.requesterName;
-      otherPersonEmail = item.requesterEmail;
+      otherPersonName = request.requesterName;
+      otherPersonEmail = request.requesterEmail;
     }
 
     return (
@@ -315,19 +494,19 @@ export default function RequestsScreen() {
             <Text style={styles.requestName}>{otherPersonName}</Text>
             <Text style={styles.requestEmail}>{otherPersonEmail}</Text>
             <Text style={styles.requestDate}>
-              {new Date(item.respondedAt || item.createdAt).toLocaleDateString()}
+              {new Date(request.respondedAt || request.createdAt).toLocaleDateString()}
             </Text>
           </View>
         </View>
 
         <View style={styles.statusContainer}>
-          {item.status === 'accepted' && (
+          {request.status === 'accepted' && (
             <View style={[styles.statusBadge, styles.statusBadgeAccepted]}>
               <Ionicons name="checkmark-circle" size={16} color="#10b981" />
               <Text style={styles.statusTextAccepted}>Accepted</Text>
             </View>
           )}
-          {item.status === 'declined' && (
+          {request.status === 'declined' && (
             <View style={[styles.statusBadge, styles.statusBadgeDeclined]}>
               <Ionicons name="close-circle" size={16} color="#ef4444" />
               <Text style={styles.statusTextDeclined}>Declined</Text>
@@ -335,19 +514,19 @@ export default function RequestsScreen() {
           )}
         </View>
 
-        {item.note && (
+        {request.note && (
           <View style={styles.noteContainer}>
             <Text style={styles.noteLabel}>
               {isRequester ? 'Your message:' : 'Request message:'}
             </Text>
-            <Text style={styles.noteText}>{item.note}</Text>
+            <Text style={styles.noteText}>{request.note}</Text>
           </View>
         )}
 
-        {item.responseNote && (
+        {request.responseNote && (
           <View style={styles.responseContainer}>
             <Text style={styles.responseLabel}>Response:</Text>
-            <Text style={styles.responseText}>{item.responseNote}</Text>
+            <Text style={styles.responseText}>{request.responseNote}</Text>
           </View>
         )}
       </View>
@@ -466,7 +645,11 @@ export default function RequestsScreen() {
       <FlatList
         data={displayRequests}
         renderItem={getRenderFunction()}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => 
+          item.type === 'mentorship' 
+            ? item.data.id 
+            : `meeting-${item.data.id}`
+        }
         contentContainerStyle={styles.list}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />

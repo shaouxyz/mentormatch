@@ -19,6 +19,7 @@ import { logger } from '@/utils/logger';
 import { ErrorHandler } from '@/utils/errorHandler';
 import { sanitizeString } from '@/utils/security';
 import { safeParseJSON, validateMentorshipRequestSchema } from '@/utils/schemaValidation';
+import { hybridCreateRequest } from '@/services/hybridRequestService';
 
 interface Profile {
   name: string;
@@ -286,26 +287,14 @@ export default function SendRequestScreen() {
         createdAt: new Date().toISOString(),
       };
 
-      const existingRequests = await AsyncStorage.getItem('mentorshipRequests');
-      const requests: MentorshipRequest[] = existingRequests
-        ? safeParseJSON<MentorshipRequest[]>(
-            existingRequests,
-            (data): data is MentorshipRequest[] => {
-              if (!Array.isArray(data)) return false;
-              return data.every((req) => validateMentorshipRequestSchema(req));
-            },
-            []
-          ) || []
-        : [];
-
       // Validate before storing
       if (!validateMentorshipRequestSchema(request)) {
         ErrorHandler.handleError(new Error('Invalid request data'), 'Request data validation failed');
         return;
       }
 
-      requests.push(request);
-      await AsyncStorage.setItem('mentorshipRequests', JSON.stringify(requests));
+      // Use hybrid service to create request (saves locally and syncs to Firebase)
+      await hybridCreateRequest(request);
 
       Alert.alert('Request Sent', 'Your mentorship request has been sent successfully!', [
         {

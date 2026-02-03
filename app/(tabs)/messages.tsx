@@ -11,9 +11,12 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { hybridGetUserConversations } from '@/services/hybridMessageService';
-import { Conversation } from '@/types/types';
+import { hybridGetPendingMeetings, hybridGetUserMeetings } from '@/services/hybridMeetingService';
+import { hybridGetAllRequestsForUser } from '@/services/hybridRequestService';
+import { Conversation, MentorshipRequest, Meeting } from '@/types/types';
 import { logger } from '@/utils/logger';
 import { ErrorHandler } from '@/utils/errorHandler';
+import { safeParseJSON, validateMentorshipRequestSchema } from '@/utils/schemaValidation';
 
 /**
  * Messages Screen Component
@@ -21,9 +24,16 @@ import { ErrorHandler } from '@/utils/errorHandler';
  * Displays list of all conversations for the current user
  * Shows last message, time, and unread count
  */
+type MessageItem = 
+  | { type: 'conversation'; data: Conversation }
+  | { type: 'request'; data: MentorshipRequest }
+  | { type: 'meeting'; data: Meeting };
+
 export default function MessagesScreen() {
   const router = useRouter();
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [requests, setRequests] = useState<MentorshipRequest[]>([]);
+  const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [currentUserEmail, setCurrentUserEmail] = useState<string>('');
@@ -39,10 +49,59 @@ export default function MessagesScreen() {
       const user = JSON.parse(userData);
       setCurrentUserEmail(user.email);
 
+      // Load conversations
       const userConversations = await hybridGetUserConversations(user.email);
       setConversations(userConversations);
       
-      logger.info('Conversations loaded', { count: userConversations.length });
+      // Load pending requests using hybrid service (Firebase first, then local fallback)
+      let pendingRequests: MentorshipRequest[] = [];
+      try {
+        const { all: allRequests } = await hybridGetAllRequestsForUser(user.email);
+        
+        // Get pending requests where user is involved
+        pendingRequests = allRequests.filter(
+          (r) => 
+            r.status === 'pending' &&
+            (r.mentorEmail === user.email || r.requesterEmail === user.email)
+        );
+        
+        // Sort by creation date (most recent first)
+        pendingRequests.sort((a, b) => 
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+      } catch (error) {
+        logger.warn('Failed to load pending requests', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+      
+      setRequests(pendingRequests);
+      
+      // Load all meetings (pending and scheduled/accepted)
+      let allUserMeetings: Meeting[] = [];
+      try {
+        allUserMeetings = await hybridGetUserMeetings(user.email);
+        // Filter to show pending and accepted meetings (exclude declined/cancelled)
+        const relevantMeetings = allUserMeetings.filter(
+          m => m.status === 'pending' || m.status === 'accepted'
+        );
+        setMeetings(relevantMeetings);
+        logger.info('Meetings loaded', { 
+          total: allUserMeetings.length,
+          relevant: relevantMeetings.length 
+        });
+      } catch (error) {
+        logger.warn('Failed to load meetings', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+        setMeetings([]);
+      }
+      
+      logger.info('Conversations, requests, and meetings loaded', { 
+        conversations: userConversations.length,
+        requests: pendingRequests.length,
+        meetings: allUserMeetings.filter(m => m.status === 'pending' || m.status === 'accepted').length
+      });
     } catch (error) {
       ErrorHandler.handleError(error, 'Failed to load conversations');
     } finally {
@@ -90,6 +149,187 @@ export default function MessagesScreen() {
     if (diffDays < 7) return `${diffDays}d ago`;
     
     return date.toLocaleDateString();
+  };
+
+  // Combine conversations, requests, and meetings into a single list
+  const getCombinedItems = (): MessageItem[] => {
+    const items: MessageItem[] = [];
+    
+    // Add meeting requests first (highest priority)
+    meetings.forEach(meeting => {
+      items.push({ type: 'meeting', data: meeting });
+    });
+    
+    // Add mentorship requests
+    requests.forEach(request => {
+      items.push({ type: 'request', data: request });
+    });
+    
+    // Add conversations
+    conversations.forEach(conversation => {
+      items.push({ type: 'conversation', data: conversation });
+    });
+    
+    // Sort by date (most recent first)
+    items.sort((a, b) => {
+      const dateA = a.type === 'conversation' 
+        ? new Date(a.data.lastMessageAt || a.data.updatedAt).getTime()
+        : new Date(a.data.createdAt).getTime();
+      const dateB = b.type === 'conversation'
+        ? new Date(b.data.lastMessageAt || b.data.updatedAt).getTime()
+        : new Date(b.data.createdAt).getTime();
+      return dateB - dateA;
+    });
+    
+    return items;
+  };
+
+  const renderMeeting = ({ item }: { item: Meeting }) => {
+    const isReceiver = item.participantEmail === currentUserEmail;
+    const otherPerson = isReceiver 
+      ? { name: item.organizerName, email: item.organizerEmail }
+      : { name: item.participantName, email: item.participantEmail };
+    
+    const isPending = item.status === 'pending';
+    const isAccepted = item.status === 'accepted';
+    
+    // Format meeting date/time for display
+    const meetingDate = new Date(item.date);
+    const dateStr = meetingDate.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric' 
+    });
+    const timeStr = meetingDate.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
+    
+    return (
+      <TouchableOpacity
+        style={[
+          styles.conversationItem, 
+          isPending ? styles.meetingItem : styles.scheduledMeetingItem
+        ]}
+        onPress={() => {
+          if (isPending) {
+            router.push({
+              pathname: '/meeting/respond',
+              params: { meetingId: item.id },
+            });
+          } else {
+            router.push({
+              pathname: '/meeting/upcoming',
+            });
+          }
+        }}
+        accessibilityLabel={
+          isPending 
+            ? `Meeting request from ${otherPerson.name}` 
+            : `Scheduled meeting with ${otherPerson.name}`
+        }
+        accessibilityHint={
+          isPending 
+            ? "Tap to view and respond to meeting request"
+            : "Tap to view meeting details"
+        }
+      >
+        <View style={styles.avatarContainer}>
+          <View style={[
+            styles.avatar, 
+            isPending ? styles.meetingAvatar : styles.scheduledMeetingAvatar
+          ]}>
+            <Ionicons 
+              name={isPending ? "calendar" : "calendar-check"} 
+              size={24} 
+              color="#fff" 
+            />
+          </View>
+        </View>
+        
+        <View style={styles.conversationContent}>
+          <View style={styles.conversationHeader}>
+            <View style={styles.requestHeaderContent}>
+              <Text style={styles.participantName}>{otherPerson.name}</Text>
+              <View style={[
+                styles.meetingBadge,
+                isAccepted && styles.scheduledMeetingBadge
+              ]}>
+                <Text style={[
+                  styles.meetingBadgeText,
+                  isAccepted && styles.scheduledMeetingBadgeText
+                ]}>
+                  {isPending ? 'Meeting Request' : 'Scheduled Meeting'}
+                </Text>
+              </View>
+            </View>
+            <Text style={styles.timeText}>
+              {isPending ? formatTime(item.createdAt) : `${dateStr} ${timeStr}`}
+            </Text>
+          </View>
+          
+          <View style={styles.conversationFooter}>
+            <Text
+              style={styles.lastMessage}
+              numberOfLines={1}
+            >
+              {item.title}
+            </Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderRequest = ({ item }: { item: MentorshipRequest }) => {
+    const isIncoming = item.mentorEmail === currentUserEmail;
+    const otherPerson = isIncoming 
+      ? { name: item.requesterName, email: item.requesterEmail }
+      : { name: item.mentorName, email: item.mentorEmail };
+    
+    return (
+      <TouchableOpacity
+        style={[styles.conversationItem, styles.requestItem]}
+        onPress={() => router.push({
+          pathname: '/request/respond',
+          params: { request: JSON.stringify(item) },
+        })}
+        accessibilityLabel={`${isIncoming ? 'Incoming' : 'Outgoing'} request from ${otherPerson.name}`}
+        accessibilityHint="Tap to view and respond to request"
+      >
+        <View style={styles.avatarContainer}>
+          <View style={[styles.avatar, styles.requestAvatar]}>
+            <Ionicons 
+              name={isIncoming ? "mail" : "send"} 
+              size={24} 
+              color="#fff" 
+            />
+          </View>
+        </View>
+        
+        <View style={styles.conversationContent}>
+          <View style={styles.conversationHeader}>
+            <View style={styles.requestHeaderContent}>
+              <Text style={styles.participantName}>{otherPerson.name}</Text>
+              <View style={styles.requestBadge}>
+                <Text style={styles.requestBadgeText}>
+                  {isIncoming ? 'Incoming Request' : 'Sent Request'}
+                </Text>
+              </View>
+            </View>
+            <Text style={styles.timeText}>{formatTime(item.createdAt)}</Text>
+          </View>
+          
+          <View style={styles.conversationFooter}>
+            <Text
+              style={styles.lastMessage}
+              numberOfLines={1}
+            >
+              {item.note || 'No message'}
+            </Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
   };
 
   const renderConversation = ({ item }: { item: Conversation }) => {
@@ -145,6 +385,16 @@ export default function MessagesScreen() {
     );
   };
 
+  const renderItem = ({ item }: { item: MessageItem }) => {
+    if (item.type === 'meeting') {
+      return renderMeeting({ item: item.data });
+    } else if (item.type === 'request') {
+      return renderRequest({ item: item.data });
+    } else {
+      return renderConversation({ item: item.data });
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.container}>
@@ -164,19 +414,23 @@ export default function MessagesScreen() {
         <Text style={styles.title}>Messages</Text>
       </View>
 
-      {conversations.length === 0 ? (
+      {conversations.length === 0 && requests.length === 0 && meetings.length === 0 ? (
         <View style={styles.centerContainer}>
           <Ionicons name="chatbubbles-outline" size={64} color="#cbd5e1" />
-          <Text style={styles.emptyText}>No conversations yet</Text>
+          <Text style={styles.emptyText}>No messages or requests yet</Text>
           <Text style={styles.emptySubtext}>
             Connect with mentors or mentees to start messaging
           </Text>
         </View>
       ) : (
         <FlatList
-          data={conversations}
-          renderItem={renderConversation}
-          keyExtractor={(item) => item.id}
+          data={getCombinedItems()}
+          renderItem={renderItem}
+          keyExtractor={(item) => {
+            if (item.type === 'conversation') return item.data.id;
+            if (item.type === 'request') return `request-${item.data.id}`;
+            return `meeting-${item.data.id}`;
+          }}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
@@ -295,5 +549,56 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 12,
     fontWeight: 'bold',
+  },
+  requestItem: {
+    backgroundColor: '#f8fafc',
+  },
+  requestAvatar: {
+    backgroundColor: '#f59e0b',
+  },
+  requestHeaderContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  requestBadge: {
+    backgroundColor: '#fef3c7',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  requestBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#f59e0b',
+  },
+  meetingItem: {
+    backgroundColor: '#f0f9ff',
+  },
+  meetingAvatar: {
+    backgroundColor: '#10b981',
+  },
+  meetingBadge: {
+    backgroundColor: '#d1fae5',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  meetingBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#10b981',
+  },
+  scheduledMeetingItem: {
+    backgroundColor: '#f0fdf4',
+  },
+  scheduledMeetingAvatar: {
+    backgroundColor: '#059669',
+  },
+  scheduledMeetingBadge: {
+    backgroundColor: '#d1fae5',
+  },
+  scheduledMeetingBadgeText: {
+    color: '#059669',
   },
 });

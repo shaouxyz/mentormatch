@@ -144,6 +144,15 @@ export function initializeFirebase(): void {
 export function getFirebaseAuth(): Auth {
   if (!auth) {
     initializeFirebase();
+    // After initialization, try to get auth again
+    if (!auth) {
+      try {
+        auth = getAuth(app || getApps()[0]);
+      } catch (error) {
+        logger.error('Failed to get Firebase Auth instance', error instanceof Error ? error : new Error(String(error)));
+        throw new Error('Firebase Auth is not available. Please check your Firebase configuration.');
+      }
+    }
   }
   return auth;
 }

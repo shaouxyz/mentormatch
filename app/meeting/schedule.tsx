@@ -4,7 +4,7 @@
  * Allows users to schedule meetings with mentors/mentees
  */
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import {
   Platform,
   Alert,
   ActivityIndicator,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -44,6 +45,8 @@ export default function ScheduleMeetingScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [loading, setLoading] = useState(false);
+  
+  const scrollViewRef = useRef<ScrollView>(null);
 
   const handleSchedule = async () => {
     if (!title.trim()) {
@@ -161,8 +164,26 @@ export default function ScheduleMeetingScreen() {
     }
   };
 
+  const scrollToInput = () => {
+    // Scroll to bottom when input is focused to ensure it's visible above keyboard
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 300); // Delay to allow keyboard to appear first
+  };
+
   return (
-    <ScrollView style={styles.container}>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={styles.container}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+    >
+      <ScrollView
+        ref={scrollViewRef}
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={true}
+      >
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} accessibilityLabel="Go back">
           <Ionicons name="arrow-back" size={24} color="#1f2937" />
@@ -266,6 +287,7 @@ export default function ScheduleMeetingScreen() {
             keyboardType="number-pad"
             maxLength={3}
             accessibilityLabel="Duration input"
+            onFocus={scrollToInput}
           />
         </View>
 
@@ -355,6 +377,7 @@ export default function ScheduleMeetingScreen() {
               keyboardType="url"
               maxLength={200}
               accessibilityLabel="Meeting link input"
+              onFocus={scrollToInput}
             />
           </View>
         )}
@@ -415,7 +438,8 @@ export default function ScheduleMeetingScreen() {
           <Text style={styles.cancelButtonText}>Cancel</Text>
         </TouchableOpacity>
       </View>
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -423,6 +447,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f9fafb',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 20,
   },
   header: {
     flexDirection: 'row',

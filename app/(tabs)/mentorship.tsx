@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { logger } from '@/utils/logger';
 import { safeParseJSON, validateProfileSchema, validateMentorshipRequestSchema } from '@/utils/schemaValidation';
 import { generateConversationId } from '@/services/hybridMessageService';
+import { hybridGetAllRequestsForUser } from '@/services/hybridRequestService';
 
 interface Profile {
   name: string;
@@ -82,22 +83,17 @@ export default function MentorshipScreen() {
       
       const userEmail = user.email;
 
-      const requestsData = await AsyncStorage.getItem('mentorshipRequests');
-      if (!requestsData) {
-        setMentors([]);
-        setMentees([]);
-        setLoading(false);
-        return;
+      // Use hybrid service to get requests (Firebase first, then local fallback)
+      let allRequests: MentorshipRequest[] = [];
+      try {
+        const { all } = await hybridGetAllRequestsForUser(userEmail);
+        allRequests = all;
+      } catch (error) {
+        logger.warn('Failed to load requests, using empty array', {
+          error: error instanceof Error ? error.message : String(error),
+        });
       }
-
-      const allRequests = safeParseJSON<MentorshipRequest[]>(
-        requestsData,
-        (data): data is MentorshipRequest[] => {
-          if (!Array.isArray(data)) return false;
-          return data.every(req => validateMentorshipRequestSchema(req));
-        },
-        []
-      ) || [];
+      
       const acceptedRequests = allRequests.filter((r) => r.status === 'accepted');
 
       // Mentors: People who accepted requests from the current user

@@ -82,33 +82,48 @@ export async function hybridSignIn(email: string, password: string): Promise<any
         }
       } catch (firebaseError: any) {
         // Firebase authentication failed, try local fallback
+        const errorCode = firebaseError?.code || 'unknown';
+        const errorMessage = firebaseError instanceof Error ? firebaseError.message : String(firebaseError);
+        
         logger.warn('Firebase signin failed, trying local authentication', {
           email,
-          error: firebaseError instanceof Error ? firebaseError.message : String(firebaseError),
-          errorCode: firebaseError?.code,
+          error: errorMessage,
+          errorCode,
+          fullError: firebaseError,
         });
         
         // Fall back to local authentication
         try {
           const localUser = await authenticateLocalUser(email, password);
-          logger.info('User authenticated locally (Firebase unavailable)', { email });
+          logger.info('User authenticated locally (Firebase unavailable)', { 
+            email,
+            firebaseErrorCode: errorCode,
+            firebaseErrorMessage: errorMessage
+          });
           
           // If user doesn't exist in Firebase but exists locally, try to create them
-          if (firebaseError?.code === 'auth/user-not-found' || firebaseError?.code === 'auth/invalid-credential') {
+          if (errorCode === 'auth/user-not-found' || errorCode === 'auth/invalid-credential' || errorCode === 'auth/wrong-password') {
             try {
-              logger.info('User not found in Firebase, creating Firebase account for existing local user', { email });
+              logger.info('User not found in Firebase or wrong password, attempting to create Firebase account for existing local user', { 
+                email,
+                firebaseErrorCode: errorCode
+              });
               const firebaseUser = await firebaseSignUp(email, password);
               logger.info('Firebase account created for existing local user', { 
                 email,
                 uid: firebaseUser.user?.uid,
                 firebaseEmail: firebaseUser.user?.email
               });
-            } catch (createError) {
-              // If creation fails, just log and continue with local only
+            } catch (createError: any) {
+              // If creation fails (e.g., email already exists), just log and continue with local only
+              const createErrorCode = createError?.code || 'unknown';
               logger.warn('Failed to create Firebase account for existing local user', {
                 email,
                 error: createError instanceof Error ? createError.message : String(createError),
-                errorCode: (createError as any)?.code,
+                errorCode: createErrorCode,
+                reason: createErrorCode === 'auth/email-already-in-use' 
+                  ? 'Email already exists in Firebase (may have been created by another device)' 
+                  : 'Unknown error during Firebase account creation'
               });
             }
           }
@@ -116,12 +131,23 @@ export async function hybridSignIn(email: string, password: string): Promise<any
           return localUser;
         } catch (localError) {
           // Both Firebase and local authentication failed
+          const localErrorMessage = localError instanceof Error ? localError.message : String(localError);
           logger.error('Both Firebase and local authentication failed', {
             email,
-            firebaseError: firebaseError instanceof Error ? firebaseError.message : String(firebaseError),
-            localError: localError instanceof Error ? localError.message : String(localError),
+            firebaseError: errorMessage,
+            firebaseErrorCode: errorCode,
+            localError: localErrorMessage,
           });
-          throw localError; // Throw the local error as it's the final fallback
+          
+          // Create a more descriptive error message
+          const combinedError = new Error(
+            `Login failed: ${localErrorMessage}. ` +
+            `Firebase error: ${errorCode} - ${errorMessage}. ` +
+            `Please check your email and password, or sign up if you don't have an account.`
+          );
+          (combinedError as any).firebaseErrorCode = errorCode;
+          (combinedError as any).firebaseError = errorMessage;
+          throw combinedError;
         }
       }
     } else {
