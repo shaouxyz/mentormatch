@@ -21,6 +21,7 @@ const NOTIFICATION_STORAGE_KEY = 'scheduledMeetingNotifications';
 const isExpoGo = Constants.executionEnvironment === 'storeClient';
 
 // Lazy load notifications module only when needed (not in Expo Go)
+// In test environment, use require() instead of dynamic import
 let Notifications: typeof import('expo-notifications') | null = null;
 
 async function getNotificationsModule() {
@@ -30,7 +31,15 @@ async function getNotificationsModule() {
   
   if (!Notifications) {
     try {
-      Notifications = await import('expo-notifications');
+      // Use require() in test environment, dynamic import in runtime
+      if (typeof jest !== 'undefined') {
+        // Jest environment - use require
+        Notifications = require('expo-notifications');
+      } else {
+        // Runtime environment - use dynamic import
+        Notifications = await import('expo-notifications');
+      }
+      
       // Configure notification handler only if module loaded successfully
       if (Notifications) {
         Notifications.setNotificationHandler({

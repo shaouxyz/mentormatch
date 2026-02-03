@@ -14,7 +14,19 @@ import { Meeting } from '@/types/types';
 import { logger } from '@/utils/logger';
 
 // Mock dependencies
-jest.mock('expo-notifications');
+jest.mock('expo-notifications', () => ({
+  setNotificationHandler: jest.fn(),
+  requestPermissionsAsync: jest.fn(() => Promise.resolve({ status: 'granted' })),
+  scheduleNotificationAsync: jest.fn(() => Promise.resolve('notification-id')),
+  cancelScheduledNotificationAsync: jest.fn(() => Promise.resolve()),
+}));
+
+jest.mock('expo-constants', () => ({
+  default: {
+    executionEnvironment: 'standalone', // Not Expo Go for tests
+  },
+}));
+
 jest.mock('@react-native-async-storage/async-storage');
 jest.mock('@/utils/logger', () => ({
   logger: {
