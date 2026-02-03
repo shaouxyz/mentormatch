@@ -5,23 +5,52 @@
  * - Day before the meeting
  * - 1 hour before the meeting
  * - 5 minutes before the meeting
+ * 
+ * Note: Push notifications are not fully supported in Expo Go (SDK 53+).
+ * This service gracefully degrades in Expo Go and works fully in development builds.
  */
 
-import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 import { Meeting } from '@/types/types';
 import { logger } from '@/utils/logger';
 
 const NOTIFICATION_STORAGE_KEY = 'scheduledMeetingNotifications';
 
-// Configure notification handler
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
+// Check if we're in Expo Go (where notifications are limited)
+const isExpoGo = Constants.executionEnvironment === 'storeClient';
+
+// Lazy load notifications module only when needed (not in Expo Go)
+let Notifications: typeof import('expo-notifications') | null = null;
+
+async function getNotificationsModule() {
+  if (isExpoGo) {
+    return null; // Notifications not fully supported in Expo Go
+  }
+  
+  if (!Notifications) {
+    try {
+      Notifications = await import('expo-notifications');
+      // Configure notification handler only if module loaded successfully
+      if (Notifications) {
+        Notifications.setNotificationHandler({
+          handleNotification: async () => ({
+            shouldShowAlert: true,
+            shouldPlaySound: true,
+            shouldSetBadge: true,
+          }),
+        });
+      }
+    } catch (error) {
+      logger.warn('Failed to load expo-notifications module', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return null;
+    }
+  }
+  
+  return Notifications;
+}
 
 interface ScheduledNotification {
   meetingId: string;
@@ -156,8 +185,23 @@ export async function scheduleMeetingNotifications(meeting: Meeting): Promise<vo
     const { dayBefore, oneHourBefore, fiveMinutesBefore } = calculateNotificationTimes(meetingDateTime);
     const notificationIds: string[] = [];
 
+    // Check if notifications are available (not in Expo Go)
+    const notificationsModule = await getNotificationsModule();
+    if (!notificationsModule) {
+      if (isExpoGo) {
+        logger.info('Notifications not available in Expo Go, skipping scheduling', {
+          meetingId: meeting.id,
+        });
+      } else {
+        logger.warn('Notifications module not available, skipping scheduling', {
+          meetingId: meeting.id,
+        });
+      }
+      return;
+    }
+
     // Request notification permissions
-    const { status } = await Notifications.requestPermissionsAsync();
+    const { status } = await notificationsModule.requestPermissionsAsync();
     if (status !== 'granted') {
       logger.warn('Notification permissions not granted, cannot schedule meeting reminders');
       return;
@@ -166,7 +210,7 @@ export async function scheduleMeetingNotifications(meeting: Meeting): Promise<vo
     // Schedule day before notification (only if it's in the future)
     if (dayBefore > now) {
       const dayBeforeContent = createNotificationContent(meeting, 'day_before');
-      const dayBeforeId = await Notifications.scheduleNotificationAsync({
+      const dayBeforeId = await notificationsModule.scheduleNotificationAsync({
         content: {
           title: dayBeforeContent.title,
           body: dayBeforeContent.body,
@@ -188,7 +232,7 @@ export async function scheduleMeetingNotifications(meeting: Meeting): Promise<vo
     // Schedule 1 hour before notification (only if it's in the future)
     if (oneHourBefore > now) {
       const oneHourContent = createNotificationContent(meeting, 'one_hour');
-      const oneHourId = await Notifications.scheduleNotificationAsync({
+      const oneHourId = await notificationsModule.scheduleNotificationAsync({
         content: {
           title: oneHourContent.title,
           body: oneHourContent.body,
@@ -210,7 +254,7 @@ export async function scheduleMeetingNotifications(meeting: Meeting): Promise<vo
     // Schedule 5 minutes before notification (only if it's in the future)
     if (fiveMinutesBefore > now) {
       const fiveMinutesContent = createNotificationContent(meeting, 'five_minutes');
-      const fiveMinutesId = await Notifications.scheduleNotificationAsync({
+      const fiveMinutesId = await notificationsModule.scheduleNotificationAsync({
         content: {
           title: fiveMinutesContent.title,
           body: fiveMinutesContent.body,
@@ -273,15 +317,23 @@ export async function cancelMeetingNotifications(meetingId: string): Promise<voi
 
     if (notificationRecord) {
       // Cancel all notifications
-      for (const notificationId of notificationRecord.notificationIds) {
-        try {
-          await Notifications.cancelScheduledNotificationAsync(notificationId);
-        } catch (error) {
-          logger.warn('Error canceling notification', {
-            notificationId,
-            error: error instanceof Error ? error.message : String(error),
-          });
+      const notificationsModule = await getNotificationsModule();
+      if (notificationsModule) {
+        for (const notificationId of notificationRecord.notificationIds) {
+          try {
+            await notificationsModule.cancelScheduledNotificationAsync(notificationId);
+          } catch (error) {
+            logger.warn('Error canceling notification', {
+              notificationId,
+              error: error instanceof Error ? error.message : String(error),
+            });
+          }
         }
+      } else {
+        // In Expo Go, just remove from storage
+        logger.info('Notifications not available, removing from storage only', {
+          meetingId,
+        });
       }
 
       // Remove from storage
