@@ -46,32 +46,38 @@ export default function WelcomeScreen() {
               }
               
               // Initialize Firebase first (if configured) - only if properly configured
-              // Use require() wrapped in try-catch to avoid blocking
-              // In production, this is deferred so it won't block rendering
-              try {
-                const firebaseModule = require('@/config/firebase.config');
-                if (firebaseModule.isFirebaseConfigured && firebaseModule.isFirebaseConfigured()) {
-                  if (__DEV__) {
-                    console.log('[APP_INIT] Firebase configured, initializing...');
+              // Use Promise.resolve to make require() async and non-blocking
+              // This prevents any synchronous operations from blocking the app
+              Promise.resolve()
+                .then(() => {
+                  try {
+                    const firebaseModule = require('@/config/firebase.config');
+                    if (firebaseModule.isFirebaseConfigured && firebaseModule.isFirebaseConfigured()) {
+                      if (__DEV__) {
+                        console.log('[APP_INIT] Firebase configured, initializing...');
+                      }
+                      firebaseModule.initializeFirebase();
+                      logger.info('Firebase initialized at app startup');
+                      if (__DEV__) {
+                        console.log('[APP_INIT] Firebase initialized successfully');
+                      }
+                    } else {
+                      if (__DEV__) {
+                        console.log('[APP_INIT] Firebase not configured, skipping');
+                      }
+                    }
+                  } catch (error) {
+                    throw error;
                   }
-                  firebaseModule.initializeFirebase();
-                  logger.info('Firebase initialized at app startup');
+                })
+                .catch((error) => {
+                  logger.warn('Firebase initialization skipped or failed at app startup, continuing with local only', {
+                    error: error instanceof Error ? error.message : String(error)
+                  });
                   if (__DEV__) {
-                    console.log('[APP_INIT] Firebase initialized successfully');
+                    console.log('[APP_INIT] Firebase initialization failed:', error);
                   }
-                } else {
-                  if (__DEV__) {
-                    console.log('[APP_INIT] Firebase not configured, skipping');
-                  }
-                }
-              } catch (error) {
-                logger.warn('Firebase initialization skipped or failed at app startup, continuing with local only', {
-                  error: error instanceof Error ? error.message : String(error)
                 });
-                if (__DEV__) {
-                  console.log('[APP_INIT] Firebase initialization failed:', error);
-                }
-              }
               
               // LOG: Data migration start
               if (__DEV__) {
