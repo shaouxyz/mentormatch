@@ -113,29 +113,32 @@ export async function hybridGetMeeting(meetingId: string): Promise<Meeting | nul
  */
 export async function hybridUpdateMeeting(meetingId: string, updates: Partial<Meeting>): Promise<void> {
   try {
+    // Always update locally first
+    const localMeetings = await getLocalMeetings();
+    const index = localMeetings.findIndex(m => m.id === meetingId);
+    if (index === -1) {
+      throw new Error(`Meeting not found: ${meetingId}`);
+    }
+    
+    // Update locally
+    localMeetings[index] = { ...localMeetings[index], ...updates, updatedAt: new Date().toISOString() };
+    await saveLocalMeetings(localMeetings);
+    logger.info('Meeting updated locally', { meetingId });
+    
+    // Try to sync to Firebase if configured
     if (isFirebaseConfigured()) {
-      await updateMeeting(meetingId, updates);
-      
-      // Also update locally
-      const localMeetings = await getLocalMeetings();
-      const index = localMeetings.findIndex(m => m.id === meetingId);
-      if (index !== -1) {
-        localMeetings[index] = { ...localMeetings[index], ...updates, updatedAt: new Date().toISOString() };
-        await saveLocalMeetings(localMeetings);
+      try {
+        await updateMeeting(meetingId, updates);
+        logger.info('Meeting synced to Firebase', { meetingId });
+      } catch (firebaseError) {
+        // Log but don't fail - local update is already done
+        logger.warn('Failed to sync meeting update to Firebase, continuing with local only', {
+          meetingId,
+          error: firebaseError instanceof Error ? firebaseError.message : String(firebaseError),
+        });
       }
-      
-      logger.info('Meeting updated via Firebase and locally', { meetingId });
     } else {
-      // Local-only mode
-      const localMeetings = await getLocalMeetings();
-      const index = localMeetings.findIndex(m => m.id === meetingId);
-      if (index !== -1) {
-        localMeetings[index] = { ...localMeetings[index], ...updates, updatedAt: new Date().toISOString() };
-        await saveLocalMeetings(localMeetings);
-        logger.info('Meeting updated locally', { meetingId });
-      } else {
-        throw new Error(`Meeting not found: ${meetingId}`);
-      }
+      logger.info('Firebase not configured, meeting updated locally only', { meetingId });
     }
   } catch (error) {
     logger.error('Error in hybrid update meeting', error instanceof Error ? error : new Error(String(error)));
