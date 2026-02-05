@@ -54,10 +54,35 @@ export default function RespondRequestScreen() {
   const [request, setRequest] = useState<MentorshipRequest | null>(null);
   const [responseNote, setResponseNote] = useState('');
   const [loading, setLoading] = useState(false);
+  const [currentUserEmail, setCurrentUserEmail] = useState<string>('');
+  const [isAuthorized, setIsAuthorized] = useState<boolean>(false);
   const lastRequestParamRef = useRef<string | null>(null);
 
   // Extract stable value from params
   const requestParam = params.request ? String(params.request) : undefined;
+
+  useEffect(() => {
+    // Load current user email
+    const loadUserEmail = async () => {
+      try {
+        const userData = await AsyncStorage.getItem('user');
+        if (userData) {
+          const user = safeParseJSON<{ email: string }>(
+            userData,
+            (data): data is { email: string } => typeof data === 'object' && data !== null && 'email' in data && typeof (data as { email: unknown }).email === 'string',
+            null
+          );
+          if (user && user.email) {
+            setCurrentUserEmail(user.email);
+          }
+        }
+      } catch (error) {
+        logger.error('Error loading user email', error instanceof Error ? error : new Error(String(error)));
+      }
+    };
+    
+    loadUserEmail();
+  }, []);
 
   useEffect(() => {
     // Only load if requestParam changed
@@ -94,8 +119,37 @@ export default function RespondRequestScreen() {
     }
   }, [requestParam]); // Only depend on the actual request string
 
+  useEffect(() => {
+    // Check if current user is authorized to respond (must be the mentor, not the requester)
+    if (request && currentUserEmail) {
+      const userIsMentor = request.mentorEmail === currentUserEmail;
+      const userIsRequester = request.requesterEmail === currentUserEmail;
+      
+      // Only allow response if user is the mentor (not the requester) and request is pending
+      setIsAuthorized(userIsMentor && !userIsRequester && request.status === 'pending');
+      
+      if (userIsRequester) {
+        logger.warn('Requester attempted to respond to their own request', {
+          requestId: request.id,
+          requesterEmail: request.requesterEmail,
+          mentorEmail: request.mentorEmail,
+          currentUserEmail,
+        });
+      }
+    }
+  }, [request, currentUserEmail]);
+
   const handleRespond = async (status: 'accepted' | 'declined') => {
     if (!request) return;
+    
+    // Prevent requester from responding to their own request
+    if (!isAuthorized) {
+      ErrorHandler.handleError(
+        new Error('You cannot respond to your own request. Only the mentor can accept or decline.'),
+        'Unauthorized action'
+      );
+      return;
+    }
 
     setLoading(true);
 
@@ -230,30 +284,59 @@ export default function RespondRequestScreen() {
                     </Text>
                   )}
 
-          <View style={styles.actions}>
-            <TouchableOpacity
-              style={[styles.button, styles.acceptButton, loading && styles.buttonDisabled]}
-              onPress={() => handleRespond('accepted')}
-              disabled={loading}
-              accessibilityLabel="Accept request button"
-              accessibilityHint="Tap to accept this mentorship request"
-              accessibilityState={{ disabled: loading }}
-            >
-              <Ionicons name="checkmark-circle" size={20} color="#fff" />
-              <Text style={styles.buttonText}>Accept</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.button, styles.declineButton, loading && styles.buttonDisabled]}
-              onPress={() => handleRespond('declined')}
-              disabled={loading}
-              accessibilityLabel="Decline request button"
-              accessibilityHint="Tap to decline this mentorship request"
-              accessibilityState={{ disabled: loading }}
-            >
-              <Ionicons name="close-circle" size={20} color="#fff" />
-              <Text style={styles.buttonText}>Decline</Text>
-            </TouchableOpacity>
-          </View>
+          {isAuthorized ? (
+            <View style={styles.actions}>
+              <TouchableOpacity
+                style={[styles.button, styles.acceptButton, loading && styles.buttonDisabled]}
+                onPress={() => handleRespond('accepted')}
+                disabled={loading}
+                accessibilityLabel="Accept request button"
+                accessibilityHint="Tap to accept this mentorship request"
+                accessibilityState={{ disabled: loading }}
+              >
+                <Ionicons name="checkmark-circle" size={20} color="#fff" />
+                <Text style={styles.buttonText}>Accept</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.button, styles.declineButton, loading && styles.buttonDisabled]}
+                onPress={() => handleRespond('declined')}
+                disabled={loading}
+                accessibilityLabel="Decline request button"
+                accessibilityHint="Tap to decline this mentorship request"
+                accessibilityState={{ disabled: loading }}
+              >
+                <Ionicons name="close-circle" size={20} color="#fff" />
+                <Text style={styles.buttonText}>Decline</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.statusContainer}>
+              {request.status === 'pending' && currentUserEmail === request.requesterEmail && (
+                <View style={styles.statusBadge}>
+                  <Ionicons name="time-outline" size={16} color="#f59e0b" />
+                  <Text style={styles.statusTextPending}>Waiting for response</Text>
+                </View>
+              )}
+              {request.status === 'accepted' && (
+                <View style={[styles.statusBadge, styles.statusBadgeAccepted]}>
+                  <Ionicons name="checkmark-circle" size={16} color="#10b981" />
+                  <Text style={styles.statusTextAccepted}>Accepted</Text>
+                </View>
+              )}
+              {request.status === 'declined' && (
+                <View style={[styles.statusBadge, styles.statusBadgeDeclined]}>
+                  <Ionicons name="close-circle" size={16} color="#ef4444" />
+                  <Text style={styles.statusTextDeclined}>Declined</Text>
+                </View>
+              )}
+              {request.responseNote && (
+                <View style={styles.responseContainer}>
+                  <Text style={styles.responseLabel}>Response:</Text>
+                  <Text style={styles.responseText}>{request.responseNote}</Text>
+                </View>
+              )}
+            </View>
+          )}
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -406,5 +489,61 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     marginTop: -20,
     marginBottom: 8,
+  },
+  statusContainer: {
+    marginTop: 24,
+    alignItems: 'center',
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fef3c7',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 8,
+  },
+  statusBadgeAccepted: {
+    backgroundColor: '#d1fae5',
+  },
+  statusBadgeDeclined: {
+    backgroundColor: '#fee2e2',
+  },
+  statusTextPending: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#f59e0b',
+  },
+  statusTextAccepted: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#10b981',
+  },
+  statusTextDeclined: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#ef4444',
+  },
+  responseContainer: {
+    marginTop: 16,
+    backgroundColor: '#f0f9ff',
+    borderRadius: 12,
+    padding: 16,
+    borderLeftWidth: 3,
+    borderLeftColor: '#2563eb',
+    width: '100%',
+  },
+  responseLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#2563eb',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  responseText: {
+    fontSize: 14,
+    color: '#1e293b',
+    lineHeight: 20,
   },
 });
