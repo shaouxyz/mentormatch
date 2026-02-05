@@ -94,6 +94,25 @@ export async function hybridSignIn(email: string, password: string): Promise<any
         
         // Fall back to local authentication
         try {
+          // Check if user exists locally first
+          const { getUserByEmail } = await import('@/utils/userManagement');
+          const localUserExists = await getUserByEmail(email);
+          
+          if (!localUserExists) {
+            logger.warn('User does not exist locally either', {
+              email,
+              firebaseErrorCode: errorCode,
+              firebaseErrorMessage: errorMessage
+            });
+            // User doesn't exist in either place - throw error
+            const notFoundError = new Error(
+              `User not found. Please sign up first or check your email address.`
+            );
+            (notFoundError as any).firebaseErrorCode = errorCode;
+            (notFoundError as any).firebaseError = errorMessage;
+            throw notFoundError;
+          }
+          
           const localUser = await authenticateLocalUser(email, password);
           logger.info('User authenticated locally (Firebase unavailable)', { 
             email,
@@ -102,9 +121,9 @@ export async function hybridSignIn(email: string, password: string): Promise<any
           });
           
           // If user doesn't exist in Firebase but exists locally, try to create them
-          if (errorCode === 'auth/user-not-found' || errorCode === 'auth/invalid-credential' || errorCode === 'auth/wrong-password') {
+          if (errorCode === 'auth/user-not-found' || errorCode === 'auth/invalid-credential') {
             try {
-              logger.info('User not found in Firebase or wrong password, attempting to create Firebase account for existing local user', { 
+              logger.info('User not found in Firebase, attempting to create Firebase account for existing local user', { 
                 email,
                 firebaseErrorCode: errorCode
               });
@@ -126,6 +145,13 @@ export async function hybridSignIn(email: string, password: string): Promise<any
                   : 'Unknown error during Firebase account creation'
               });
             }
+          } else if (errorCode === 'auth/wrong-password') {
+            // Password is wrong in Firebase, but might be correct locally
+            logger.warn('Firebase password is wrong, but local authentication succeeded', {
+              email,
+              firebaseErrorCode: errorCode
+            });
+            // Continue with local authentication
           }
           
           return localUser;
