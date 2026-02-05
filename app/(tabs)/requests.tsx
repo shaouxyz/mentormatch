@@ -644,7 +644,7 @@ export default function RequestsScreen() {
             ? item.data.id 
             : `meeting-${item.data.id}`
         }
-        contentContainerStyle={styles.list}
+        contentContainerStyle={[styles.list, { paddingTop: 8 }]}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
@@ -686,6 +686,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f8fafc',
+    paddingTop: 20, // Add space at the top
   },
   tabContainer: {
     flexDirection: 'row',
