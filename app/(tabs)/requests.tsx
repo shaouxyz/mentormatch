@@ -15,7 +15,8 @@ import { logger } from '@/utils/logger';
 import { safeParseJSON, validateMentorshipRequestSchema } from '@/utils/schemaValidation';
 import { hybridGetUserMeetings } from '@/services/hybridMeetingService';
 import { hybridGetAllRequestsForUser } from '@/services/hybridRequestService';
-import { Meeting } from '@/types/types';
+import { hybridGetUserConversations } from '@/services/hybridMessageService';
+import { Meeting, Conversation } from '@/types/types';
 
 interface MentorshipRequest {
   id: string;
@@ -33,14 +34,15 @@ interface MentorshipRequest {
 /**
  * Requests Tab Component
  * 
- * Manages mentorship requests with three tabs:
- * - Incoming: Requests received from others
- * - Sent: Requests sent to mentors
- * - Processed: Accepted or declined requests
+ * Manages mentorship requests, meetings, and conversations with three tabs:
+ * - Incoming: Requests/meetings received from others, conversations with unread messages
+ * - Sent: Requests/meetings sent to others, conversations where you sent last message
+ * - Processed: Accepted/declined requests and meetings, all conversations
  * 
  * Features:
  * - Accept/decline functionality
  * - Request status tracking
+ * - Conversation management
  * - Pull-to-refresh support
  * - Memoized render functions for performance
  * 
@@ -49,7 +51,8 @@ interface MentorshipRequest {
  */
 type RequestItem = 
   | { type: 'mentorship'; data: MentorshipRequest }
-  | { type: 'meeting'; data: Meeting };
+  | { type: 'meeting'; data: Meeting }
+  | { type: 'conversation'; data: Conversation };
 
 export default function RequestsScreen() {
   const router = useRouter();
@@ -155,29 +158,87 @@ export default function RequestsScreen() {
           })
           .map(m => ({ type: 'meeting' as const, data: m }));
         
-        // Combine mentorship requests and meetings
+        // Load conversations and organize them
+        let allConversations: Conversation[] = [];
+        try {
+          allConversations = await hybridGetUserConversations(userEmail);
+          logger.info('Conversations loaded for requests tab', { count: allConversations.length });
+        } catch (error) {
+          logger.warn('Failed to load conversations for requests tab', {
+            error: error instanceof Error ? error.message : String(error),
+          });
+          allConversations = [];
+        }
+        
+        // Organize conversations:
+        // Incoming: Conversations with unread messages (you need to respond)
+        // Sent: Conversations with no unread messages (you sent last message or waiting)
+        // Processed: All conversations (sorted by most recent)
+        const incomingConversations = allConversations
+          .filter(c => {
+            const unreadCount = c.unreadCount?.[userEmail] || 0;
+            return unreadCount > 0;
+          })
+          .map(c => ({ type: 'conversation' as const, data: c }));
+        
+        // Sent: Conversations with no unread (likely you sent last message)
+        const sentConversations = allConversations
+          .filter(c => {
+            const unreadCount = c.unreadCount?.[userEmail] || 0;
+            return unreadCount === 0 && c.lastMessage; // No unread and has messages
+          })
+          .map(c => ({ type: 'conversation' as const, data: c }));
+        
+        const processedConversations = allConversations
+          .sort((a, b) => {
+            const dateA = new Date(a.lastMessageAt || a.updatedAt || a.createdAt).getTime();
+            const dateB = new Date(b.lastMessageAt || b.updatedAt || b.createdAt).getTime();
+            return dateB - dateA; // Most recent first
+          })
+          .map(c => ({ type: 'conversation' as const, data: c }));
+        
+        // Combine all items
         const combinedIncoming = [
           ...incoming.map(r => ({ type: 'mentorship' as const, data: r })),
           ...incomingMeetings,
+          ...incomingConversations,
         ].sort((a, b) => {
-          const dateA = new Date(a.data.createdAt).getTime();
-          const dateB = new Date(b.data.createdAt).getTime();
+          const dateA = a.type === 'conversation'
+            ? new Date(a.data.lastMessageAt || a.data.updatedAt || a.data.createdAt).getTime()
+            : new Date(a.data.createdAt).getTime();
+          const dateB = b.type === 'conversation'
+            ? new Date(b.data.lastMessageAt || b.data.updatedAt || b.data.createdAt).getTime()
+            : new Date(b.data.createdAt).getTime();
           return dateB - dateA;
         });
         
         const combinedOutgoing = [
           ...outgoing.map(r => ({ type: 'mentorship' as const, data: r })),
           ...outgoingMeetings,
+          ...sentConversations,
         ].sort((a, b) => {
-          const dateA = new Date(a.data.createdAt).getTime();
-          const dateB = new Date(b.data.createdAt).getTime();
+          const dateA = a.type === 'conversation'
+            ? new Date(a.data.lastMessageAt || a.data.updatedAt || a.data.createdAt).getTime()
+            : new Date(a.data.createdAt).getTime();
+          const dateB = b.type === 'conversation'
+            ? new Date(b.data.lastMessageAt || b.data.updatedAt || b.data.createdAt).getTime()
+            : new Date(b.data.createdAt).getTime();
           return dateB - dateA;
         });
         
         const combinedProcessed = [
           ...processed.map(r => ({ type: 'mentorship' as const, data: r })),
           ...processedMeetings,
-        ];
+          ...processedConversations,
+        ].sort((a, b) => {
+          const dateA = a.type === 'conversation'
+            ? new Date(a.data.lastMessageAt || a.data.updatedAt || a.data.createdAt).getTime()
+            : new Date(a.data.respondedAt || a.data.updatedAt || a.data.createdAt).getTime();
+          const dateB = b.type === 'conversation'
+            ? new Date(b.data.lastMessageAt || b.data.updatedAt || b.data.createdAt).getTime()
+            : new Date(b.data.respondedAt || b.data.updatedAt || b.data.createdAt).getTime();
+          return dateB - dateA;
+        });
         
         setIncomingRequests(combinedIncoming);
         setOutgoingRequests(combinedOutgoing);
@@ -224,6 +285,85 @@ export default function RequestsScreen() {
       params: { request: JSON.stringify(request) },
     });
   };
+
+  const formatTime = useCallback((dateString?: string) => {
+    if (!dateString) return '';
+    
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+    
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    
+    return date.toLocaleDateString();
+  }, []);
+
+  const getOtherParticipant = useCallback((conversation: Conversation) => {
+    const otherEmail = conversation.participants.find(p => p !== userEmail);
+    return {
+      email: otherEmail || '',
+      name: otherEmail ? conversation.participantNames[otherEmail] : 'Unknown',
+    };
+  }, [userEmail]);
+
+  const renderConversationItem = useCallback(({ item }: { item: Conversation }) => {
+    const otherParticipant = getOtherParticipant(item);
+    const unreadCount = item.unreadCount?.[userEmail] || 0;
+    
+    return (
+      <TouchableOpacity
+        style={styles.conversationCard}
+        onPress={() => router.push({
+          pathname: '/messages/chat',
+          params: {
+            conversationId: item.id,
+            participantEmail: otherParticipant.email,
+            participantName: otherParticipant.name,
+          },
+        })}
+        accessibilityLabel={`Conversation with ${otherParticipant.name}`}
+        accessibilityHint="Tap to open chat"
+      >
+        <View style={styles.requestHeader}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>
+              {otherParticipant.name.charAt(0).toUpperCase()}
+            </Text>
+          </View>
+          <View style={styles.requestInfo}>
+            <Text style={styles.requestName}>{otherParticipant.name}</Text>
+            <Text style={styles.requestEmail}>{otherParticipant.email}</Text>
+            <Text style={styles.requestDate}>
+              {formatTime(item.lastMessageAt || item.updatedAt)}
+            </Text>
+          </View>
+        </View>
+
+        {item.lastMessage && (
+          <View style={styles.noteContainer}>
+            <Text style={styles.noteText} numberOfLines={2}>
+              {item.lastMessage}
+            </Text>
+          </View>
+        )}
+
+        {unreadCount > 0 && (
+          <View style={styles.statusContainer}>
+            <View style={styles.unreadBadge}>
+              <Ionicons name="mail-unread" size={16} color="#fff" />
+              <Text style={styles.unreadCount}>{unreadCount} unread</Text>
+            </View>
+          </View>
+        )}
+      </TouchableOpacity>
+    );
+  }, [userEmail, getOtherParticipant, formatTime, router]);
 
   const renderMeetingItem = useCallback(({ item }: { item: Meeting }) => {
     const isReceiver = item.participantEmail === userEmail;
@@ -307,6 +447,9 @@ export default function RequestsScreen() {
     if (item.type === 'meeting') {
       return renderMeetingItem({ item: item.data });
     }
+    if (item.type === 'conversation') {
+      return renderConversationItem({ item: item.data });
+    }
     // It's a MentorshipRequest
     const request = item.data;
     return (
@@ -355,11 +498,14 @@ export default function RequestsScreen() {
         </View>
       </View>
     );
-  }, [handleAccept, handleDecline, renderMeetingItem]);
+  }, [handleAccept, handleDecline, renderMeetingItem, renderConversationItem]);
 
   const renderOutgoingRequest = useCallback(({ item }: { item: RequestItem }) => {
     if (item.type === 'meeting') {
       return renderMeetingItem({ item: item.data });
+    }
+    if (item.type === 'conversation') {
+      return renderConversationItem({ item: item.data });
     }
     // It's a MentorshipRequest
     const request = item.data;
@@ -416,11 +562,14 @@ export default function RequestsScreen() {
           )}
         </View>
       );
-  }, [renderMeetingItem]);
+  }, [renderMeetingItem, renderConversationItem]);
 
   const renderProcessedRequest = useCallback(({ item }: { item: RequestItem }) => {
     if (item.type === 'meeting') {
       return renderMeetingItem({ item: item.data });
+    }
+    if (item.type === 'conversation') {
+      return renderConversationItem({ item: item.data });
     }
     // It's a MentorshipRequest
     const request = item.data;
@@ -869,5 +1018,30 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#64748b',
     textAlign: 'center',
+  },
+  conversationCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  unreadBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2563eb',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    gap: 6,
+  },
+  unreadCount: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
   },
 });

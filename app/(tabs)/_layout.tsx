@@ -40,16 +40,6 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="messages"
-        options={{
-          title: 'Messages',
-          headerShown: false,
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="chatbubbles" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="mentorship"
         options={{
           title: 'Mentorship',
@@ -61,9 +51,10 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="requests"
         options={{
-          title: 'Requests',
+          title: 'Messages & Requests',
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="mail" size={size} color={color} />
+            <Ionicons name="chatbubbles" size={size} color={color} />
           ),
         }}
       />

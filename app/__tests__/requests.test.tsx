@@ -19,6 +19,11 @@ jest.mock('../../services/hybridRequestService', () => ({
   })),
 }));
 
+// Mock hybrid message service
+jest.mock('../../services/hybridMessageService', () => ({
+  hybridGetUserConversations: jest.fn(() => Promise.resolve([])),
+}));
+
 // Get mock router (from global mock in jest.setup.js)
 const mockRouter = useRouter();
 const mockLogger = logger.logger as jest.Mocked<typeof logger.logger>;
