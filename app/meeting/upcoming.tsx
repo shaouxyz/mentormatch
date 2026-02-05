@@ -13,17 +13,15 @@ import {
   TouchableOpacity,
   RefreshControl,
   Alert,
-  Linking,
-  Platform,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Calendar from 'expo-calendar';
 import { hybridGetUpcomingMeetings } from '@/services/hybridMeetingService';
 import { scheduleNotificationsForMeetings } from '@/services/meetingNotificationService';
 import { Meeting } from '@/types/types';
 import { logger } from '@/utils/logger';
+import { Screen } from '@/components/Screen';
 
 export default function UpcomingMeetingsScreen() {
   const router = useRouter();
@@ -78,138 +76,11 @@ export default function UpcomingMeetingsScreen() {
     loadMeetings();
   };
 
-  const requestCalendarPermissions = async (): Promise<boolean> => {
-    try {
-      const { status } = await Calendar.requestCalendarPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert(
-          'Permission Denied',
-          'Calendar permission is required to add events to your calendar.'
-        );
-        return false;
-      }
-      return true;
-    } catch (error) {
-      logger.error('Error requesting calendar permissions', error instanceof Error ? error : new Error(String(error)));
-      return false;
-    }
-  };
-
-  const getDefaultCalendar = async (): Promise<string | null> => {
-    try {
-      const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
-      const defaultCalendar = calendars.find(cal => cal.allowsModifications) || calendars[0];
-      return defaultCalendar?.id || null;
-    } catch (error) {
-      logger.error('Error getting calendars', error instanceof Error ? error : new Error(String(error)));
-      return null;
-    }
-  };
-
-  const addToPhoneCalendar = async (meeting: Meeting) => {
-    try {
-      const hasPermission = await requestCalendarPermissions();
-      if (!hasPermission) return;
-
-      const calendarId = await getDefaultCalendar();
-      if (!calendarId) {
-        Alert.alert('Error', 'No calendar found');
-        return;
-      }
-
-      const meetingDate = new Date(meeting.date);
-      const endDate = new Date(meetingDate.getTime() + meeting.duration * 60000);
-
-      const eventDetails: Calendar.Event = {
-        title: meeting.title,
-        notes: meeting.description,
-        startDate: meetingDate,
-        endDate: endDate,
-        location: meeting.locationType === 'virtual' ? meeting.meetingLink : meeting.location,
-        alarms: [
-          { relativeOffset: -15 }, // 15 minutes before
-          { relativeOffset: -60 }, // 1 hour before
-        ],
-      };
-
-      await Calendar.createEventAsync(calendarId, eventDetails);
-      Alert.alert('Success', 'Event added to your calendar!');
-      logger.info('Meeting added to phone calendar', { meetingId: meeting.id });
-    } catch (error) {
-      logger.error('Error adding to phone calendar', error instanceof Error ? error : new Error(String(error)));
-      Alert.alert('Error', 'Failed to add event to calendar');
-    }
-  };
-
-  const exportToGoogleCalendar = (meeting: Meeting) => {
-    try {
-      const meetingDate = new Date(meeting.date);
-      const endDate = new Date(meetingDate.getTime() + meeting.duration * 60000);
-
-      const formatDateForGoogle = (date: Date) => {
-        return date.toISOString().replace(/-|:|\.\d+/g, '');
-      };
-
-      const location = meeting.locationType === 'virtual' 
-        ? meeting.meetingLink 
-        : meeting.location;
-
-      const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(meeting.title)}&dates=${formatDateForGoogle(meetingDate)}/${formatDateForGoogle(endDate)}&details=${encodeURIComponent(meeting.description || '')}&location=${encodeURIComponent(location || '')}`;
-
-      Linking.openURL(url);
-      logger.info('Opening Google Calendar link', { meetingId: meeting.id });
-    } catch (error) {
-      logger.error('Error opening Google Calendar', error instanceof Error ? error : new Error(String(error)));
-      Alert.alert('Error', 'Failed to open Google Calendar');
-    }
-  };
-
-  const exportToOutlook = (meeting: Meeting) => {
-    try {
-      const meetingDate = new Date(meeting.date);
-      const endDate = new Date(meetingDate.getTime() + meeting.duration * 60000);
-
-      const formatDateForOutlook = (date: Date) => {
-        return date.toISOString();
-      };
-
-      const location = meeting.locationType === 'virtual' 
-        ? meeting.meetingLink 
-        : meeting.location;
-
-      const url = `https://outlook.office.com/calendar/0/deeplink/compose?subject=${encodeURIComponent(meeting.title)}&startdt=${formatDateForOutlook(meetingDate)}&enddt=${formatDateForOutlook(endDate)}&body=${encodeURIComponent(meeting.description || '')}&location=${encodeURIComponent(location || '')}`;
-
-      Linking.openURL(url);
-      logger.info('Opening Outlook Calendar link', { meetingId: meeting.id });
-    } catch (error) {
-      logger.error('Error opening Outlook Calendar', error instanceof Error ? error : new Error(String(error)));
-      Alert.alert('Error', 'Failed to open Outlook Calendar');
-    }
-  };
-
-  const showCalendarOptions = (meeting: Meeting) => {
-    Alert.alert(
-      'Add to Calendar',
-      'Choose where to add this meeting:',
-      [
-        {
-          text: 'Phone Calendar',
-          onPress: () => addToPhoneCalendar(meeting),
-        },
-        {
-          text: 'Google Calendar',
-          onPress: () => exportToGoogleCalendar(meeting),
-        },
-        {
-          text: 'Outlook/Hotmail',
-          onPress: () => exportToOutlook(meeting),
-        },
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-      ]
-    );
+  const openAddToCalendar = (meeting: Meeting) => {
+    router.push({
+      pathname: '/meeting/add-to-calendar',
+      params: { meetingId: meeting.id },
+    });
   };
 
   const formatDate = (dateStr: string) => {
@@ -248,7 +119,7 @@ export default function UpcomingMeetingsScreen() {
         <View style={styles.meetingHeader}>
           <Text style={styles.meetingTitle}>{item.title}</Text>
           <TouchableOpacity
-            onPress={() => showCalendarOptions(item)}
+            onPress={() => openAddToCalendar(item)}
             accessibilityLabel="Add to calendar"
           >
             <Ionicons name="calendar-outline" size={24} color="#2563eb" />
@@ -309,7 +180,7 @@ export default function UpcomingMeetingsScreen() {
   );
 
   return (
-    <View style={styles.container}>
+    <Screen style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} accessibilityLabel="Go back">
           <Ionicons name="arrow-back" size={24} color="#1f2937" />
@@ -328,7 +199,7 @@ export default function UpcomingMeetingsScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       />
-    </View>
+    </Screen>
   );
 }
 
@@ -342,7 +213,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingBottom: 16,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',

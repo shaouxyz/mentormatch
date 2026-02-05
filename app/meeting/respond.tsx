@@ -14,18 +14,16 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
-  Linking,
-  Platform,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Calendar from 'expo-calendar';
 import { hybridGetMeeting, hybridUpdateMeeting } from '@/services/hybridMeetingService';
 import { scheduleMeetingNotifications, cancelMeetingNotifications } from '@/services/meetingNotificationService';
 import { Meeting } from '@/types/types';
 import { logger } from '@/utils/logger';
 import { sanitizeTextField } from '@/utils/security';
+import { Screen } from '@/components/Screen';
 
 export default function MeetingResponseScreen() {
   const router = useRouter();
@@ -189,172 +187,40 @@ export default function MeetingResponseScreen() {
     });
   };
 
-  const requestCalendarPermissions = async (): Promise<boolean> => {
-    try {
-      const { status } = await Calendar.requestCalendarPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert(
-          'Permission Denied',
-          'Calendar permission is required to add events to your calendar.'
-        );
-        return false;
-      }
-      return true;
-    } catch (error) {
-      logger.error('Error requesting calendar permissions', error instanceof Error ? error : new Error(String(error)));
-      return false;
-    }
-  };
-
-  const getDefaultCalendar = async (): Promise<string | null> => {
-    try {
-      const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
-      const defaultCalendar = calendars.find(cal => cal.allowsModifications) || calendars[0];
-      return defaultCalendar?.id || null;
-    } catch (error) {
-      logger.error('Error getting calendars', error instanceof Error ? error : new Error(String(error)));
-      return null;
-    }
-  };
-
-  const addToPhoneCalendar = async () => {
-    if (!meeting) return;
-    
-    try {
-      const hasPermission = await requestCalendarPermissions();
-      if (!hasPermission) return;
-
-      const calendarId = await getDefaultCalendar();
-      if (!calendarId) {
-        Alert.alert('Error', 'No calendar found');
-        return;
-      }
-
-      const meetingDate = new Date(meeting.date);
-      const endDate = new Date(meetingDate.getTime() + meeting.duration * 60000);
-
-      const eventDetails: Calendar.Event = {
-        title: meeting.title,
-        notes: meeting.description || '',
-        startDate: meetingDate,
-        endDate: endDate,
-        location: meeting.locationType === 'virtual' ? meeting.meetingLink : meeting.location,
-        alarms: [
-          { relativeOffset: -15 }, // 15 minutes before
-          { relativeOffset: -60 }, // 1 hour before
-        ],
-      };
-
-      await Calendar.createEventAsync(calendarId, eventDetails);
-      Alert.alert('Success', 'Event added to your calendar!');
-      logger.info('Meeting added to phone calendar', { meetingId: meeting.id });
-    } catch (error) {
-      logger.error('Error adding to phone calendar', error instanceof Error ? error : new Error(String(error)));
-      Alert.alert('Error', 'Failed to add event to calendar');
-    }
-  };
-
-  const exportToGoogleCalendar = () => {
-    if (!meeting) return;
-    
-    try {
-      const meetingDate = new Date(meeting.date);
-      const endDate = new Date(meetingDate.getTime() + meeting.duration * 60000);
-
-      const formatDateForGoogle = (date: Date) => {
-        return date.toISOString().replace(/-|:|\.\d+/g, '');
-      };
-
-      const location = meeting.locationType === 'virtual' 
-        ? meeting.meetingLink 
-        : meeting.location;
-
-      const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(meeting.title)}&dates=${formatDateForGoogle(meetingDate)}/${formatDateForGoogle(endDate)}&details=${encodeURIComponent(meeting.description || '')}&location=${encodeURIComponent(location || '')}`;
-
-      Linking.openURL(url);
-      logger.info('Opening Google Calendar link', { meetingId: meeting.id });
-    } catch (error) {
-      logger.error('Error opening Google Calendar', error instanceof Error ? error : new Error(String(error)));
-      Alert.alert('Error', 'Failed to open Google Calendar');
-    }
-  };
-
-  const exportToOutlook = () => {
-    if (!meeting) return;
-    
-    try {
-      const meetingDate = new Date(meeting.date);
-      const endDate = new Date(meetingDate.getTime() + meeting.duration * 60000);
-
-      const formatDateForOutlook = (date: Date) => {
-        return date.toISOString();
-      };
-
-      const location = meeting.locationType === 'virtual' 
-        ? meeting.meetingLink 
-        : meeting.location;
-
-      const url = `https://outlook.office.com/calendar/0/deeplink/compose?subject=${encodeURIComponent(meeting.title)}&startdt=${formatDateForOutlook(meetingDate)}&enddt=${formatDateForOutlook(endDate)}&body=${encodeURIComponent(meeting.description || '')}&location=${encodeURIComponent(location || '')}`;
-
-      Linking.openURL(url);
-      logger.info('Opening Outlook Calendar link', { meetingId: meeting.id });
-    } catch (error) {
-      logger.error('Error opening Outlook Calendar', error instanceof Error ? error : new Error(String(error)));
-      Alert.alert('Error', 'Failed to open Outlook Calendar');
-    }
-  };
-
-  const showCalendarOptions = () => {
-    Alert.alert(
-      'Add to Calendar',
-      'Choose where to add this meeting:',
-      [
-        {
-          text: 'Phone Calendar',
-          onPress: addToPhoneCalendar,
-        },
-        {
-          text: 'Google Calendar',
-          onPress: exportToGoogleCalendar,
-        },
-        {
-          text: 'Outlook/Hotmail',
-          onPress: exportToOutlook,
-        },
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-      ]
-    );
+  const openAddToCalendar = () => {
+    router.push({
+      pathname: '/meeting/add-to-calendar',
+      params: { meetingId },
+    });
   };
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
+      <Screen style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#2563eb" />
         <Text style={styles.loadingText}>Loading meeting details...</Text>
-      </View>
+      </Screen>
     );
   }
 
   if (!meeting) {
     return (
-      <View style={styles.container}>
+      <Screen style={styles.container}>
         <Text>Meeting not found</Text>
-      </View>
+      </Screen>
     );
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <Screen style={styles.container}>
+      <ScrollView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} accessibilityLabel="Go back">
           <Ionicons name="arrow-back" size={24} color="#1f2937" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Meeting Request</Text>
         <TouchableOpacity
-          onPress={showCalendarOptions}
+          onPress={openAddToCalendar}
           accessibilityLabel="Add to calendar"
           accessibilityHint="Tap to add this meeting to your calendar"
         >
@@ -440,7 +306,7 @@ export default function MeetingResponseScreen() {
           {/* Add to Calendar Button */}
           <TouchableOpacity
             style={styles.addToCalendarButton}
-            onPress={showCalendarOptions}
+            onPress={openAddToCalendar}
             accessibilityLabel="Add to calendar"
             accessibilityHint="Tap to add this meeting to your phone calendar, Google Calendar, or Outlook"
           >
@@ -582,7 +448,8 @@ export default function MeetingResponseScreen() {
           </>
         )}
       </View>
-    </ScrollView>
+      </ScrollView>
+    </Screen>
   );
 }
 
@@ -607,7 +474,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 60,
     paddingBottom: 16,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
