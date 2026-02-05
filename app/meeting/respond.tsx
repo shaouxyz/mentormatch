@@ -676,6 +676,23 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginTop: 8,
   },
+  addToCalendarButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#eff6ff',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 20,
+    borderWidth: 1,
+    borderColor: '#2563eb',
+    gap: 8,
+  },
+  addToCalendarButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2563eb',
+  },
   responseCard: {
     backgroundColor: '#fff',
     borderRadius: 12,
