@@ -5,6 +5,7 @@
 import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import { Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import MeetingResponseScreen from '../meeting/respond';
 import { hybridGetMeeting, hybridUpdateMeeting } from '@/services/hybridMeetingService';
 import * as meetingNotificationService from '@/services/meetingNotificationService';
@@ -56,7 +57,7 @@ describe('MeetingResponseScreen', () => {
     updatedAt: '2026-01-20T10:00:00Z',
   };
 
-  beforeEach(() => {
+  beforeEach(async () => {
     jest.clearAllMocks();
     mockRouterInstance.back.mockClear();
     mockRouterInstance.replace.mockClear();
@@ -67,6 +68,9 @@ describe('MeetingResponseScreen', () => {
     mockLogger.warn = jest.fn();
     mockLogger.error = jest.fn();
     mockLogger.info = jest.fn();
+    
+    // Mock AsyncStorage with user data (participant by default)
+    await AsyncStorage.setItem('user', JSON.stringify({ email: 'participant@example.com' }));
   });
 
   it('should show loading state initially', () => {
@@ -80,13 +84,105 @@ describe('MeetingResponseScreen', () => {
 
     await waitFor(() => {
       expect(queryByText('Loading meeting details...')).toBeNull();
-    });
+    }, { timeout: 3000 });
 
     expect(getByText('Introduction Call')).toBeTruthy();
     expect(getByText('John Organizer')).toBeTruthy();
     expect(getByText('organizer@example.com')).toBeTruthy();
     expect(getByText('https://zoom.us/j/123456')).toBeTruthy();
     expect(getByText('Let\'s discuss your career goals')).toBeTruthy();
+  });
+  
+  it('should show accept/decline buttons for participant (pending meeting)', async () => {
+    const { getByLabelText, queryByText } = render(<MeetingResponseScreen />);
+
+    await waitFor(() => {
+      expect(queryByText('Loading meeting details...')).toBeNull();
+    }, { timeout: 3000 });
+
+    // Participant should see accept/decline buttons
+    expect(getByLabelText('Accept meeting')).toBeTruthy();
+    expect(getByLabelText('Decline meeting')).toBeTruthy();
+  });
+  
+  it('should show status for organizer (pending meeting)', async () => {
+    // Set user as organizer
+    await AsyncStorage.setItem('user', JSON.stringify({ email: 'organizer@example.com' }));
+    
+    const { getByText, queryByText, queryByLabelText } = render(<MeetingResponseScreen />);
+
+    await waitFor(() => {
+      expect(queryByText('Loading meeting details...')).toBeNull();
+    }, { timeout: 3000 });
+
+    // Organizer should see status, not buttons
+    expect(getByText('Meeting Status')).toBeTruthy();
+    expect(getByText('Pending Response')).toBeTruthy();
+    expect(queryByLabelText('Accept meeting')).toBeNull();
+    expect(queryByLabelText('Decline meeting')).toBeNull();
+  });
+  
+  it('should show accepted status for organizer', async () => {
+    // Set user as organizer
+    await AsyncStorage.setItem('user', JSON.stringify({ email: 'organizer@example.com' }));
+    
+    const acceptedMeeting = {
+      ...mockMeeting,
+      status: 'accepted' as const,
+      respondedAt: '2026-02-01T10:00:00Z',
+    };
+    mockHybridGetMeeting.mockResolvedValue(acceptedMeeting);
+    
+    const { getByText, queryByText } = render(<MeetingResponseScreen />);
+
+    await waitFor(() => {
+      expect(queryByText('Loading meeting details...')).toBeNull();
+    }, { timeout: 3000 });
+
+    expect(getByText('Meeting Status')).toBeTruthy();
+    expect(getByText('Accepted')).toBeTruthy();
+  });
+  
+  it('should show declined status for organizer', async () => {
+    // Set user as organizer
+    await AsyncStorage.setItem('user', JSON.stringify({ email: 'organizer@example.com' }));
+    
+    const declinedMeeting = {
+      ...mockMeeting,
+      status: 'declined' as const,
+      respondedAt: '2026-02-01T10:00:00Z',
+    };
+    mockHybridGetMeeting.mockResolvedValue(declinedMeeting);
+    
+    const { getByText, queryByText } = render(<MeetingResponseScreen />);
+
+    await waitFor(() => {
+      expect(queryByText('Loading meeting details...')).toBeNull();
+    }, { timeout: 3000 });
+
+    expect(getByText('Meeting Status')).toBeTruthy();
+    expect(getByText('Declined')).toBeTruthy();
+  });
+  
+  it('should show status for participant who already responded', async () => {
+    const acceptedMeeting = {
+      ...mockMeeting,
+      status: 'accepted' as const,
+      respondedAt: '2026-02-01T10:00:00Z',
+    };
+    mockHybridGetMeeting.mockResolvedValue(acceptedMeeting);
+    
+    const { getByText, queryByText, queryByLabelText } = render(<MeetingResponseScreen />);
+
+    await waitFor(() => {
+      expect(queryByText('Loading meeting details...')).toBeNull();
+    }, { timeout: 3000 });
+
+    // Participant already responded - should see status, not buttons
+    expect(getByText('Your Response')).toBeTruthy();
+    expect(getByText('You Accepted')).toBeTruthy();
+    expect(queryByLabelText('Accept meeting')).toBeNull();
+    expect(queryByLabelText('Decline meeting')).toBeNull();
   });
 
   it('should display formatted date', async () => {
@@ -266,7 +362,7 @@ describe('MeetingResponseScreen', () => {
       expect(queryByText('Loading meeting details...')).toBeNull();
       expect(Alert.alert).toHaveBeenCalledWith('Error', 'Meeting not found');
       expect(mockRouterInstance.back).toHaveBeenCalled();
-    });
+    }, { timeout: 3000 });
   });
 
   it('should handle load error gracefully', async () => {
@@ -277,7 +373,7 @@ describe('MeetingResponseScreen', () => {
     await waitFor(() => {
       expect(queryByText('Loading meeting details...')).toBeNull();
       expect(Alert.alert).toHaveBeenCalledWith('Error', 'Failed to load meeting details');
-    });
+    }, { timeout: 3000 });
   });
 
   it('should handle response error gracefully', async () => {
@@ -471,7 +567,11 @@ describe('MeetingResponseScreen', () => {
       // Should handle non-Error exception gracefully (line 116 branch 1)
       expect(mockLogger.error).toHaveBeenCalledWith(
         'Error responding to meeting',
-        expect.any(Error)
+        expect.objectContaining({
+          meetingId: 'meeting123',
+          accepted: true,
+          error: 'String response error',
+        })
       );
       expect(Alert.alert).toHaveBeenCalledWith('Error', 'Failed to respond to meeting. Please try again.');
     }, { timeout: 3000 });

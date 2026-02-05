@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { hybridGetMeeting, hybridUpdateMeeting } from '@/services/hybridMeetingService';
 import { scheduleMeetingNotifications, cancelMeetingNotifications } from '@/services/meetingNotificationService';
 import { Meeting } from '@/types/types';
@@ -32,6 +33,8 @@ export default function MeetingResponseScreen() {
   const [loading, setLoading] = useState(true);
   const [responding, setResponding] = useState(false);
   const [responseNote, setResponseNote] = useState('');
+  const [currentUserEmail, setCurrentUserEmail] = useState<string>('');
+  const [isOrganizer, setIsOrganizer] = useState<boolean>(false);
 
   useEffect(() => {
     loadMeeting();
@@ -40,6 +43,19 @@ export default function MeetingResponseScreen() {
   const loadMeeting = async () => {
     try {
       setLoading(true);
+      
+      // Get current user email
+      const userData = await AsyncStorage.getItem('user');
+      if (!userData) {
+        Alert.alert('Error', 'User not authenticated');
+        router.replace('/login');
+        return;
+      }
+      
+      const user = JSON.parse(userData);
+      const userEmail = user.email;
+      setCurrentUserEmail(userEmail);
+      
       const meetingData = await hybridGetMeeting(meetingId);
       
       if (!meetingData) {
@@ -47,6 +63,10 @@ export default function MeetingResponseScreen() {
         router.back();
         return;
       }
+
+      // Check if current user is the organizer or participant
+      const userIsOrganizer = meetingData.organizerEmail === userEmail;
+      setIsOrganizer(userIsOrganizer);
 
       setMeeting(meetingData);
     } catch (error) {
@@ -255,53 +275,138 @@ export default function MeetingResponseScreen() {
           )}
         </View>
 
-        <View style={styles.responseCard}>
-          <Text style={styles.responseTitle}>Your Response</Text>
-          <TextInput
-            style={styles.responseInput}
-            placeholder="Add a note (optional)"
-            value={responseNote}
-            onChangeText={(text) => setResponseNote(sanitizeTextField(text))}
-            multiline
-            numberOfLines={3}
-            maxLength={200}
-            accessibilityLabel="Response note input"
-          />
-        </View>
-
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity
-            style={styles.acceptButton}
-            onPress={() => handleResponse(true)}
-            disabled={responding}
-            accessibilityLabel="Accept meeting"
-          >
-            {responding ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
+        {isOrganizer ? (
+          // Organizer view: Show status only
+          <View style={styles.statusCard}>
+            <Text style={styles.statusTitle}>Meeting Status</Text>
+            <View style={styles.statusContent}>
+              {meeting.status === 'pending' && (
+                <View style={[styles.statusBadge, styles.statusBadgePending]}>
+                  <Ionicons name="time" size={20} color="#f59e0b" />
+                  <Text style={styles.statusTextPending}>Pending Response</Text>
+                </View>
+              )}
+              {meeting.status === 'accepted' && (
+                <View style={[styles.statusBadge, styles.statusBadgeAccepted]}>
+                  <Ionicons name="checkmark-circle" size={20} color="#10b981" />
+                  <Text style={styles.statusTextAccepted}>Accepted</Text>
+                </View>
+              )}
+              {meeting.status === 'declined' && (
+                <View style={[styles.statusBadge, styles.statusBadgeDeclined]}>
+                  <Ionicons name="close-circle" size={20} color="#ef4444" />
+                  <Text style={styles.statusTextDeclined}>Declined</Text>
+                </View>
+              )}
+              {meeting.status === 'cancelled' && (
+                <View style={[styles.statusBadge, styles.statusBadgeCancelled]}>
+                  <Ionicons name="ban" size={20} color="#6b7280" />
+                  <Text style={styles.statusTextCancelled}>Cancelled</Text>
+                </View>
+              )}
+              
+              {meeting.respondedAt && (
+                <Text style={styles.respondedAtText}>
+                  Responded: {formatDate(meeting.respondedAt)} at {formatTime(meeting.respondedAt)}
+                </Text>
+              )}
+              
+              {meeting.responseNote && (
+                <View style={styles.responseNoteContainer}>
+                  <Text style={styles.responseNoteLabel}>Response Note:</Text>
+                  <Text style={styles.responseNoteText}>{meeting.responseNote}</Text>
+                </View>
+              )}
+            </View>
+          </View>
+        ) : (
+          // Participant view: Show accept/decline buttons (if pending)
+          <>
+            {meeting.status === 'pending' ? (
               <>
-                <Ionicons name="checkmark-circle" size={20} color="#fff" />
-                <Text style={styles.acceptButtonText}>Accept</Text>
-              </>
-            )}
-          </TouchableOpacity>
+                <View style={styles.responseCard}>
+                  <Text style={styles.responseTitle}>Your Response</Text>
+                  <TextInput
+                    style={styles.responseInput}
+                    placeholder="Add a note (optional)"
+                    value={responseNote}
+                    onChangeText={(text) => setResponseNote(sanitizeTextField(text))}
+                    multiline
+                    numberOfLines={3}
+                    maxLength={200}
+                    accessibilityLabel="Response note input"
+                  />
+                </View>
 
-          <TouchableOpacity
-            style={styles.declineButton}
-            onPress={() => handleResponse(false)}
-            disabled={responding}
-            accessibilityLabel="Decline meeting"
-          >
-            {responding ? (
-              <ActivityIndicator color="#dc2626" />
-            ) : (
-              <>
-                <Ionicons name="close-circle" size={20} color="#dc2626" />
-                <Text style={styles.declineButtonText}>Decline</Text>
+                <View style={styles.buttonContainer}>
+                  <TouchableOpacity
+                    style={styles.acceptButton}
+                    onPress={() => handleResponse(true)}
+                    disabled={responding}
+                    accessibilityLabel="Accept meeting"
+                  >
+                    {responding ? (
+                      <ActivityIndicator color="#fff" />
+                    ) : (
+                      <>
+                        <Ionicons name="checkmark-circle" size={20} color="#fff" />
+                        <Text style={styles.acceptButtonText}>Accept</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.declineButton}
+                    onPress={() => handleResponse(false)}
+                    disabled={responding}
+                    accessibilityLabel="Decline meeting"
+                  >
+                    {responding ? (
+                      <ActivityIndicator color="#dc2626" />
+                    ) : (
+                      <>
+                        <Ionicons name="close-circle" size={20} color="#dc2626" />
+                        <Text style={styles.declineButtonText}>Decline</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
               </>
+            ) : (
+              // Participant already responded - show status
+              <View style={styles.statusCard}>
+                <Text style={styles.statusTitle}>Your Response</Text>
+                <View style={styles.statusContent}>
+                  {meeting.status === 'accepted' && (
+                    <View style={[styles.statusBadge, styles.statusBadgeAccepted]}>
+                      <Ionicons name="checkmark-circle" size={20} color="#10b981" />
+                      <Text style={styles.statusTextAccepted}>You Accepted</Text>
+                    </View>
+                  )}
+                  {meeting.status === 'declined' && (
+                    <View style={[styles.statusBadge, styles.statusBadgeDeclined]}>
+                      <Ionicons name="close-circle" size={20} color="#ef4444" />
+                      <Text style={styles.statusTextDeclined}>You Declined</Text>
+                    </View>
+                  )}
+                  
+                  {meeting.respondedAt && (
+                    <Text style={styles.respondedAtText}>
+                      Responded: {formatDate(meeting.respondedAt)} at {formatTime(meeting.respondedAt)}
+                    </Text>
+                  )}
+                  
+                  {meeting.responseNote && (
+                    <View style={styles.responseNoteContainer}>
+                      <Text style={styles.responseNoteLabel}>Your Note:</Text>
+                      <Text style={styles.responseNoteText}>{meeting.responseNote}</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
             )}
-          </TouchableOpacity>
-        </View>
+          </>
+        )}
       </View>
     </ScrollView>
   );
@@ -459,5 +564,92 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#dc2626',
+  },
+  statusCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  statusTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1f2937',
+    marginBottom: 16,
+  },
+  statusContent: {
+    alignItems: 'center',
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginBottom: 12,
+    gap: 8,
+  },
+  statusBadgePending: {
+    backgroundColor: '#fef3c7',
+  },
+  statusBadgeAccepted: {
+    backgroundColor: '#d1fae5',
+  },
+  statusBadgeDeclined: {
+    backgroundColor: '#fee2e2',
+  },
+  statusBadgeCancelled: {
+    backgroundColor: '#f3f4f6',
+  },
+  statusTextPending: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#f59e0b',
+  },
+  statusTextAccepted: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#10b981',
+  },
+  statusTextDeclined: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#ef4444',
+  },
+  statusTextCancelled: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#6b7280',
+  },
+  respondedAtText: {
+    fontSize: 14,
+    color: '#6b7280',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  responseNoteContainer: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+    width: '100%',
+  },
+  responseNoteLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6b7280',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 8,
+  },
+  responseNoteText: {
+    fontSize: 14,
+    color: '#4b5563',
+    lineHeight: 20,
   },
 });
