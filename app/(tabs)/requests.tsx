@@ -13,10 +13,9 @@ import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { logger } from '@/utils/logger';
 import { safeParseJSON, validateMentorshipRequestSchema } from '@/utils/schemaValidation';
-import { hybridGetUserMeetings } from '@/services/hybridMeetingService';
 import { hybridGetAllRequestsForUser } from '@/services/hybridRequestService';
 import { hybridGetUserConversations } from '@/services/hybridMessageService';
-import { Meeting, Conversation } from '@/types/types';
+import { Conversation } from '@/types/types';
 
 interface MentorshipRequest {
   id: string;
@@ -34,10 +33,12 @@ interface MentorshipRequest {
 /**
  * Requests Tab Component
  * 
- * Manages mentorship requests, meetings, and conversations with three tabs:
- * - Incoming: Requests/meetings received from others, conversations with unread messages
- * - Sent: Requests/meetings sent to others, conversations where you sent last message
- * - Processed: Accepted/declined requests and meetings, all conversations
+ * Manages mentorship requests and conversations with three tabs:
+ * - Incoming: Requests received from others, conversations with unread messages
+ * - Sent: Requests sent to others, conversations where you sent last message
+ * - Processed: Accepted/declined requests, all conversations
+ * 
+ * Note: Meetings are now managed in a separate Meetings tab.
  * 
  * Features:
  * - Accept/decline functionality
@@ -51,7 +52,6 @@ interface MentorshipRequest {
  */
 type RequestItem = 
   | { type: 'mentorship'; data: MentorshipRequest }
-  | { type: 'meeting'; data: Meeting }
   | { type: 'conversation'; data: Conversation };
 
 export default function RequestsScreen() {
@@ -124,40 +124,6 @@ export default function RequestsScreen() {
           return dateB - dateA; // Most recent first
         });
 
-        // Load meetings and combine with requests
-        let allMeetings: Meeting[] = [];
-        try {
-          allMeetings = await hybridGetUserMeetings(userEmail);
-          logger.info('Meetings loaded for requests tab', { count: allMeetings.length });
-        } catch (error) {
-          logger.warn('Failed to load meetings for requests tab', {
-            error: error instanceof Error ? error.message : String(error),
-          });
-          // Continue with empty meetings array if loading fails
-          allMeetings = [];
-        }
-        
-        // Separate meetings by status and role
-        const incomingMeetings = allMeetings
-          .filter(m => m.participantEmail === userEmail && m.status === 'pending')
-          .map(m => ({ type: 'meeting' as const, data: m }));
-        
-        const outgoingMeetings = allMeetings
-          .filter(m => m.organizerEmail === userEmail && m.status === 'pending')
-          .map(m => ({ type: 'meeting' as const, data: m }));
-        
-        const processedMeetings = allMeetings
-          .filter(m => 
-            (m.status === 'accepted' || m.status === 'declined' || m.status === 'cancelled') &&
-            (m.organizerEmail === userEmail || m.participantEmail === userEmail)
-          )
-          .sort((a, b) => {
-            const dateA = new Date(a.respondedAt || a.updatedAt || a.createdAt).getTime();
-            const dateB = new Date(b.respondedAt || b.updatedAt || b.createdAt).getTime();
-            return dateB - dateA;
-          })
-          .map(m => ({ type: 'meeting' as const, data: m }));
-        
         // Load conversations and organize them
         let allConversations: Conversation[] = [];
         try {
@@ -200,7 +166,6 @@ export default function RequestsScreen() {
         // Combine all items
         const combinedIncoming = [
           ...incoming.map(r => ({ type: 'mentorship' as const, data: r })),
-          ...incomingMeetings,
           ...incomingConversations,
         ].sort((a, b) => {
           const dateA = a.type === 'conversation'
@@ -214,7 +179,6 @@ export default function RequestsScreen() {
         
         const combinedOutgoing = [
           ...outgoing.map(r => ({ type: 'mentorship' as const, data: r })),
-          ...outgoingMeetings,
           ...sentConversations,
         ].sort((a, b) => {
           const dateA = a.type === 'conversation'
@@ -228,7 +192,6 @@ export default function RequestsScreen() {
         
         const combinedProcessed = [
           ...processed.map(r => ({ type: 'mentorship' as const, data: r })),
-          ...processedMeetings,
           ...processedConversations,
         ].sort((a, b) => {
           const dateA = a.type === 'conversation'
@@ -365,88 +328,7 @@ export default function RequestsScreen() {
     );
   }, [userEmail, getOtherParticipant, formatTime, router]);
 
-  const renderMeetingItem = useCallback(({ item }: { item: Meeting }) => {
-    const isReceiver = item.participantEmail === userEmail;
-    const otherPerson = isReceiver 
-      ? { name: item.organizerName, email: item.organizerEmail }
-      : { name: item.participantName, email: item.participantEmail };
-    
-    const meetingDate = new Date(item.date);
-    const dateStr = meetingDate.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric',
-      year: 'numeric'
-    });
-    const timeStr = meetingDate.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    });
-    
-    return (
-      <View style={styles.requestCard}>
-        <View style={styles.requestHeader}>
-          <View style={[styles.avatar, { backgroundColor: '#10b981' }]}>
-            <Ionicons name="calendar" size={24} color="#fff" />
-          </View>
-          <View style={styles.requestInfo}>
-            <Text style={styles.requestName}>{item.title}</Text>
-            <Text style={styles.requestEmail}>
-              {isReceiver ? `From: ${otherPerson.name}` : `To: ${otherPerson.name}`}
-            </Text>
-            <Text style={styles.requestDate}>
-              {dateStr} at {timeStr}
-            </Text>
-          </View>
-        </View>
-
-        {item.description && (
-          <View style={styles.noteContainer}>
-            <Text style={styles.noteLabel}>Description:</Text>
-            <Text style={styles.noteText}>{item.description}</Text>
-          </View>
-        )}
-
-        {item.status === 'pending' && isReceiver && (
-          <View style={styles.actions}>
-            <TouchableOpacity
-              style={[styles.actionButton, styles.acceptButton]}
-              onPress={() => router.push({
-                pathname: '/meeting/respond',
-                params: { meetingId: item.id },
-              })}
-              accessibilityLabel={`Respond to meeting request from ${otherPerson.name}`}
-            >
-              <Ionicons name="checkmark-circle" size={20} color="#fff" />
-              <Text style={styles.acceptButtonText}>Respond</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {item.status === 'accepted' && (
-          <View style={styles.statusContainer}>
-            <View style={[styles.statusBadge, styles.statusBadgeAccepted]}>
-              <Ionicons name="checkmark-circle" size={16} color="#10b981" />
-              <Text style={styles.statusTextAccepted}>Accepted</Text>
-            </View>
-          </View>
-        )}
-
-        {item.status === 'declined' && (
-          <View style={styles.statusContainer}>
-            <View style={[styles.statusBadge, styles.statusBadgeDeclined]}>
-              <Ionicons name="close-circle" size={16} color="#ef4444" />
-              <Text style={styles.statusTextDeclined}>Declined</Text>
-            </View>
-          </View>
-        )}
-      </View>
-    );
-  }, [userEmail, router]);
-
   const renderIncomingRequest = useCallback(({ item }: { item: RequestItem }) => {
-    if (item.type === 'meeting') {
-      return renderMeetingItem({ item: item.data });
-    }
     if (item.type === 'conversation') {
       return renderConversationItem({ item: item.data });
     }
@@ -498,12 +380,9 @@ export default function RequestsScreen() {
         </View>
       </View>
     );
-  }, [handleAccept, handleDecline, renderMeetingItem, renderConversationItem]);
+  }, [handleAccept, handleDecline, renderConversationItem]);
 
   const renderOutgoingRequest = useCallback(({ item }: { item: RequestItem }) => {
-    if (item.type === 'meeting') {
-      return renderMeetingItem({ item: item.data });
-    }
     if (item.type === 'conversation') {
       return renderConversationItem({ item: item.data });
     }
@@ -562,12 +441,9 @@ export default function RequestsScreen() {
           )}
         </View>
       );
-  }, [renderMeetingItem, renderConversationItem]);
+  }, [renderConversationItem]);
 
   const renderProcessedRequest = useCallback(({ item }: { item: RequestItem }) => {
-    if (item.type === 'meeting') {
-      return renderMeetingItem({ item: item.data });
-    }
     if (item.type === 'conversation') {
       return renderConversationItem({ item: item.data });
     }
