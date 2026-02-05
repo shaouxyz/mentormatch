@@ -176,17 +176,6 @@ describe('End-to-End User Journey Tests', () => {
 
       it('UJ1.4: Sign Up with Valid Information', async () => {
         const mockUser = { email: 'newuser@example.com' };
-        const mockInvitationCode = {
-          id: 'code1',
-          code: 'ABC12345',
-          createdBy: 'admin@example.com',
-          isUsed: false,
-          createdAt: new Date().toISOString(),
-        };
-
-        mockInvitationCodeService.isValidInvitationCode.mockResolvedValue(true);
-        // Signup expects `useInvitationCode(...)` to resolve to a truthy boolean.
-        mockInvitationCodeService.useInvitationCode.mockResolvedValue(true as any);
         mockHybridAuthService.hybridSignUp.mockResolvedValue(mockUser);
 
         const { getByPlaceholderText, getByText } = render(<SignupScreen />);
@@ -194,48 +183,26 @@ describe('End-to-End User Journey Tests', () => {
         const emailInput = getByPlaceholderText('Enter your email');
         const passwordInput = getByPlaceholderText('Enter your password');
         const confirmPasswordInput = getByPlaceholderText('Confirm your password');
-        const invitationCodeInput = getByPlaceholderText('Enter invitation code');
 
         fireEvent.changeText(emailInput, 'newuser@example.com');
         fireEvent.changeText(passwordInput, 'SecurePass123!');
         fireEvent.changeText(confirmPasswordInput, 'SecurePass123!');
-        fireEvent.changeText(invitationCodeInput, 'ABC12345');
 
         fireEvent.press(getByText('Sign Up'));
 
         await waitFor(() => {
-          expect(mockInvitationCodeService.isValidInvitationCode).toHaveBeenCalledWith('ABC12345');
-          expect(mockInvitationCodeService.useInvitationCode).toHaveBeenCalledWith('ABC12345', 'newuser@example.com');
           expect(mockHybridAuthService.hybridSignUp).toHaveBeenCalledWith('newuser@example.com', 'SecurePass123!');
         }, { timeout: 5000 });
       });
 
-      it('UJ1.5: Sign Up with Invalid Invitation Code', async () => {
-        mockInvitationCodeService.isValidInvitationCode.mockResolvedValue(false);
-
-        const { getByPlaceholderText, getByText } = render(<SignupScreen />);
-
-        fireEvent.changeText(getByPlaceholderText('Enter your email'), 'newuser@example.com');
-        fireEvent.changeText(getByPlaceholderText('Enter your password'), 'SecurePass123!');
-        fireEvent.changeText(getByPlaceholderText('Confirm your password'), 'SecurePass123!');
-        fireEvent.changeText(getByPlaceholderText('Enter invitation code'), 'INVALID123');
-
-        fireEvent.press(getByText('Sign Up'));
-
-        await waitFor(() => {
-          expect(Alert.alert).toHaveBeenCalledWith('Error', expect.stringContaining('Invalid'));
-        }, { timeout: 3000 });
-      });
+      // Invitation codes are disabled by default; signup no longer requires them.
 
       it('UJ1.7: Sign Up with Weak Password', async () => {
-        mockInvitationCodeService.isValidInvitationCode.mockResolvedValue(true);
-        
         const { getByPlaceholderText, getByText } = render(<SignupScreen />);
 
         fireEvent.changeText(getByPlaceholderText('Enter your email'), 'newuser@example.com');
         fireEvent.changeText(getByPlaceholderText('Enter your password'), '123');
         fireEvent.changeText(getByPlaceholderText('Confirm your password'), '123');
-        fireEvent.changeText(getByPlaceholderText('Enter invitation code'), 'ABC12345');
 
         fireEvent.press(getByText('Sign Up'));
 
@@ -245,14 +212,11 @@ describe('End-to-End User Journey Tests', () => {
       });
 
       it('UJ1.8: Sign Up with Mismatched Passwords', async () => {
-        mockInvitationCodeService.isValidInvitationCode.mockResolvedValue(true);
-        
         const { getByPlaceholderText, getByText } = render(<SignupScreen />);
 
         fireEvent.changeText(getByPlaceholderText('Enter your email'), 'newuser@example.com');
         fireEvent.changeText(getByPlaceholderText('Enter your password'), 'SecurePass123!');
         fireEvent.changeText(getByPlaceholderText('Confirm your password'), 'DifferentPass123!');
-        fireEvent.changeText(getByPlaceholderText('Enter invitation code'), 'ABC12345');
 
         fireEvent.press(getByText('Sign Up'));
 
@@ -601,22 +565,12 @@ describe('End-to-End User Journey Tests', () => {
         createdAt: new Date().toISOString(),
       };
 
-      const mockInvitationCode = {
-        id: 'code1',
-        code: 'ABC12345',
-        createdBy: 'mentor@example.com',
-        isUsed: false,
-        createdAt: new Date().toISOString(),
-      };
-
       await AsyncStorage.setItem('user', JSON.stringify({ email: 'mentor@example.com' }));
       (mockHybridRequestService.hybridGetAllRequestsForUser as jest.Mock).mockResolvedValue({
         sent: [mockRequest],
         received: [],
         all: [mockRequest],
       });
-      mockInvitationCodeService.createInvitationCode.mockResolvedValue(mockInvitationCode);
-      mockInboxService.addInvitationCodeToInbox.mockResolvedValue(undefined);
 
       (expoRouter.useLocalSearchParams as jest.Mock).mockReturnValue({
         request: JSON.stringify(mockRequest),
@@ -634,12 +588,9 @@ describe('End-to-End User Journey Tests', () => {
       fireEvent.press(getByText('Accept'));
 
       await waitFor(() => {
-        expect(mockInvitationCodeService.createInvitationCode).toHaveBeenCalledWith('mentor@example.com');
-        expect(mockInboxService.addInvitationCodeToInbox).toHaveBeenCalledWith(
-          'mentor@example.com',
-          'ABC12345',
-          'mentor@example.com'
-        );
+        // Invitation codes are disabled by default, so no code should be generated.
+        expect(mockInvitationCodeService.createInvitationCode).not.toHaveBeenCalled();
+        expect(mockInboxService.addInvitationCodeToInbox).not.toHaveBeenCalled();
       }, { timeout: 3000 });
     });
 
