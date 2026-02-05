@@ -436,6 +436,17 @@ export default function MeetingResponseScreen() {
               <Text style={styles.descriptionText}>{meeting.description}</Text>
             </View>
           )}
+
+          {/* Add to Calendar Button */}
+          <TouchableOpacity
+            style={styles.addToCalendarButton}
+            onPress={showCalendarOptions}
+            accessibilityLabel="Add to calendar"
+            accessibilityHint="Tap to add this meeting to your phone calendar, Google Calendar, or Outlook"
+          >
+            <Ionicons name="calendar" size={20} color="#2563eb" />
+            <Text style={styles.addToCalendarButtonText}>Add to Calendar</Text>
+          </TouchableOpacity>
         </View>
 
         {isOrganizer ? (
