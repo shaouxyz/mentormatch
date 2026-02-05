@@ -550,6 +550,9 @@ const styles = StyleSheet.create({
     borderBottomColor: '#e2e8f0',
   },
   headerTitle: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#1e293b',
     fontSize: 28,
     fontWeight: 'bold',
     color: '#1e293b',

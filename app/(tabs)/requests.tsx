@@ -570,6 +570,10 @@ export default function RequestsScreen() {
     <View style={styles.container}>
       <StatusBar style="auto" />
       
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Messages & Requests</Text>
+      </View>
+      
       <View style={styles.tabContainer}>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'incoming' && styles.activeTab]}
@@ -686,7 +690,19 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f8fafc',
-    paddingTop: 20, // Add space at the top
+  },
+  header: {
+    paddingTop: 60,
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+  },
+  headerTitle: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#1e293b',
   },
   tabContainer: {
     flexDirection: 'row',

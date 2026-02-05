@@ -26,7 +26,9 @@ export default function TabsLayout() {
         },
         headerTintColor: '#1e293b',
         headerTitleStyle: {
+          fontSize: 32,
           fontWeight: 'bold',
+          color: '#1e293b',
         },
       }}
     >
