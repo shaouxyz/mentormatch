@@ -424,6 +424,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8fafc',
   },
   content: {
+    paddingTop: 20, // Add space at the top
     padding: 24,
   },
   section: {

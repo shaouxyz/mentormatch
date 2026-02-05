@@ -500,6 +500,7 @@ const styles = StyleSheet.create({
   },
   list: {
     padding: 16,
+    paddingTop: 20, // Add space at the top
   },
   meetingCard: {
     backgroundColor: '#fff',

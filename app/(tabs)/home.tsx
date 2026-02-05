@@ -592,6 +592,7 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   list: {
+    paddingTop: 20, // Add space at the top
     padding: 16,
   },
   profileCard: {

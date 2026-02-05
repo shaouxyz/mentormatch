@@ -648,7 +648,7 @@ export default function RequestsScreen() {
             ? item.data.id 
             : `meeting-${item.data.id}`
         }
-        contentContainerStyle={[styles.list, { paddingTop: 8 }]}
+        contentContainerStyle={[styles.list, { paddingTop: 20 }]}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
@@ -734,6 +734,7 @@ const styles = StyleSheet.create({
   },
   list: {
     padding: 16,
+    paddingTop: 20, // Add space at the top
   },
   requestCard: {
     backgroundColor: '#fff',
