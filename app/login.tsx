@@ -133,24 +133,61 @@ export default function LoginScreen() {
       // Authenticate user with hybrid service (local + Firebase if configured)
       const user = await hybridSignIn(sanitizedEmail, password);
       
+      if (!user || !user.email) {
+        throw new Error('Authentication succeeded but user object is invalid');
+      }
+      
       // Reset rate limit on successful login
       await resetRateLimit(sanitizedEmail);
       
       // Set current user session
-      await setCurrentUser(user.email);
+      try {
+        await setCurrentUser(user.email);
+      } catch (setUserError) {
+        logger.error('Failed to set current user', {
+          error: setUserError instanceof Error ? setUserError.message : String(setUserError),
+          email: user.email
+        });
+        throw new Error(`Failed to set current user: ${setUserError instanceof Error ? setUserError.message : String(setUserError)}`);
+      }
       
       // Start session
-      await startSession();
+      try {
+        await startSession();
+      } catch (sessionError) {
+        logger.error('Failed to start session', {
+          error: sessionError instanceof Error ? sessionError.message : String(sessionError),
+          email: user.email
+        });
+        throw new Error(`Failed to start session: ${sessionError instanceof Error ? sessionError.message : String(sessionError)}`);
+      }
       
       // Store user data for backward compatibility (without password)
-      await AsyncStorage.setItem('user', JSON.stringify({
-        email: user.email,
-        id: user.id,
-        createdAt: user.createdAt,
-      }));
+      try {
+        await AsyncStorage.setItem('user', JSON.stringify({
+          email: user.email,
+          id: user.id,
+          createdAt: user.createdAt,
+        }));
+      } catch (storageError) {
+        logger.error('Failed to store user data', {
+          error: storageError instanceof Error ? storageError.message : String(storageError),
+          email: user.email
+        });
+        // Don't throw - this is not critical for login
+      }
       
       // Check if profile exists (try Firebase first, then local)
-      let profile = await hybridGetProfile(user.email);
+      let profile: Profile | null = null;
+      try {
+        profile = await hybridGetProfile(user.email);
+      } catch (profileError) {
+        logger.warn('Failed to get profile, continuing without profile', {
+          error: profileError instanceof Error ? profileError.message : String(profileError),
+          email: user.email
+        });
+        // Don't throw - user can continue without profile
+      }
       
       // If profile exists locally but not in Firebase, try to sync it
       if (!profile) {
@@ -197,39 +234,81 @@ export default function LoginScreen() {
       
       if (profile) {
         // Save profile locally if retrieved from Firebase
-        await AsyncStorage.setItem('profile', JSON.stringify(profile));
-        
-        // Also add to allProfiles if not already there
-        const allProfilesData = await AsyncStorage.getItem('allProfiles');
-        let allProfiles: Profile[] = allProfilesData ? JSON.parse(allProfilesData) : [];
-        const existingIndex = allProfiles.findIndex((p) => p.email === profile.email);
-        if (existingIndex === -1) {
-          allProfiles.push(profile);
-          await AsyncStorage.setItem('allProfiles', JSON.stringify(allProfiles));
-          logger.info('Profile added to allProfiles after login', { email: user.email });
+        try {
+          await AsyncStorage.setItem('profile', JSON.stringify(profile));
+          
+          // Also add to allProfiles if not already there
+          const allProfilesData = await AsyncStorage.getItem('allProfiles');
+          let allProfiles: Profile[] = allProfilesData ? JSON.parse(allProfilesData) : [];
+          const existingIndex = allProfiles.findIndex((p) => p.email === profile.email);
+          if (existingIndex === -1) {
+            allProfiles.push(profile);
+            await AsyncStorage.setItem('allProfiles', JSON.stringify(allProfiles));
+            logger.info('Profile added to allProfiles after login', { email: user.email });
+          }
+          
+          logger.info('Profile loaded and saved locally after login', { email: user.email });
+        } catch (profileStorageError) {
+          logger.warn('Failed to save profile locally, continuing anyway', {
+            error: profileStorageError instanceof Error ? profileStorageError.message : String(profileStorageError),
+            email: user.email
+          });
+          // Don't throw - user can continue
         }
         
-        logger.info('Profile loaded and saved locally after login', { email: user.email });
-        router.replace('/(tabs)/home');
+        try {
+          router.replace('/(tabs)/home');
+        } catch (navError) {
+          logger.error('Failed to navigate to home', {
+            error: navError instanceof Error ? navError.message : String(navError),
+            email: user.email
+          });
+          throw new Error(`Failed to navigate: ${navError instanceof Error ? navError.message : String(navError)}`);
+        }
       } else {
         logger.info('No profile found, redirecting to profile creation', { email: user.email });
-        router.replace('/profile/create');
+        try {
+          router.replace('/profile/create');
+        } catch (navError) {
+          logger.error('Failed to navigate to profile creation', {
+            error: navError instanceof Error ? navError.message : String(navError),
+            email: user.email
+          });
+          throw new Error(`Failed to navigate: ${navError instanceof Error ? navError.message : String(navError)}`);
+        }
       }
     } catch (error) {
       // Handle authentication failure
       const sanitizedEmail = sanitizeEmail(email);
       
       // Log detailed error information for debugging
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      // Handle cases where error might be undefined, null, or not an Error object
+      let errorMessage = 'Unknown error';
+      if (error === null || error === undefined) {
+        errorMessage = 'Error object is null or undefined';
+        logger.error('Login failed with null/undefined error', {
+          email: sanitizedEmail,
+          errorType: typeof error,
+          errorValue: error,
+        });
+      } else if (error instanceof Error) {
+        errorMessage = error.message || 'Error without message';
+      } else {
+        errorMessage = String(error);
+      }
+      
       const firebaseErrorCode = (error as any)?.firebaseErrorCode;
       const firebaseError = (error as any)?.firebaseError;
       
       logger.error('Login failed', {
         email: sanitizedEmail,
         error: errorMessage,
+        errorType: typeof error,
+        errorConstructor: error?.constructor?.name,
         firebaseErrorCode,
         firebaseError,
         fullError: error,
+        errorString: String(error),
       });
       
       // Increment rate limit on failed attempt
