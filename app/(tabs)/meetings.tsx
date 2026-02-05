@@ -220,8 +220,10 @@ export default function MeetingsScreen() {
               params: { meetingId: item.id },
             });
           } else if (item.status === 'accepted') {
+            // For accepted meetings, use the respond screen to view details
             router.push({
-              pathname: '/meeting/upcoming',
+              pathname: '/meeting/respond',
+              params: { meetingId: item.id },
             });
           }
         }}
