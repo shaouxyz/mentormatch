@@ -18,7 +18,8 @@ import {
   orderBy,
   onSnapshot,
 } from 'firebase/firestore';
-import { getFirebaseFirestore } from '@/config/firebase.config';
+import { getAuth } from 'firebase/auth';
+import { getFirebaseFirestore, getFirebaseApp } from '@/config/firebase.config';
 import { Meeting } from '@/types/types';
 import { logger } from '@/utils/logger';
 
@@ -118,6 +119,30 @@ export async function getMeeting(meetingId: string): Promise<Meeting | null> {
  */
 export async function updateMeeting(meetingId: string, updates: Partial<Meeting>): Promise<void> {
   try {
+    // Check authentication status before attempting update
+    let authStatus = { isAuthenticated: false, email: null as string | null, uid: null as string | null };
+    try {
+      const app = getFirebaseApp();
+      const auth = getAuth(app);
+      const currentUser = auth.currentUser;
+      authStatus = {
+        isAuthenticated: !!currentUser,
+        email: currentUser?.email || null,
+        uid: currentUser?.uid || null,
+      };
+      logger.info('Firebase auth status before meeting update', authStatus);
+    } catch (authCheckError) {
+      logger.warn('Could not check Firebase auth status', {
+        error: authCheckError instanceof Error ? authCheckError.message : String(authCheckError),
+      });
+    }
+    
+    if (!authStatus.isAuthenticated) {
+      const error = new Error('User not authenticated in Firebase. Please log in again.');
+      logger.error('Cannot update meeting: user not authenticated', { meetingId, authStatus });
+      throw error;
+    }
+    
     const db = getFirebaseFirestore();
     const meetingRef = doc(db, MEETINGS_COLLECTION, meetingId);
     
@@ -125,21 +150,60 @@ export async function updateMeeting(meetingId: string, updates: Partial<Meeting>
     const meetingSnap = await getDoc(meetingRef);
     if (!meetingSnap.exists()) {
       const error = new Error(`Meeting not found in Firestore: ${meetingId}`);
-      logger.error('Meeting not found in Firestore before update', { meetingId });
+      logger.error('Meeting not found in Firestore before update', { meetingId, authStatus });
       throw error;
     }
     
     // Verify user has permission (organizer or participant)
     const meetingData = meetingSnap.data() as Meeting;
-    // Note: Actual permission check is done by Firestore security rules
-    // This is just for logging/debugging
+    const userEmail = authStatus.email;
+    const isOrganizer = meetingData.organizerEmail === userEmail;
+    const isParticipant = meetingData.participantEmail === userEmail;
     
-    await updateDoc(meetingRef, {
-      ...updates,
-      updatedAt: new Date().toISOString(),
+    logger.info('Meeting update permission check', {
+      meetingId,
+      userEmail,
+      organizerEmail: meetingData.organizerEmail,
+      participantEmail: meetingData.participantEmail,
+      isOrganizer,
+      isParticipant,
+      canUpdate: isOrganizer || isParticipant,
     });
     
-    logger.info('Meeting updated in Firestore', { meetingId, updates });
+    if (!isOrganizer && !isParticipant) {
+      const error = new Error(`User ${userEmail} is not authorized to update this meeting. Must be organizer or participant.`);
+      logger.error('Permission denied: user is not organizer or participant', {
+        meetingId,
+        userEmail,
+        organizerEmail: meetingData.organizerEmail,
+        participantEmail: meetingData.participantEmail,
+      });
+      throw error;
+    }
+    
+    // Note: Actual permission check is also done by Firestore security rules
+    // This client-side check is for better error messages and debugging
+    
+    // Filter out undefined values (Firestore doesn't allow undefined)
+    const updateData: any = {
+      updatedAt: new Date().toISOString(),
+    };
+    
+    for (const [key, value] of Object.entries(updates)) {
+      if (value !== undefined) {
+        updateData[key] = value;
+      }
+    }
+    
+    await updateDoc(meetingRef, updateData);
+    
+    logger.info('Meeting updated in Firestore successfully', { 
+      meetingId, 
+      updates,
+      userEmail,
+      isOrganizer,
+      isParticipant,
+    });
   } catch (error) {
     // Enhanced error logging with Firebase error codes
     const firebaseError = error as any;

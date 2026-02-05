@@ -83,11 +83,16 @@ export default function MeetingResponseScreen() {
     try {
       setResponding(true);
 
-      const updateData = {
+      const updateData: Partial<Meeting> = {
         status: accepted ? 'accepted' : 'declined',
-        responseNote: responseNote ? sanitizeTextField(responseNote) : undefined,
         respondedAt: new Date().toISOString(),
       };
+      
+      // Only include responseNote if it has a value (Firestore doesn't allow undefined)
+      if (responseNote && responseNote.trim()) {
+        updateData.responseNote = sanitizeTextField(responseNote);
+      }
+      
       await hybridUpdateMeeting(meetingId, updateData);
 
       // Schedule notifications if accepted, cancel if declined
