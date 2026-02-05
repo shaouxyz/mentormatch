@@ -189,6 +189,146 @@ export default function MeetingResponseScreen() {
     });
   };
 
+  const requestCalendarPermissions = async (): Promise<boolean> => {
+    try {
+      const { status } = await Calendar.requestCalendarPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission Denied',
+          'Calendar permission is required to add events to your calendar.'
+        );
+        return false;
+      }
+      return true;
+    } catch (error) {
+      logger.error('Error requesting calendar permissions', error instanceof Error ? error : new Error(String(error)));
+      return false;
+    }
+  };
+
+  const getDefaultCalendar = async (): Promise<string | null> => {
+    try {
+      const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
+      const defaultCalendar = calendars.find(cal => cal.allowsModifications) || calendars[0];
+      return defaultCalendar?.id || null;
+    } catch (error) {
+      logger.error('Error getting calendars', error instanceof Error ? error : new Error(String(error)));
+      return null;
+    }
+  };
+
+  const addToPhoneCalendar = async () => {
+    if (!meeting) return;
+    
+    try {
+      const hasPermission = await requestCalendarPermissions();
+      if (!hasPermission) return;
+
+      const calendarId = await getDefaultCalendar();
+      if (!calendarId) {
+        Alert.alert('Error', 'No calendar found');
+        return;
+      }
+
+      const meetingDate = new Date(meeting.date);
+      const endDate = new Date(meetingDate.getTime() + meeting.duration * 60000);
+
+      const eventDetails: Calendar.Event = {
+        title: meeting.title,
+        notes: meeting.description || '',
+        startDate: meetingDate,
+        endDate: endDate,
+        location: meeting.locationType === 'virtual' ? meeting.meetingLink : meeting.location,
+        alarms: [
+          { relativeOffset: -15 }, // 15 minutes before
+          { relativeOffset: -60 }, // 1 hour before
+        ],
+      };
+
+      await Calendar.createEventAsync(calendarId, eventDetails);
+      Alert.alert('Success', 'Event added to your calendar!');
+      logger.info('Meeting added to phone calendar', { meetingId: meeting.id });
+    } catch (error) {
+      logger.error('Error adding to phone calendar', error instanceof Error ? error : new Error(String(error)));
+      Alert.alert('Error', 'Failed to add event to calendar');
+    }
+  };
+
+  const exportToGoogleCalendar = () => {
+    if (!meeting) return;
+    
+    try {
+      const meetingDate = new Date(meeting.date);
+      const endDate = new Date(meetingDate.getTime() + meeting.duration * 60000);
+
+      const formatDateForGoogle = (date: Date) => {
+        return date.toISOString().replace(/-|:|\.\d+/g, '');
+      };
+
+      const location = meeting.locationType === 'virtual' 
+        ? meeting.meetingLink 
+        : meeting.location;
+
+      const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(meeting.title)}&dates=${formatDateForGoogle(meetingDate)}/${formatDateForGoogle(endDate)}&details=${encodeURIComponent(meeting.description || '')}&location=${encodeURIComponent(location || '')}`;
+
+      Linking.openURL(url);
+      logger.info('Opening Google Calendar link', { meetingId: meeting.id });
+    } catch (error) {
+      logger.error('Error opening Google Calendar', error instanceof Error ? error : new Error(String(error)));
+      Alert.alert('Error', 'Failed to open Google Calendar');
+    }
+  };
+
+  const exportToOutlook = () => {
+    if (!meeting) return;
+    
+    try {
+      const meetingDate = new Date(meeting.date);
+      const endDate = new Date(meetingDate.getTime() + meeting.duration * 60000);
+
+      const formatDateForOutlook = (date: Date) => {
+        return date.toISOString();
+      };
+
+      const location = meeting.locationType === 'virtual' 
+        ? meeting.meetingLink 
+        : meeting.location;
+
+      const url = `https://outlook.office.com/calendar/0/deeplink/compose?subject=${encodeURIComponent(meeting.title)}&startdt=${formatDateForOutlook(meetingDate)}&enddt=${formatDateForOutlook(endDate)}&body=${encodeURIComponent(meeting.description || '')}&location=${encodeURIComponent(location || '')}`;
+
+      Linking.openURL(url);
+      logger.info('Opening Outlook Calendar link', { meetingId: meeting.id });
+    } catch (error) {
+      logger.error('Error opening Outlook Calendar', error instanceof Error ? error : new Error(String(error)));
+      Alert.alert('Error', 'Failed to open Outlook Calendar');
+    }
+  };
+
+  const showCalendarOptions = () => {
+    Alert.alert(
+      'Add to Calendar',
+      'Choose where to add this meeting:',
+      [
+        {
+          text: 'Phone Calendar',
+          onPress: addToPhoneCalendar,
+        },
+        {
+          text: 'Google Calendar',
+          onPress: exportToGoogleCalendar,
+        },
+        {
+          text: 'Outlook/Hotmail',
+          onPress: exportToOutlook,
+        },
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+      ]
+    );
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
