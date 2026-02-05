@@ -376,6 +376,15 @@ export default function MeetingResponseScreen() {
           </View>
 
           <View style={styles.detailRow}>
+            <Ionicons name="people" size={24} color="#2563eb" />
+            <View style={styles.detailContent}>
+              <Text style={styles.detailLabel}>Participant</Text>
+              <Text style={styles.detailValue}>{meeting.participantName}</Text>
+              <Text style={styles.detailSubValue}>{meeting.participantEmail}</Text>
+            </View>
+          </View>
+
+          <View style={styles.detailRow}>
             <Ionicons name="calendar" size={24} color="#2563eb" />
             <View style={styles.detailContent}>
               <Text style={styles.detailLabel}>Date</Text>
