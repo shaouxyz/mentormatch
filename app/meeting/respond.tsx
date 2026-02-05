@@ -14,10 +14,13 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  Linking,
+  Platform,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Calendar from 'expo-calendar';
 import { hybridGetMeeting, hybridUpdateMeeting } from '@/services/hybridMeetingService';
 import { scheduleMeetingNotifications, cancelMeetingNotifications } from '@/services/meetingNotificationService';
 import { Meeting } from '@/types/types';
@@ -210,7 +213,13 @@ export default function MeetingResponseScreen() {
           <Ionicons name="arrow-back" size={24} color="#1f2937" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Meeting Request</Text>
-        <View style={{ width: 24 }} />
+        <TouchableOpacity
+          onPress={showCalendarOptions}
+          accessibilityLabel="Add to calendar"
+          accessibilityHint="Tap to add this meeting to your calendar"
+        >
+          <Ionicons name="calendar-outline" size={24} color="#2563eb" />
+        </TouchableOpacity>
       </View>
 
       <View style={styles.content}>
