@@ -163,14 +163,25 @@ export async function hybridSignIn(email: string, password: string): Promise<any
             firebaseError: errorMessage,
             firebaseErrorCode: errorCode,
             localError: localErrorMessage,
+            userExistsLocally: !!localUserExists,
           });
           
-          // Create a more descriptive error message
-          const combinedError = new Error(
-            `Login failed: ${localErrorMessage}. ` +
-            `Firebase error: ${errorCode} - ${errorMessage}. ` +
-            `Please check your email and password, or sign up if you don't have an account.`
-          );
+          // Create a more descriptive error message based on what failed
+          let combinedErrorMessage: string;
+          if (!localUserExists) {
+            // User doesn't exist in either place
+            combinedErrorMessage = `User not found. Please sign up first or check your email address.`;
+          } else if (localErrorMessage.includes('password') || localErrorMessage.includes('incorrect')) {
+            // Password is wrong
+            combinedErrorMessage = `Incorrect password. Please check your password and try again.`;
+          } else {
+            // Generic error
+            combinedErrorMessage = `Login failed: ${localErrorMessage}. ` +
+              `Firebase error: ${errorCode} - ${errorMessage}. ` +
+              `Please check your email and password, or sign up if you don't have an account.`;
+          }
+          
+          const combinedError = new Error(combinedErrorMessage);
           (combinedError as any).firebaseErrorCode = errorCode;
           (combinedError as any).firebaseError = errorMessage;
           throw combinedError;

@@ -239,6 +239,13 @@ export default function LoginScreen() {
       // Create user-friendly error message
       let userMessage = ERROR_MESSAGES.INVALID_PASSWORD;
       
+      // Check if error message contains specific information
+      if (errorMessage.includes('User not found') || errorMessage.includes('does not exist')) {
+        userMessage = 'Email not found. Please sign up first or check your email address.';
+      } else if (errorMessage.includes('password') && (errorMessage.includes('incorrect') || errorMessage.includes('wrong'))) {
+        userMessage = 'Incorrect password. Please check your password and try again.';
+      }
+      
       // Add Firebase-specific error context if available
       if (firebaseErrorCode) {
         if (firebaseErrorCode === 'auth/user-not-found') {
@@ -246,7 +253,13 @@ export default function LoginScreen() {
         } else if (firebaseErrorCode === 'auth/wrong-password') {
           userMessage = 'Incorrect password. Please check your password and try again.';
         } else if (firebaseErrorCode === 'auth/invalid-credential') {
-          userMessage = 'Invalid email or password. Please check your credentials.';
+          // Invalid credential could mean user not found OR wrong password
+          // Check error message for more context
+          if (errorMessage.includes('User not found') || errorMessage.includes('does not exist')) {
+            userMessage = 'Email not found. Please sign up first or check your email address.';
+          } else {
+            userMessage = 'Invalid email or password. Please check your credentials.';
+          }
         } else if (firebaseErrorCode === 'auth/network-request-failed') {
           userMessage = 'Network error. Please check your internet connection and try again.';
         } else if (firebaseErrorCode === 'auth/too-many-requests') {
