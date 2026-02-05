@@ -362,7 +362,7 @@ export default function MeetingResponseScreen() {
         </TouchableOpacity>
       </View>
 
-      <View style={styles.content}>
+      <View style={[styles.content, { paddingTop: 20 }]}>
         <View style={styles.meetingCard}>
           <Text style={styles.meetingTitle}>{meeting.title}</Text>
           
