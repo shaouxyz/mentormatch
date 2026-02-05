@@ -20,6 +20,7 @@ import { sanitizeString } from '@/utils/security';
 import { safeParseJSON, validateMentorshipRequestSchema } from '@/utils/schemaValidation';
 import { createInvitationCode } from '@/services/invitationCodeService';
 import { addInvitationCodeToInbox } from '@/services/inboxService';
+import { config } from '@/utils/config';
 import { hybridUpdateRequestStatus } from '@/services/hybridRequestService';
 
 interface MentorshipRequest {
@@ -157,8 +158,8 @@ export default function RespondRequestScreen() {
       // Use hybrid service to update request status (updates locally and syncs to Firebase)
       await hybridUpdateRequestStatus(request.id, status, sanitizeString(responseNote.trim()));
       
-      // If accepted, generate a new invitation code for the mentor
-      if (status === 'accepted') {
+      // If accepted, generate a new invitation code for the mentor (only if invitation codes are enabled)
+      if (status === 'accepted' && config.features.enableInvitationCodes) {
         try {
           const userData = await AsyncStorage.getItem('user');
           if (!userData) {

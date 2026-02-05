@@ -51,6 +51,13 @@ export const config = {
     enableLogging: isDevelopment() || Constants.expoConfig?.extra?.enableLogging === true,
     enableErrorReporting: isProduction() && Constants.expoConfig?.extra?.enableErrorReporting !== false,
     enableAnalytics: Constants.expoConfig?.extra?.enableAnalytics === true,
+    /**
+     * Enable/disable invitation code requirement for signup
+     * Set to false to allow signup without invitation codes
+     * All invitation code functionality remains in code but is bypassed when disabled
+     */
+    enableInvitationCodes: Constants.expoConfig?.extra?.enableInvitationCodes !== false && 
+                           (process.env.EXPO_PUBLIC_ENABLE_INVITATION_CODES === 'true' || false),
   },
   
   // Security Settings
