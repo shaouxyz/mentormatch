@@ -643,11 +643,15 @@ export default function RequestsScreen() {
       <FlatList
         data={displayRequests}
         renderItem={getRenderFunction()}
-        keyExtractor={(item) => 
-          item.type === 'mentorship' 
-            ? item.data.id 
-            : `meeting-${item.data.id}`
-        }
+        keyExtractor={(item, index) => {
+          if (item.type === 'mentorship') {
+            return `mentorship-${item.data.id}`;
+          } else if (item.type === 'conversation') {
+            return `conversation-${item.data.id}`;
+          }
+          // Fallback to index if type is unknown
+          return `item-${index}`;
+        }}
         contentContainerStyle={[styles.list, { paddingTop: 20 }]}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />

@@ -239,7 +239,7 @@ export default function MeetingsScreen() {
         <View style={styles.meetingHeader}>
           <View style={[styles.avatar, { backgroundColor: item.status === 'accepted' ? '#10b981' : '#f59e0b' }]}>
             <Ionicons 
-              name={item.status === 'accepted' ? "calendar-check" : "calendar"} 
+              name={item.status === 'accepted' ? "checkmark-circle" : "calendar"} 
               size={24} 
               color="#fff" 
             />
