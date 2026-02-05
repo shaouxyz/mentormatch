@@ -179,19 +179,42 @@ describe('Firebase Meeting Service', () => {
 
   describe('updateMeeting', () => {
     it('should update meeting successfully', async () => {
+      // Mock getDoc to return existing meeting
+      mockFirestore.getDoc.mockResolvedValue({
+        exists: () => true,
+        data: () => mockMeeting,
+      });
+      
       await updateMeeting('meeting123', { status: 'accepted' });
 
       expect(mockFirestore.doc).toHaveBeenCalledWith(mockDb, 'meetings', 'meeting123');
+      expect(mockFirestore.getDoc).toHaveBeenCalled(); // Check meeting exists first
       expect(mockFirestore.updateDoc).toHaveBeenCalled();
     });
 
     it('should include updatedAt timestamp', async () => {
+      // Mock getDoc to return existing meeting
+      mockFirestore.getDoc.mockResolvedValue({
+        exists: () => true,
+        data: () => mockMeeting,
+      });
+      
       await updateMeeting('meeting123', { status: 'accepted' });
 
       const updateDocCall = mockFirestore.updateDoc.mock.calls[0];
       const updateData = updateDocCall[1];
       expect(updateData.updatedAt).toBeTruthy();
       expect(updateData.status).toBe('accepted');
+    });
+    
+    it('should throw error when meeting does not exist', async () => {
+      // Mock getDoc to return non-existent meeting
+      mockFirestore.getDoc.mockResolvedValue({
+        exists: () => false,
+      });
+      
+      await expect(updateMeeting('nonexistent', { status: 'accepted' })).rejects.toThrow('Meeting not found in Firestore');
+      expect(mockFirestore.updateDoc).not.toHaveBeenCalled();
     });
 
     it('should handle errors and throw', async () => {

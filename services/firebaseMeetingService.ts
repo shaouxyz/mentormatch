@@ -121,14 +121,35 @@ export async function updateMeeting(meetingId: string, updates: Partial<Meeting>
     const db = getFirebaseFirestore();
     const meetingRef = doc(db, MEETINGS_COLLECTION, meetingId);
     
+    // Check if meeting exists first
+    const meetingSnap = await getDoc(meetingRef);
+    if (!meetingSnap.exists()) {
+      const error = new Error(`Meeting not found in Firestore: ${meetingId}`);
+      logger.error('Meeting not found in Firestore before update', { meetingId });
+      throw error;
+    }
+    
+    // Verify user has permission (organizer or participant)
+    const meetingData = meetingSnap.data() as Meeting;
+    // Note: Actual permission check is done by Firestore security rules
+    // This is just for logging/debugging
+    
     await updateDoc(meetingRef, {
       ...updates,
       updatedAt: new Date().toISOString(),
     });
     
-    logger.info('Meeting updated in Firestore', { meetingId });
+    logger.info('Meeting updated in Firestore', { meetingId, updates });
   } catch (error) {
-    logger.error('Error updating meeting in Firestore', error instanceof Error ? error : new Error(String(error)));
+    // Enhanced error logging with Firebase error codes
+    const firebaseError = error as any;
+    logger.error('Error updating meeting in Firestore', {
+      meetingId,
+      error: error instanceof Error ? error.message : String(error),
+      errorCode: firebaseError?.code,
+      errorName: firebaseError?.name,
+      errorStack: error instanceof Error ? error.stack : undefined,
+    });
     throw error;
   }
 }

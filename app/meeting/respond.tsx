@@ -113,8 +113,31 @@ export default function MeetingResponseScreen() {
 
       logger.info('Meeting response submitted', { meetingId, accepted });
     } catch (error) {
-      logger.error('Error responding to meeting', error instanceof Error ? error : new Error(String(error)));
-      Alert.alert('Error', 'Failed to respond to meeting. Please try again.');
+      // Enhanced error logging with Firebase error details
+      const firebaseError = error as any;
+      const errorMessage = firebaseError?.message || (error instanceof Error ? error.message : String(error));
+      const errorCode = firebaseError?.code;
+      
+      logger.error('Error responding to meeting', {
+        meetingId,
+        accepted,
+        error: errorMessage,
+        errorCode,
+        errorName: firebaseError?.name,
+        errorStack: error instanceof Error ? error.stack : undefined,
+      });
+      
+      // Provide more specific error messages based on Firebase error codes
+      let userMessage = 'Failed to respond to meeting. Please try again.';
+      if (errorCode === 'permission-denied') {
+        userMessage = 'You do not have permission to update this meeting. Please check your authentication.';
+      } else if (errorCode === 'not-found' || errorMessage.includes('not found')) {
+        userMessage = 'Meeting not found. It may have been deleted or does not exist in Firebase.';
+      } else if (errorCode === 'unavailable' || errorMessage.includes('network')) {
+        userMessage = 'Network error. Please check your internet connection and try again.';
+      }
+      
+      Alert.alert('Error', userMessage);
     } finally {
       setResponding(false);
     }

@@ -161,7 +161,7 @@ describe('Hybrid Meeting Service', () => {
       expect(meetings[0].updatedAt).toBeTruthy();
     });
 
-    it('should update meeting locally first, then sync to Firebase when configured', async () => {
+    it('should update meeting via Firebase first, then sync locally when configured', async () => {
       mockFirebaseConfig.isFirebaseConfigured.mockReturnValue(true);
       const localMeeting: Meeting = { ...mockMeeting, id: 'firebase123' };
       await AsyncStorage.setItem('meetings', JSON.stringify([localMeeting]));
@@ -169,68 +169,84 @@ describe('Hybrid Meeting Service', () => {
       
       await hybridUpdateMeeting('firebase123', { status: 'accepted' });
       
-      // Should update locally first
+      // Should try Firebase first
+      expect(mockFirebaseMeetingService.updateMeeting).toHaveBeenCalledWith('firebase123', { status: 'accepted' });
+      
+      // Then sync locally
       const meetingsData = await AsyncStorage.getItem('meetings');
       const meetings = JSON.parse(meetingsData || '[]');
       expect(meetings[0].status).toBe('accepted');
-      
-      // Then sync to Firebase
-      expect(mockFirebaseMeetingService.updateMeeting).toHaveBeenCalledWith('firebase123', { status: 'accepted' });
     });
 
     it('should throw error when meeting not found locally', async () => {
       await expect(hybridUpdateMeeting('nonexistent', { status: 'accepted' })).rejects.toThrow('Meeting not found');
     });
 
-    it('should continue with local update if Firebase sync fails', async () => {
+    it('should throw error when Firebase update fails (Firebase-first approach)', async () => {
       mockFirebaseConfig.isFirebaseConfigured.mockReturnValue(true);
       const localMeeting: Meeting = { ...mockMeeting, id: 'firebase123' };
       await AsyncStorage.setItem('meetings', JSON.stringify([localMeeting]));
-      mockFirebaseMeetingService.updateMeeting.mockRejectedValue(new Error('Firebase error'));
+      const firebaseError = new Error('Firebase permission denied');
+      (firebaseError as any).code = 'permission-denied';
+      mockFirebaseMeetingService.updateMeeting.mockRejectedValue(firebaseError);
       
-      // Should not throw - local update succeeds, Firebase fails but is logged
-      await hybridUpdateMeeting('firebase123', { status: 'accepted' });
+      // Should throw Firebase error (Firebase-first approach)
+      await expect(hybridUpdateMeeting('firebase123', { status: 'accepted' })).rejects.toThrow('Firebase permission denied');
       
-      // Local update should still succeed
+      // Should log Firebase error with details
+      expect(mockLogger.logger.error).toHaveBeenCalledWith(
+        'Firebase update meeting failed',
+        expect.objectContaining({
+          meetingId: 'firebase123',
+          errorCode: 'permission-denied',
+        })
+      );
+      
+      // Local storage should NOT be updated if Firebase fails
       const meetingsData = await AsyncStorage.getItem('meetings');
       const meetings = JSON.parse(meetingsData || '[]');
-      expect(meetings[0].status).toBe('accepted');
-      
-      // Should log warning about Firebase failure
-      expect(mockLogger.logger.warn).toHaveBeenCalledWith(
-        expect.stringContaining('Failed to sync meeting update to Firebase'),
-        expect.objectContaining({ meetingId: 'firebase123' })
-      );
+      expect(meetings[0].status).toBe('pending'); // Original status unchanged
     });
 
-    it('should throw error when meeting not found locally (before Firebase sync)', async () => {
+    it('should try Firebase first even if meeting not in local storage', async () => {
       mockFirebaseConfig.isFirebaseConfigured.mockReturnValue(true);
       // No meetings in local storage
       await AsyncStorage.setItem('meetings', JSON.stringify([]));
+      mockFirebaseMeetingService.updateMeeting.mockResolvedValue(undefined);
       
-      // Should throw because meeting not found locally
-      await expect(hybridUpdateMeeting('firebase123', { status: 'accepted' })).rejects.toThrow('Meeting not found');
+      // Should try Firebase first (Firebase-first approach)
+      await hybridUpdateMeeting('firebase123', { status: 'accepted' });
       
-      // Firebase should not be called if local update fails
-      expect(mockFirebaseMeetingService.updateMeeting).not.toHaveBeenCalled();
+      // Firebase should be called
+      expect(mockFirebaseMeetingService.updateMeeting).toHaveBeenCalledWith('firebase123', { status: 'accepted' });
+      
+      // Local storage remains empty (meeting not found locally, but Firebase update succeeded)
+      const meetingsData = await AsyncStorage.getItem('meetings');
+      const meetings = JSON.parse(meetingsData || '[]');
+      expect(meetings).toHaveLength(0);
     });
 
-    it('should continue with local update if Firebase sync fails with non-Error', async () => {
+    it('should throw error when Firebase fails with non-Error (Firebase-first approach)', async () => {
       mockFirebaseConfig.isFirebaseConfigured.mockReturnValue(true);
       const localMeeting: Meeting = { ...mockMeeting, id: 'firebase123' };
       await AsyncStorage.setItem('meetings', JSON.stringify([localMeeting]));
       mockFirebaseMeetingService.updateMeeting.mockRejectedValue('Firebase error string');
       
-      // Should not throw - local update succeeds, Firebase fails but is logged
-      await hybridUpdateMeeting('firebase123', { status: 'accepted' });
+      // Should throw Firebase error (Firebase-first approach)
+      await expect(hybridUpdateMeeting('firebase123', { status: 'accepted' })).rejects.toBe('Firebase error string');
       
-      // Local update should still succeed
+      // Should log Firebase error with details
+      expect(mockLogger.logger.error).toHaveBeenCalledWith(
+        'Firebase update meeting failed',
+        expect.objectContaining({
+          meetingId: 'firebase123',
+        })
+      );
+      
+      // Local storage should NOT be updated if Firebase fails
       const meetingsData = await AsyncStorage.getItem('meetings');
       const meetings = JSON.parse(meetingsData || '[]');
-      expect(meetings[0].status).toBe('accepted');
-      
-      // Should log warning about Firebase failure
-      expect(mockLogger.logger.warn).toHaveBeenCalled();
+      expect(meetings[0].status).toBe('pending'); // Original status unchanged
     });
   });
 
