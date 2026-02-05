@@ -62,6 +62,7 @@ jest.mock('@/services/hybridAuthService');
 jest.mock('@/services/hybridProfileService');
 jest.mock('@/services/hybridMeetingService');
 jest.mock('@/services/hybridMessageService');
+jest.mock('@/services/hybridRequestService');
 jest.mock('@/services/requestService');
 jest.mock('@/services/invitationCodeService');
 jest.mock('@/services/inboxService');
@@ -115,6 +116,7 @@ import * as hybridAuthService from '@/services/hybridAuthService';
 import * as hybridProfileService from '@/services/hybridProfileService';
 import * as hybridMeetingService from '@/services/hybridMeetingService';
 import * as hybridMessageService from '@/services/hybridMessageService';
+import * as hybridRequestService from '@/services/hybridRequestService';
 import * as requestService from '@/services/requestService';
 import * as invitationCodeService from '@/services/invitationCodeService';
 import * as inboxService from '@/services/inboxService';
@@ -124,6 +126,7 @@ const mockHybridAuthService = hybridAuthService as jest.Mocked<typeof hybridAuth
 const mockHybridProfileService = hybridProfileService as jest.Mocked<typeof hybridProfileService>;
 const mockHybridMeetingService = hybridMeetingService as jest.Mocked<typeof hybridMeetingService>;
 const mockHybridMessageService = hybridMessageService as jest.Mocked<typeof hybridMessageService>;
+const mockHybridRequestService = hybridRequestService as jest.Mocked<typeof hybridRequestService>;
 const mockRequestService = requestService as jest.Mocked<typeof requestService>;
 const mockInvitationCodeService = invitationCodeService as jest.Mocked<typeof invitationCodeService>;
 const mockInboxService = inboxService as jest.Mocked<typeof inboxService>;
@@ -607,7 +610,11 @@ describe('End-to-End User Journey Tests', () => {
       };
 
       await AsyncStorage.setItem('user', JSON.stringify({ email: 'mentor@example.com' }));
-      await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([mockRequest]));
+      (mockHybridRequestService.hybridGetAllRequestsForUser as jest.Mock).mockResolvedValue({
+        sent: [mockRequest],
+        received: [],
+        all: [mockRequest],
+      });
       mockInvitationCodeService.createInvitationCode.mockResolvedValue(mockInvitationCode);
       mockInboxService.addInvitationCodeToInbox.mockResolvedValue(undefined);
 
@@ -649,7 +656,11 @@ describe('End-to-End User Journey Tests', () => {
       };
 
       await AsyncStorage.setItem('user', JSON.stringify({ email: 'mentor@example.com' }));
-      await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([mockRequest]));
+      (mockHybridRequestService.hybridGetAllRequestsForUser as jest.Mock).mockResolvedValue({
+        sent: [mockRequest],
+        received: [],
+        all: [mockRequest],
+      });
 
       (expoRouter.useLocalSearchParams as jest.Mock).mockReturnValue({
         request: JSON.stringify(mockRequest),
@@ -695,7 +706,11 @@ describe('End-to-End User Journey Tests', () => {
       };
 
       await AsyncStorage.setItem('user', JSON.stringify({ email: 'user@example.com' }));
-      await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([mockAcceptedRequest]));
+      (mockHybridRequestService.hybridGetAllRequestsForUser as jest.Mock).mockResolvedValue({
+        sent: [],
+        received: [],
+        all: [mockAcceptedRequest],
+      });
       await AsyncStorage.setItem('allProfiles', JSON.stringify([mockMentorProfile]));
 
       const { getByText } = render(<MentorshipScreen />);

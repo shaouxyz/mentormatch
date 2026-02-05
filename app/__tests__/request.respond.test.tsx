@@ -34,9 +34,24 @@ jest.mock('@/services/firebaseRequestService', () => ({
   updateFirebaseRequest: jest.fn(),
 }));
 
-jest.mock('@/services/requestService', () => ({
-  updateRequestStatus: jest.fn(),
-  getAllRequests: jest.fn(),
+jest.mock('@/services/hybridRequestService', () => ({
+  hybridUpdateRequestStatus: jest.fn(async (requestId, status, responseNote) => {
+    // Actually update AsyncStorage to match real behavior
+    const AsyncStorage = require('@react-native-async-storage/async-storage');
+    const requestsData = await AsyncStorage.getItem('mentorshipRequests');
+    const requests = requestsData ? JSON.parse(requestsData) : [];
+    const requestIndex = requests.findIndex((r: any) => r.id === requestId);
+    if (requestIndex !== -1) {
+      requests[requestIndex] = {
+        ...requests[requestIndex],
+        status,
+        responseNote: responseNote?.trim() || undefined,
+        respondedAt: new Date().toISOString(),
+      };
+      await AsyncStorage.setItem('mentorshipRequests', JSON.stringify(requests));
+    }
+  }),
+  hybridGetAllRequestsForUser: jest.fn(),
 }));
 
 jest.mock('@/config/firebase.config', () => ({
@@ -78,6 +93,23 @@ describe('RespondRequestScreen', () => {
     (inboxService.addInvitationCodeToInbox as jest.Mock).mockResolvedValue(undefined);
     (firebaseRequestService.updateFirebaseRequest as jest.Mock).mockResolvedValue(undefined);
     (firebaseConfig.isFirebaseConfigured as jest.Mock).mockReturnValue(false);
+    // Reset hybrid service mock to default behavior (updates AsyncStorage)
+    const hybridRequestService = require('@/services/hybridRequestService');
+    (hybridRequestService.hybridUpdateRequestStatus as jest.Mock).mockImplementation(async (requestId, status, responseNote) => {
+      const AsyncStorage = require('@react-native-async-storage/async-storage');
+      const requestsData = await AsyncStorage.getItem('mentorshipRequests');
+      const requests = requestsData ? JSON.parse(requestsData) : [];
+      const requestIndex = requests.findIndex((r: any) => r.id === requestId);
+      if (requestIndex !== -1) {
+        requests[requestIndex] = {
+          ...requests[requestIndex],
+          status,
+          responseNote: responseNote?.trim() || undefined,
+          respondedAt: new Date().toISOString(),
+        };
+        await AsyncStorage.setItem('mentorshipRequests', JSON.stringify(requests));
+      }
+    });
     mockLogger.error = jest.fn();
     mockLogger.warn = jest.fn();
     mockLogger.info = jest.fn();
@@ -201,11 +233,13 @@ describe('RespondRequestScreen', () => {
 
     fireEvent.press(getByText('Accept'));
 
-    await waitFor(async () => {
-      const requestsData = await AsyncStorage.getItem('mentorshipRequests');
-      const requests = JSON.parse(requestsData || '[]');
-      // Request should still be accepted even if code generation fails
-      expect(requests[0]?.status).toBe('accepted');
+    await waitFor(() => {
+      const hybridRequestService = require('@/services/hybridRequestService');
+      expect(hybridRequestService.hybridUpdateRequestStatus).toHaveBeenCalledWith(
+        mockRequest.id,
+        'accepted',
+        expect.any(String)
+      );
     }, { timeout: 3000 });
 
     expect(mockRouter.back).toHaveBeenCalled();
@@ -538,25 +572,16 @@ describe('RespondRequestScreen', () => {
     fireEvent.press(getByText('Accept'));
 
     await waitFor(() => {
-      expect(firebaseRequestService.updateFirebaseRequest).toHaveBeenCalledWith(
+      const hybridRequestService = require('@/services/hybridRequestService');
+      expect(hybridRequestService.hybridUpdateRequestStatus).toHaveBeenCalledWith(
         'firebase123',
-        expect.objectContaining({
-          status: 'accepted',
-          responseNote: expect.any(String),
-          respondedAt: expect.any(String),
-        })
-      );
-      expect(mockLogger.info).toHaveBeenCalledWith(
-        'Request updated in Firebase',
-        expect.objectContaining({
-          requestId: 'firebase123',
-          status: 'accepted',
-        })
+        'accepted',
+        expect.any(String)
       );
     }, { timeout: 3000 });
   });
 
-  it('should not update Firebase request when request ID is local', async () => {
+  it('should update request even when request ID is local', async () => {
     const localRequest = {
       ...mockRequest,
       id: 'local_1234567890', // Local ID
@@ -572,11 +597,13 @@ describe('RespondRequestScreen', () => {
     fireEvent.press(getByText('Accept'));
 
     await waitFor(() => {
-      expect(firebaseRequestService.updateFirebaseRequest).not.toHaveBeenCalled();
+      const hybridRequestService = require('@/services/hybridRequestService');
+      // Hybrid service should still be called even for local requests
+      expect(hybridRequestService.hybridUpdateRequestStatus).toHaveBeenCalled();
     }, { timeout: 3000 });
   });
 
-  it('should not update Firebase request when Firebase is not configured', async () => {
+  it('should update request even when Firebase is not configured', async () => {
     const firebaseRequest = {
       ...mockRequest,
       id: 'firebase123',
@@ -592,20 +619,27 @@ describe('RespondRequestScreen', () => {
     fireEvent.press(getByText('Accept'));
 
     await waitFor(() => {
-      expect(firebaseRequestService.updateFirebaseRequest).not.toHaveBeenCalled();
+      const hybridRequestService = require('@/services/hybridRequestService');
+      // Hybrid service should still be called even when Firebase is not configured
+      expect(hybridRequestService.hybridUpdateRequestStatus).toHaveBeenCalled();
     }, { timeout: 3000 });
   });
 
-  it('should handle Firebase update error gracefully and continue with local update', async () => {
+  it('should handle update error gracefully and call error handler', async () => {
     const firebaseRequest = {
       ...mockRequest,
       id: 'firebase123',
     };
     mockParams.request = JSON.stringify(firebaseRequest);
     (firebaseConfig.isFirebaseConfigured as jest.Mock).mockReturnValue(true);
-    (firebaseRequestService.updateFirebaseRequest as jest.Mock).mockRejectedValue(
-      new Error('Firebase update failed')
+    const hybridRequestService = require('@/services/hybridRequestService');
+    
+    // Clear any previous mock implementations and set to throw error
+    (hybridRequestService.hybridUpdateRequestStatus as jest.Mock).mockClear();
+    (hybridRequestService.hybridUpdateRequestStatus as jest.Mock).mockImplementation(
+      () => Promise.reject(new Error('Update failed'))
     );
+    
     await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([firebaseRequest]));
 
     const { getByText } = render(<RespondRequestScreen />);
@@ -614,30 +648,26 @@ describe('RespondRequestScreen', () => {
 
     fireEvent.press(getByText('Accept'));
 
+    // Wait for error handling to complete
     await waitFor(() => {
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        'Failed to update request in Firebase, continuing with local only',
-        expect.objectContaining({
-          error: 'Firebase update failed',
-          requestId: 'firebase123',
-        })
+      // The hybrid service should have been called
+      expect(hybridRequestService.hybridUpdateRequestStatus).toHaveBeenCalled();
+      // Error handler should be called when update fails
+      expect(mockErrorHandler.handleStorageError).toHaveBeenCalledWith(
+        expect.any(Error),
+        'respond to request'
       );
-      // Should still update locally
-      expect(AsyncStorage.setItem).toHaveBeenCalled();
-    }, { timeout: 3000 });
+    }, { timeout: 5000 });
   });
 
   it('should handle storage error in handleRespond', async () => {
     await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([mockRequest]));
     
-    // Make AsyncStorage.setItem throw an error
-    const originalSetItem = AsyncStorage.setItem;
-    AsyncStorage.setItem = jest.fn().mockImplementation((key, value) => {
-      if (key === 'mentorshipRequests') {
-        return Promise.reject(new Error('Storage error'));
-      }
-      return originalSetItem(key, value);
-    });
+    // Make hybridUpdateRequestStatus throw an error
+    const hybridRequestService = require('@/services/hybridRequestService');
+    (hybridRequestService.hybridUpdateRequestStatus as jest.Mock).mockRejectedValue(
+      new Error('Storage error')
+    );
 
     const { getByText } = render(<RespondRequestScreen />);
 
@@ -646,14 +676,14 @@ describe('RespondRequestScreen', () => {
     fireEvent.press(getByText('Accept'));
 
     await waitFor(() => {
+      // The hybrid service should have been called
+      expect(hybridRequestService.hybridUpdateRequestStatus).toHaveBeenCalled();
+      // Error handler should be called
       expect(mockErrorHandler.handleStorageError).toHaveBeenCalledWith(
         expect.any(Error),
         'respond to request'
       );
     }, { timeout: 3000 });
-
-    // Restore
-    AsyncStorage.setItem = originalSetItem;
   });
 
   // Coverage holes tests - Section 26.14
@@ -664,8 +694,12 @@ describe('RespondRequestScreen', () => {
     // Set invalid request data that will cause parsing error
     await AsyncStorage.setItem('mentorshipRequests', JSON.stringify({ invalid: 'data' }));
 
-    const requestService = require('@/services/requestService');
-    requestService.getAllRequests.mockResolvedValue([]);
+    const hybridRequestService = require('@/services/hybridRequestService');
+    hybridRequestService.hybridGetAllRequestsForUser.mockResolvedValue({
+      sent: [],
+      received: [],
+      all: [],
+    });
 
     const screen = render(<RespondRequestScreen />);
 

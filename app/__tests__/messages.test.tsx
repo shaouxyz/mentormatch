@@ -23,6 +23,22 @@ jest.mock('../../services/hybridMessageService', () => ({
   generateConversationId: jest.fn((email1, email2) => `${email1}_${email2}`),
 }));
 
+// Mock hybridRequestService
+jest.mock('../../services/hybridRequestService', () => ({
+  hybridGetAllRequestsForUser: jest.fn(() => Promise.resolve({
+    sent: [],
+    received: [],
+    all: [],
+  })),
+}));
+
+// Mock hybridMeetingService
+jest.mock('../../services/hybridMeetingService', () => ({
+  hybridGetPendingMeetings: jest.fn(() => Promise.resolve([])),
+  hybridGetUserMeetings: jest.fn(() => Promise.resolve([])),
+  hybridGetUpcomingMeetings: jest.fn(() => Promise.resolve([])),
+}));
+
 const { hybridGetUserConversations } = require('../../services/hybridMessageService');
 
 describe('MessagesScreen', () => {
@@ -582,5 +598,35 @@ describe('MessagesScreen', () => {
       // This is tested implicitly through the component's refresh functionality
       expect(screen.root).toBeTruthy();
     });
+  });
+
+  it('should call loadConversations in useFocusEffect callback (line 117-120)', async () => {
+    await AsyncStorage.setItem('user', JSON.stringify({ email: 'test@example.com' }));
+    hybridGetUserConversations.mockResolvedValue([]);
+
+    const { useFocusEffect } = require('expo-router');
+    
+    // Get the callback from useFocusEffect
+    let focusCallback: (() => void) | undefined;
+    (useFocusEffect as jest.Mock).mockImplementation((callback: () => void) => {
+      focusCallback = callback;
+    });
+
+    render(<MessagesScreen />);
+
+    // Wait for component to mount and useFocusEffect to be called
+    await waitFor(() => {
+      expect(useFocusEffect).toHaveBeenCalled();
+    }, { timeout: 3000 });
+
+    // Trigger the callback manually to test line 117-120
+    if (focusCallback) {
+      focusCallback();
+    }
+
+    await waitFor(() => {
+      // loadConversations should be called via useFocusEffect callback (line 119)
+      expect(hybridGetUserConversations).toHaveBeenCalled();
+    }, { timeout: 3000 });
   });
 });

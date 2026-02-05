@@ -182,37 +182,6 @@ export default function RequestsScreen() {
         setIncomingRequests(combinedIncoming);
         setOutgoingRequests(combinedOutgoing);
         setProcessedRequests(combinedProcessed);
-      } else {
-        // Still load meetings even if no mentorship requests
-        let allMeetings: Meeting[] = [];
-        try {
-          allMeetings = await hybridGetUserMeetings(userEmail);
-          const incomingMeetings = allMeetings
-            .filter(m => m.participantEmail === userEmail && m.status === 'pending')
-            .map(m => ({ type: 'meeting' as const, data: m }));
-          const outgoingMeetings = allMeetings
-            .filter(m => m.organizerEmail === userEmail && m.status === 'pending')
-            .map(m => ({ type: 'meeting' as const, data: m }));
-          const processedMeetings = allMeetings
-            .filter(m => 
-              (m.status === 'accepted' || m.status === 'declined' || m.status === 'cancelled') &&
-              (m.organizerEmail === userEmail || m.participantEmail === userEmail)
-            )
-            .map(m => ({ type: 'meeting' as const, data: m }));
-          
-          setIncomingRequests(incomingMeetings);
-          setOutgoingRequests(outgoingMeetings);
-          setProcessedRequests(processedMeetings);
-        } catch (error) {
-          logger.warn('Failed to load meetings', {
-            error: error instanceof Error ? error.message : String(error),
-          });
-          // Set empty arrays but don't crash
-          setIncomingRequests([]);
-          setOutgoingRequests([]);
-          setProcessedRequests([]);
-        }
-      }
     } catch (error) {
       logger.error('Error loading requests', error instanceof Error ? error : new Error(String(error)));
     } finally {

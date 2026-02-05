@@ -5,9 +5,32 @@ import MentorshipScreen from '../(tabs)/mentorship';
 import * as expoRouter from 'expo-router';
 import * as logger from '@/utils/logger';
 
+// Mock hybridRequestService
+jest.mock('../../services/hybridRequestService', () => ({
+  hybridGetAllRequestsForUser: jest.fn(() => Promise.resolve({
+    sent: [],
+    received: [],
+    all: [],
+  })),
+}));
+
 // Get mock router (from global mock in jest.setup.js)
 const mockRouter = expoRouter.useRouter();
 const mockLogger = logger.logger as jest.Mocked<typeof logger.logger>;
+
+const { hybridGetAllRequestsForUser } = require('../../services/hybridRequestService');
+
+// Helper function to set up mock requests
+const setupMockRequests = (requests: any[]) => {
+  const userEmail = 'user@example.com';
+  const sent = requests.filter(r => r.requesterEmail === userEmail);
+  const received = requests.filter(r => r.mentorEmail === userEmail);
+  (hybridGetAllRequestsForUser as jest.Mock).mockResolvedValue({
+    sent,
+    received,
+    all: requests,
+  });
+};
 
 describe('MentorshipScreen', () => {
   const mockUser = {
@@ -51,6 +74,11 @@ describe('MentorshipScreen', () => {
   beforeEach(async () => {
     AsyncStorage.clear();
     jest.clearAllMocks();
+    (hybridGetAllRequestsForUser as jest.Mock).mockResolvedValue({
+      sent: [],
+      received: [],
+      all: [],
+    });
     await AsyncStorage.setItem('user', JSON.stringify(mockUser));
     await AsyncStorage.setItem('profile', JSON.stringify({
       name: 'Current User',
@@ -96,7 +124,7 @@ describe('MentorshipScreen', () => {
       phoneNumber: '+1234567890',
     };
 
-    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([acceptedRequest]));
+    setupMockRequests([acceptedRequest]);
     await AsyncStorage.setItem('allProfiles', JSON.stringify([mentorProfile]));
 
     const { getByText } = render(<MentorshipScreen />);
@@ -129,7 +157,7 @@ describe('MentorshipScreen', () => {
       phoneNumber: '+1234567891',
     };
 
-    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([acceptedRequest]));
+    setupMockRequests([acceptedRequest]);
     await AsyncStorage.setItem('allProfiles', JSON.stringify([menteeProfile]));
 
     const { getByText } = render(<MentorshipScreen />);
@@ -181,7 +209,7 @@ describe('MentorshipScreen', () => {
       phoneNumber: '+1234567890',
     };
 
-    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([acceptedRequest]));
+    setupMockRequests([acceptedRequest]);
     await AsyncStorage.setItem('allProfiles', JSON.stringify([mentorProfile]));
 
     const { getByText } = render(<MentorshipScreen />);
@@ -223,7 +251,7 @@ describe('MentorshipScreen', () => {
       phoneNumber: '+1234567891',
     };
 
-    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([acceptedRequest]));
+    setupMockRequests([acceptedRequest]);
     await AsyncStorage.setItem('allProfiles', JSON.stringify([menteeProfile]));
 
     const { getByText } = render(<MentorshipScreen />);
@@ -267,7 +295,7 @@ describe('MentorshipScreen', () => {
       phoneNumber: '+1234567890',
     };
 
-    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([acceptedRequest]));
+    setupMockRequests([acceptedRequest]);
     await AsyncStorage.setItem('allProfiles', JSON.stringify([mentorProfile]));
 
     const { getByText } = render(<MentorshipScreen />);
@@ -302,11 +330,11 @@ describe('MentorshipScreen', () => {
       respondedAt: new Date().toISOString(),
     });
 
-    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([
+    setupMockRequests([
       acceptedRequest,
       pendingRequest,
       declinedRequest,
-    ]));
+    ]);
 
     const { getByText, queryByText } = render(<MentorshipScreen />);
 
@@ -352,7 +380,7 @@ describe('MentorshipScreen', () => {
       respondedAt: new Date().toISOString(),
     });
 
-    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([acceptedRequest]));
+    setupMockRequests([acceptedRequest]);
 
     const { getByText } = render(<MentorshipScreen />);
 
@@ -375,7 +403,7 @@ describe('MentorshipScreen', () => {
     });
 
     // Don't set profile data
-    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([acceptedRequest]));
+    setupMockRequests([acceptedRequest]);
 
     const { getByText } = render(<MentorshipScreen />);
 
@@ -404,7 +432,7 @@ describe('MentorshipScreen', () => {
       respondedAt: new Date().toISOString(),
     });
 
-    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([mentor1, mentor2]));
+    setupMockRequests([mentor1, mentor2]);
 
     const { getByText } = render(<MentorshipScreen />);
 
@@ -433,7 +461,7 @@ describe('MentorshipScreen', () => {
       respondedAt: new Date().toISOString(),
     });
 
-    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([mentee1, mentee2]));
+    setupMockRequests([mentee1, mentee2]);
 
     const { getByText } = render(<MentorshipScreen />);
 
@@ -455,7 +483,7 @@ describe('MentorshipScreen', () => {
       respondedAt: new Date().toISOString(),
     });
 
-    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([acceptedRequest]));
+    setupMockRequests([acceptedRequest]);
 
     const { getByText } = render(<MentorshipScreen />);
 
@@ -489,7 +517,7 @@ describe('MentorshipScreen', () => {
       respondedAt: new Date().toISOString(),
     });
 
-    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([acceptedRequest]));
+    setupMockRequests([acceptedRequest]);
 
     const { getByText } = render(<MentorshipScreen />);
 
@@ -523,7 +551,7 @@ describe('MentorshipScreen', () => {
       respondedAt: new Date().toISOString(),
     });
 
-    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([acceptedRequest]));
+    setupMockRequests([acceptedRequest]);
 
     const { getByText } = render(<MentorshipScreen />);
 
@@ -557,7 +585,7 @@ describe('MentorshipScreen', () => {
       respondedAt: new Date().toISOString(),
     });
 
-    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([acceptedRequest]));
+    setupMockRequests([acceptedRequest]);
 
     const { getByText } = render(<MentorshipScreen />);
 
@@ -601,7 +629,7 @@ describe('MentorshipScreen', () => {
       phoneNumber: '+1234567890',
     };
 
-    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([acceptedRequest]));
+    setupMockRequests([acceptedRequest]);
     await AsyncStorage.setItem('allProfiles', JSON.stringify([])); // No profiles in allProfiles
     await AsyncStorage.setItem('testProfile_mentor@example.com', JSON.stringify(testMentorProfile));
 
@@ -634,7 +662,7 @@ describe('MentorshipScreen', () => {
       phoneNumber: '+1234567891',
     };
 
-    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([acceptedRequest]));
+    setupMockRequests([acceptedRequest]);
     await AsyncStorage.setItem('allProfiles', JSON.stringify([])); // No profiles in allProfiles
     await AsyncStorage.setItem('testProfile_mentee@example.com', JSON.stringify(testMenteeProfile));
 
@@ -673,7 +701,7 @@ describe('MentorshipScreen', () => {
       respondedAt: new Date().toISOString(),
     });
 
-    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([acceptedRequest]));
+    setupMockRequests([acceptedRequest]);
 
     const { getByText } = render(<MentorshipScreen />);
 
@@ -716,7 +744,7 @@ describe('MentorshipScreen', () => {
   it('should handle invalid requests data schema (line 93)', async () => {
     await AsyncStorage.setItem('user', JSON.stringify(mockUser));
     // Set invalid requests data (not an array)
-    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify({ invalid: 'data' }));
+    setupMockRequests([]);
 
     const screen = render(<MentorshipScreen />);
 
@@ -751,7 +779,7 @@ describe('MentorshipScreen', () => {
     });
 
     await AsyncStorage.setItem('user', JSON.stringify(mockUser));
-    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([acceptedRequest]));
+    setupMockRequests([acceptedRequest]);
     // Set invalid allProfiles data (not an array) to trigger line 166 validation
     await AsyncStorage.setItem('allProfiles', JSON.stringify({ invalid: 'data' }));
 
@@ -778,7 +806,7 @@ describe('MentorshipScreen', () => {
       respondedAt: new Date().toISOString(),
     });
 
-    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([acceptedRequest]));
+    setupMockRequests([acceptedRequest]);
     // Set array data with invalid profile (triggers branch 0: data is array, but validation fails)
     await AsyncStorage.setItem('allProfiles', JSON.stringify([
       { invalid: 'profile data' }, // Invalid profile schema
@@ -803,7 +831,7 @@ describe('MentorshipScreen', () => {
       respondedAt: new Date().toISOString(),
     });
 
-    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([acceptedRequest]));
+    setupMockRequests([acceptedRequest]);
     // Set array data with invalid profile (triggers branch 0: data is array, but validation fails)
     await AsyncStorage.setItem('allProfiles', JSON.stringify([
       { invalid: 'profile data' }, // Invalid profile schema
@@ -820,7 +848,7 @@ describe('MentorshipScreen', () => {
   it('should handle user parsing failure (line 73 branch 0)', async () => {
     // Test branch 0 of line 73: when user is null (parsing failed)
     await AsyncStorage.setItem('user', 'invalid json');
-    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([]));
+    setupMockRequests([]);
 
     const screen = render(<MentorshipScreen />);
 
@@ -835,9 +863,9 @@ describe('MentorshipScreen', () => {
     await AsyncStorage.setItem('user', JSON.stringify(mockUser));
     
     // Set invalid request data (array with invalid request)
-    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([
+    setupMockRequests([
       { invalid: 'request data' }, // Invalid request schema
-    ]));
+    ]);
 
     const screen = render(<MentorshipScreen />);
 
@@ -871,7 +899,7 @@ describe('MentorshipScreen', () => {
       status: 'accepted',
     });
 
-    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([request]));
+    setupMockRequests([request]);
     
     // Set invalid profile data (array with invalid profile)
     await AsyncStorage.setItem('allProfiles', JSON.stringify([
@@ -897,7 +925,7 @@ describe('MentorshipScreen', () => {
       status: 'accepted',
     });
 
-    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([request]));
+    setupMockRequests([request]);
     await AsyncStorage.removeItem('allProfiles');
 
     const screen = render(<MentorshipScreen />);
@@ -929,7 +957,7 @@ describe('MentorshipScreen', () => {
       status: 'accepted',
     });
 
-    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([request]));
+    setupMockRequests([request]);
     await AsyncStorage.setItem('allProfiles', JSON.stringify([mentorProfile]));
 
     const screen = render(<MentorshipScreen />);
@@ -951,7 +979,7 @@ describe('MentorshipScreen', () => {
       status: 'accepted',
     });
 
-    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([request]));
+    setupMockRequests([request]);
     
     // Set invalid profile data (array with invalid profile)
     await AsyncStorage.setItem('allProfiles', JSON.stringify([
@@ -977,7 +1005,7 @@ describe('MentorshipScreen', () => {
       status: 'accepted',
     });
 
-    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([request]));
+    setupMockRequests([request]);
     await AsyncStorage.removeItem('allProfiles');
 
     const screen = render(<MentorshipScreen />);
@@ -1009,7 +1037,7 @@ describe('MentorshipScreen', () => {
       status: 'accepted',
     });
 
-    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify([request]));
+    setupMockRequests([request]);
     await AsyncStorage.setItem('allProfiles', JSON.stringify([menteeProfile]));
 
     const screen = render(<MentorshipScreen />);

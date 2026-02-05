@@ -19,10 +19,29 @@ jest.mock('@/services/hybridProfileService', () => ({
   hybridGetProfile: jest.fn(),
 }));
 
-// Mock requestService
-jest.mock('@/services/requestService', () => ({
-  createRequest: jest.fn(),
-  getAllRequests: jest.fn(),
+// Mock hybridRequestService
+jest.mock('@/services/hybridRequestService', () => ({
+  hybridCreateRequest: jest.fn(async (request) => {
+    // Actually save to AsyncStorage to match real behavior
+    const AsyncStorage = require('@react-native-async-storage/async-storage');
+    const requestsData = await AsyncStorage.getItem('mentorshipRequests');
+    const requests = requestsData ? JSON.parse(requestsData) : [];
+    
+    // Check for duplicate
+    const duplicate = requests.find(
+      (r: any) => r.requesterEmail === request.requesterEmail &&
+                 r.mentorEmail === request.mentorEmail &&
+                 r.status === 'pending'
+    );
+    
+    if (duplicate) {
+      throw new Error('A pending request already exists between these users');
+    }
+    
+    requests.push(request);
+    await AsyncStorage.setItem('mentorshipRequests', JSON.stringify(requests));
+  }),
+  hybridGetAllRequestsForUser: jest.fn(),
 }));
 
 // Mock schemaValidation
