@@ -1,13 +1,15 @@
 /**
  * Diagnostic script to check login status for a user
  * 
- * Usage: npx ts-node scripts/diagnoseLoginIssue.ts shaouxyz@gmail.com
+ * Usage: npx ts-node -r tsconfig-paths/register scripts/diagnoseLoginIssue.ts shaouxyz@gmail.com
+ * Or: node --loader ts-node/esm scripts/diagnoseLoginIssue.ts shaouxyz@gmail.com
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getUserByEmail } from '../utils/userManagement';
-import { isFirebaseConfigured, getFirebaseAuth } from '../config/firebase.config';
-import { logger } from '../utils/logger';
+// Note: This script needs to be run in a React Native environment or with proper mocks
+// For now, we'll provide a simpler version that can be run with Node.js
+
+import * as fs from 'fs';
+import * as path from 'path';
 
 const email = process.argv[2];
 
@@ -18,105 +20,67 @@ if (!email) {
 
 async function diagnoseLoginIssue() {
   console.log(`\n🔍 Diagnosing login issue for: ${email}\n`);
+  console.log('⚠️  Note: This script checks local storage files directly.');
+  console.log('   For full diagnosis, check the app logs when attempting to log in.\n');
   
-  // Check Firebase configuration
+  // Check Firebase configuration from .env
   console.log('1. Checking Firebase configuration...');
-  const firebaseConfigured = isFirebaseConfigured();
-  console.log(`   Firebase configured: ${firebaseConfigured ? '✅ Yes' : '❌ No'}`);
-  
-  if (firebaseConfigured) {
-    try {
-      const auth = getFirebaseAuth();
-      console.log(`   Firebase Auth initialized: ${auth ? '✅ Yes' : '❌ No'}`);
+  try {
+    const envPath = path.join(process.cwd(), '.env');
+    if (fs.existsSync(envPath)) {
+      const envContent = fs.readFileSync(envPath, 'utf-8');
+      const hasApiKey = envContent.includes('EXPO_PUBLIC_FIREBASE_API_KEY');
+      const hasAuthDomain = envContent.includes('EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN');
+      const hasProjectId = envContent.includes('EXPO_PUBLIC_FIREBASE_PROJECT_ID');
+      const hasAppId = envContent.includes('EXPO_PUBLIC_FIREBASE_APP_ID');
       
-      if (auth && auth.currentUser) {
-        console.log(`   Current Firebase user: ${auth.currentUser.email}`);
-      } else {
-        console.log(`   Current Firebase user: None`);
-      }
-    } catch (error) {
-      console.log(`   Error checking Firebase Auth: ${error instanceof Error ? error.message : String(error)}`);
-    }
-  }
-  
-  // Check local storage
-  console.log('\n2. Checking local storage...');
-  try {
-    const localUser = await getUserByEmail(email);
-    if (localUser) {
-      console.log(`   ✅ User found in local storage`);
-      console.log(`      ID: ${localUser.id}`);
-      console.log(`      Created: ${localUser.createdAt}`);
-      console.log(`      Has password hash: ${localUser.passwordHash ? 'Yes' : 'No'}`);
-    } else {
-      console.log(`   ❌ User NOT found in local storage`);
-    }
-  } catch (error) {
-    console.log(`   ❌ Error checking local storage: ${error instanceof Error ? error.message : String(error)}`);
-  }
-  
-  // Check AsyncStorage user data
-  console.log('\n3. Checking AsyncStorage user data...');
-  try {
-    const userData = await AsyncStorage.getItem('user');
-    if (userData) {
-      const user = JSON.parse(userData);
-      console.log(`   Current user in AsyncStorage: ${user.email}`);
-      if (user.email === email) {
-        console.log(`   ✅ This email matches the current user`);
-      } else {
-        console.log(`   ⚠️  Different user is currently logged in`);
+      const allConfigured = hasApiKey && hasAuthDomain && hasProjectId && hasAppId;
+      console.log(`   Firebase configured: ${allConfigured ? '✅ Yes' : '❌ No'}`);
+      if (!allConfigured) {
+        console.log(`   Missing: ${!hasApiKey ? 'API_KEY ' : ''}${!hasAuthDomain ? 'AUTH_DOMAIN ' : ''}${!hasProjectId ? 'PROJECT_ID ' : ''}${!hasAppId ? 'APP_ID' : ''}`);
       }
     } else {
-      console.log(`   No user data in AsyncStorage`);
+      console.log(`   ❌ .env file not found`);
     }
   } catch (error) {
-    console.log(`   ❌ Error checking AsyncStorage: ${error instanceof Error ? error.message : String(error)}`);
+    console.log(`   ❌ Error checking Firebase config: ${error instanceof Error ? error.message : String(error)}`);
   }
   
-  // Check all users
-  console.log('\n4. Checking all users in local storage...');
-  try {
-    const usersData = await AsyncStorage.getItem('users');
-    if (usersData) {
-      const users = JSON.parse(usersData);
-      console.log(`   Total users in local storage: ${users.length}`);
-      const matchingUser = users.find((u: any) => u.email === email);
-      if (matchingUser) {
-        console.log(`   ✅ Found user in users array`);
-      } else {
-        console.log(`   ❌ User not in users array`);
-        console.log(`   Available emails: ${users.map((u: any) => u.email).join(', ')}`);
-      }
-    } else {
-      console.log(`   No users data in AsyncStorage`);
-    }
-  } catch (error) {
-    console.log(`   ❌ Error checking users: ${error instanceof Error ? error.message : String(error)}`);
-  }
+  // Note about AsyncStorage
+  console.log('\n2. Local Storage Check:');
+  console.log('   ⚠️  AsyncStorage is React Native specific and cannot be checked from Node.js.');
+  console.log('   💡 To check local storage:');
+  console.log('      - Run the app and check terminal logs');
+  console.log('      - Look for: "User authenticated locally" or "User does not exist locally"');
+  console.log('      - Check error messages in the app');
   
   // Recommendations
-  console.log('\n📋 Recommendations:');
+  console.log('\n📋 Common Issues and Solutions:');
+  console.log('\n   Issue 1: User does not exist');
+  console.log('   Symptoms: Error "User not found" or "Email not found"');
+  console.log('   Solution: User needs to sign up first');
   
-  if (!firebaseConfigured) {
-    console.log('   ⚠️  Firebase is not configured. Login will use local storage only.');
-  }
+  console.log('\n   Issue 2: Wrong password');
+  console.log('   Symptoms: Error "Incorrect password" or "auth/wrong-password"');
+  console.log('   Solution: Use correct password or reset password');
   
-  try {
-    const localUser = await getUserByEmail(email);
-    if (!localUser) {
-      console.log('   ❌ User does not exist in local storage.');
-      console.log('   💡 Solution: User needs to sign up first.');
-    } else {
-      console.log('   ✅ User exists in local storage.');
-      console.log('   💡 If login still fails, check:');
-      console.log('      - Password is correct');
-      console.log('      - Rate limiting is not blocking');
-      console.log('      - Firebase account exists (if Firebase is configured)');
-    }
-  } catch (error) {
-    console.log('   ❌ Could not check user status');
-  }
+  console.log('\n   Issue 3: User exists locally but not in Firebase');
+  console.log('   Symptoms: Firebase error "auth/user-not-found" but local auth works');
+  console.log('   Solution: App should auto-create Firebase account. If it fails, try signing up again');
+  
+  console.log('\n   Issue 4: Rate limiting');
+  console.log('   Symptoms: Error "Too many login attempts"');
+  console.log('   Solution: Wait a few minutes and try again');
+  
+  console.log('\n   Issue 5: Firebase not configured');
+  console.log('   Symptoms: Login works but only uses local storage');
+  console.log('   Solution: Configure Firebase in .env file');
+  
+  console.log('\n💡 Next Steps:');
+  console.log('   1. Try logging in and check the terminal/console logs');
+  console.log('   2. Look for specific error codes (e.g., auth/user-not-found, auth/wrong-password)');
+  console.log('   3. Check if Firebase is initialized (look for "[FIREBASE] Initialization complete")');
+  console.log('   4. Share the error message you see for more specific help');
   
   console.log('\n');
 }
