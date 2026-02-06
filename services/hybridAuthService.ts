@@ -10,7 +10,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { isFirebaseConfigured } from '@/config/firebase.config';
 import { firebaseSignUp, firebaseSignIn } from './firebaseAuthService';
-import { createUser as createLocalUser, authenticateUser as authenticateLocalUser } from '@/utils/userManagement';
+import { createUser as createLocalUser, authenticateUser as authenticateLocalUser, getUserByEmail } from '@/utils/userManagement';
 import { logger } from '@/utils/logger';
 
 /**
@@ -93,10 +93,10 @@ export async function hybridSignIn(email: string, password: string): Promise<any
         });
         
         // Fall back to local authentication
+        let localUserExists: any = null;
         try {
           // Check if user exists locally first
-          const { getUserByEmail } = await import('@/utils/userManagement');
-          const localUserExists = await getUserByEmail(email);
+          localUserExists = await getUserByEmail(email);
           
           if (!localUserExists) {
             logger.warn('User does not exist locally either', {
@@ -173,7 +173,7 @@ export async function hybridSignIn(email: string, password: string): Promise<any
             combinedErrorMessage = `User not found. Please sign up first or check your email address.`;
           } else if (localErrorMessage.includes('password') || localErrorMessage.includes('incorrect')) {
             // Password is wrong
-            combinedErrorMessage = `Incorrect password. Please check your password and try again.`;
+            combinedErrorMessage = `Invalid credentials`;
           } else {
             // Generic error
             combinedErrorMessage = `Login failed: ${localErrorMessage}. ` +

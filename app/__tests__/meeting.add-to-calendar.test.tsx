@@ -5,6 +5,7 @@
 import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import { Alert, Linking } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Calendar from 'expo-calendar';
 import AddToCalendarScreen from '../meeting/add-to-calendar';
 import { hybridGetMeeting } from '@/services/hybridMeetingService';
@@ -77,7 +78,24 @@ describe('AddToCalendarScreen', () => {
     });
   });
 
+  it('should not re-add if already added to calendar', async () => {
+    await AsyncStorage.setItem('meetingCalendarAdded:meeting123', 'true');
+
+    const { getByLabelText, queryByText } = render(<AddToCalendarScreen />);
+    await waitFor(() => expect(queryByText('Loading…')).toBeNull());
+    fireEvent.press(getByLabelText('Add to phone calendar'));
+
+    await waitFor(() => {
+      expect(Alert.alert).toHaveBeenCalledWith(
+        'Already Added',
+        'This meeting is already in your calendar.'
+      );
+      expect(mockCreateEvent).not.toHaveBeenCalled();
+    });
+  });
+
   it('should handle permission denied', async () => {
+    await AsyncStorage.removeItem('meetingCalendarAdded:meeting123');
     mockRequestCalendarPermissions.mockResolvedValue({ status: 'denied' } as any);
     const { getByLabelText, queryByText } = render(<AddToCalendarScreen />);
     await waitFor(() => expect(queryByText('Loading…')).toBeNull());
