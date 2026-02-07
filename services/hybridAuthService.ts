@@ -83,7 +83,11 @@ export async function hybridSignIn(email: string, password: string): Promise<any
       } catch (firebaseError: any) {
         // Firebase authentication failed, try local fallback
         const errorCode = firebaseError?.code || 'unknown';
-        const errorMessage = firebaseError instanceof Error ? firebaseError.message : String(firebaseError);
+        const errorMessage = (firebaseError != null && typeof firebaseError === 'object' && firebaseError.message != null)
+          ? String(firebaseError.message)
+          : (firebaseError != null && typeof firebaseError === 'object' && firebaseError.code)
+            ? String(firebaseError.code)
+            : String(firebaseError ?? 'unknown');
         
         logger.warn('Firebase signin failed, trying local authentication', {
           email,
@@ -157,7 +161,9 @@ export async function hybridSignIn(email: string, password: string): Promise<any
           return localUser;
         } catch (localError) {
           // Both Firebase and local authentication failed
-          const localErrorMessage = localError instanceof Error ? localError.message : String(localError);
+          const localErrorMessage = (localError != null && typeof localError === 'object' && (localError as Error).message != null)
+            ? String((localError as Error).message)
+            : String(localError ?? 'unknown');
           logger.error('Both Firebase and local authentication failed', {
             email,
             firebaseError: errorMessage,

@@ -86,6 +86,22 @@ export async function createUser(email: string, password: string): Promise<User>
 }
 
 /**
+ * Remove a user account by email (e.g. when user deletes their account).
+ * Normalizes email to match stored format.
+ */
+export async function removeUserByEmail(email: string): Promise<void> {
+  const normalizedEmail = (email || '').trim().toLowerCase();
+  const users = await getAllUsers();
+  const filtered = users.filter((u) => u.email !== normalizedEmail);
+  if (filtered.length === users.length) {
+    logger.info('No local user to remove', { email: normalizedEmail });
+    return;
+  }
+  await AsyncStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(filtered));
+  logger.info('Local user removed', { email: normalizedEmail });
+}
+
+/**
  * Authenticate user with email and password
  */
 export async function authenticateUser(email: string, password: string): Promise<User | null> {

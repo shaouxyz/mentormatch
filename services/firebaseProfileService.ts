@@ -79,18 +79,20 @@ export async function getFirebaseProfile(email: string): Promise<Profile | null>
 }
 
 /**
- * Update a profile in Firestore
+ * Update a profile in Firestore.
+ * Undefined values in updates are omitted (Firestore does not accept undefined).
  */
 export async function updateFirebaseProfile(email: string, updates: Partial<Profile>): Promise<void> {
   try {
     const db = getFirebaseFirestore();
     const profileRef = doc(db, PROFILES_COLLECTION, email);
-    
-    await updateDoc(profileRef, {
-      ...updates,
-      updatedAt: new Date().toISOString(),
-    });
-    
+    const cleanUpdates: Record<string, unknown> = { updatedAt: new Date().toISOString() };
+    for (const [key, value] of Object.entries(updates)) {
+      if (value !== undefined) {
+        cleanUpdates[key] = value;
+      }
+    }
+    await updateDoc(profileRef, cleanUpdates as Partial<Profile>);
     logger.info('Profile updated in Firestore', { email });
   } catch (error) {
     logger.error('Error updating profile in Firestore', error instanceof Error ? error : new Error(String(error)));

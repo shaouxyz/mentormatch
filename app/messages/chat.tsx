@@ -25,6 +25,7 @@ import { Message } from '@/types/types';
 import { logger } from '@/utils/logger';
 import { ErrorHandler } from '@/utils/errorHandler';
 import { sanitizeTextField } from '@/utils/security';
+import { Screen } from '@/components/Screen';
 
 /**
  * Chat Screen Component
@@ -116,6 +117,18 @@ export default function ChatScreen() {
 
   const loadMessages = async () => {
     try {
+      if (isFirebaseConfigured() && currentUserEmail && participantEmail) {
+        try {
+          await hybridCreateOrGetConversation(
+            currentUserEmail,
+            currentUserName || '',
+            participantEmail,
+            participantName || ''
+          );
+        } catch (_) {
+          // Continue to load messages (e.g. local fallback)
+        }
+      }
       const conversationMessages = await hybridGetMessages(conversationId);
       setMessages(conversationMessages);
       scrollToBottom();
@@ -146,17 +159,18 @@ export default function ChatScreen() {
     setSending(true);
 
     try {
-      // Ensure conversation exists
-      await hybridCreateOrGetConversation(
+      // Ensure conversation exists; use returned id (normalized) for sending
+      const conversation = await hybridCreateOrGetConversation(
         currentUserEmail,
         currentUserName,
         participantEmail,
         participantName
       );
+      const conversationIdToUse = conversation.id;
 
       // Send message
       const newMessage = await hybridSendMessage(
-        conversationId,
+        conversationIdToUse,
         currentUserEmail,
         currentUserName,
         participantEmail,
@@ -172,9 +186,10 @@ export default function ChatScreen() {
       setMessageText('');
       scrollToBottom();
       
-      logger.info('Message sent', { conversationId });
+      logger.info('Message sent', { conversationId: conversationIdToUse });
     } catch (error) {
-      ErrorHandler.handleError(error, 'Failed to send message');
+      const message = error instanceof Error ? error.message : String(error);
+      ErrorHandler.handleError(error, `Failed to send message: ${message}`);
     } finally {
       setSending(false);
     }
@@ -238,24 +253,25 @@ export default function ChatScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
-      keyboardVerticalOffset={0}
-    >
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={styles.backButton}
-          accessibilityLabel="Go back"
-        >
-          <Ionicons name="arrow-back" size={24} color="#1e293b" />
-        </TouchableOpacity>
-        <View style={styles.headerInfo}>
-          <Text style={styles.headerTitle}>{participantName}</Text>
-          <Text style={styles.headerSubtitle}>{participantEmail}</Text>
+    <Screen style={styles.container}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.container}
+        keyboardVerticalOffset={0}
+      >
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backButton}
+            accessibilityLabel="Go back"
+          >
+            <Ionicons name="arrow-back" size={24} color="#1e293b" />
+          </TouchableOpacity>
+          <View style={styles.headerInfo}>
+            <Text style={styles.headerTitle}>{participantName}</Text>
+            <Text style={styles.headerSubtitle}>{participantEmail}</Text>
+          </View>
         </View>
-      </View>
 
       <FlatList
         ref={flatListRef}
@@ -296,7 +312,8 @@ export default function ChatScreen() {
           />
         </TouchableOpacity>
       </View>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </Screen>
   );
 }
 
@@ -308,7 +325,6 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: 60,
     paddingHorizontal: 16,
     paddingBottom: 16,
     backgroundColor: '#fff',

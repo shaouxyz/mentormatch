@@ -13,7 +13,8 @@ service cloud.firestore {
         request.resource.data.email == request.auth.token.email;
       allow update: if isSignedIn() && 
         resource.data.email == request.auth.token.email;
-      allow delete: if false;
+      allow delete: if isSignedIn() && 
+        resource.data.email == request.auth.token.email;
     }
     
     // Mentorship requests collection
@@ -31,12 +32,15 @@ service cloud.firestore {
     }
     
     // Messages collection
-    // Read: user must be a participant in the conversation (conversationId)
+    // Read: user is sender/receiver on the message, OR user is in the conversation's participants
     match /messages/{messageId} {
-      allow read: if isSignedIn() && 
-        resource.data.conversationId is string &&
-        exists(/databases/$(database)/documents/conversations/$(resource.data.conversationId)) &&
-        request.auth.token.email in get(/databases/$(database)/documents/conversations/$(resource.data.conversationId)).data.participants;
+      allow read: if isSignedIn() && (
+        resource.data.senderEmail == request.auth.token.email ||
+        resource.data.receiverEmail == request.auth.token.email ||
+        (resource.data.conversationId is string &&
+         exists(/databases/$(database)/documents/conversations/$(resource.data.conversationId)) &&
+         request.auth.token.email in get(/databases/$(database)/documents/conversations/$(resource.data.conversationId)).data.participants)
+      );
       allow create: if isSignedIn() && 
         request.resource.data.senderEmail == request.auth.token.email &&
         request.resource.data.conversationId is string &&
@@ -80,8 +84,10 @@ service cloud.firestore {
         request.resource.data.participants is list;
       
       // Allow participants to update (for unread counts, last message, etc.)
+      // Allow update if user is in old OR new participants (so client can fix/normalize existing docs)
       allow update: if isSignedIn() && 
-        request.auth.token.email in resource.data.participants;
+        (request.auth.token.email in resource.data.participants ||
+         request.auth.token.email in request.resource.data.participants);
       
       // No deletes
       allow delete: if false;

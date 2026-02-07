@@ -25,11 +25,11 @@ describe('TabsLayout', () => {
     // The component renders <Tabs> once
     expect(Tabs).toHaveBeenCalledTimes(1);
 
-    // It defines 5 screens: home, messages, mentorship, requests, profile
-    expect((Tabs as any).Screen).toHaveBeenCalledTimes(5);
+    // It defines 6 screens: home, mentorship, meetings, requests, messages (hidden), profile
+    expect((Tabs as any).Screen).toHaveBeenCalledTimes(6);
 
     const screenCalls = (Tabs as any).Screen.mock.calls.map((c: any[]) => c[0]?.name);
-    expect(screenCalls).toEqual(['home', 'messages', 'mentorship', 'requests', 'profile']);
+    expect(screenCalls).toEqual(['home', 'mentorship', 'meetings', 'requests', 'messages', 'profile']);
 
     // Execute tabBarIcon render functions to cover those lines/branches
     const screenProps = (Tabs as any).Screen.mock.calls.map((c: any[]) => c[0]);

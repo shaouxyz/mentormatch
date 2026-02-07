@@ -33,6 +33,7 @@ export default function MeetingResponseScreen() {
   const [meeting, setMeeting] = useState<Meeting | null>(null);
   const [loading, setLoading] = useState(true);
   const [responding, setResponding] = useState(false);
+  const [withdrawing, setWithdrawing] = useState(false);
   const [responseNote, setResponseNote] = useState('');
   const [currentUserEmail, setCurrentUserEmail] = useState<string>('');
   const [isOrganizer, setIsOrganizer] = useState<boolean>(false);
@@ -76,6 +77,40 @@ export default function MeetingResponseScreen() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleWithdraw = async () => {
+    if (!meeting) return;
+    const participantName = meeting.participantName || meeting.participantEmail || 'participant';
+    Alert.alert(
+      'Withdraw meeting request',
+      `Cancel your meeting request to ${participantName}? They will no longer see this request.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Withdraw',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setWithdrawing(true);
+              await hybridUpdateMeeting(meetingId, { status: 'cancelled', updatedAt: new Date().toISOString() });
+              try {
+                await cancelMeetingNotifications(meetingId);
+              } catch (e) {
+                logger.warn('Failed to cancel meeting notifications', { meetingId });
+              }
+              Alert.alert('Done', 'Meeting request withdrawn.', [{ text: 'OK', onPress: () => router.back() }]);
+              logger.info('Meeting request withdrawn', { meetingId });
+            } catch (error) {
+              logger.error('Error withdrawing meeting', error instanceof Error ? error : new Error(String(error)));
+              Alert.alert('Error', 'Failed to withdraw meeting request. Please try again.');
+            } finally {
+              setWithdrawing(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleResponse = async (accepted: boolean) => {
@@ -316,15 +351,31 @@ export default function MeetingResponseScreen() {
         </View>
 
         {isOrganizer ? (
-          // Organizer view: Show status only
+          // Organizer view: Show status and withdraw when pending
           <View style={styles.statusCard}>
             <Text style={styles.statusTitle}>Meeting Status</Text>
             <View style={styles.statusContent}>
               {meeting.status === 'pending' && (
-                <View style={[styles.statusBadge, styles.statusBadgePending]}>
-                  <Ionicons name="time" size={20} color="#f59e0b" />
-                  <Text style={styles.statusTextPending}>Pending Response</Text>
-                </View>
+                <>
+                  <View style={[styles.statusBadge, styles.statusBadgePending]}>
+                    <Ionicons name="time" size={20} color="#f59e0b" />
+                    <Text style={styles.statusTextPending}>Pending Response</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.withdrawButton}
+                    onPress={handleWithdraw}
+                    disabled={withdrawing}
+                    accessibilityLabel="Withdraw meeting request"
+                    accessibilityHint="Cancel this meeting request"
+                  >
+                    {withdrawing ? (
+                      <ActivityIndicator size="small" color="#dc2626" />
+                    ) : (
+                      <Ionicons name="close-circle-outline" size={20} color="#dc2626" />
+                    )}
+                    <Text style={styles.withdrawButtonText}>Withdraw request</Text>
+                  </TouchableOpacity>
+                </>
               )}
               {meeting.status === 'accepted' && (
                 <View style={[styles.statusBadge, styles.statusBadgeAccepted]}>
@@ -669,6 +720,22 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#f59e0b',
+  },
+  withdrawButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: '#fef2f2',
+    borderRadius: 12,
+    gap: 8,
+  },
+  withdrawButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#dc2626',
   },
   statusTextAccepted: {
     fontSize: 16,

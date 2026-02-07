@@ -1,0 +1,47 @@
+type User @table {
+  displayName: String!
+  email: String!
+  userType: String!
+  createdAt: Timestamp!
+  bio: String
+  photoUrl: String
+  availability: String
+}
+
+type Skill @table {
+  name: String!
+  category: String!
+}
+
+type UserSkill @table(key: ["user", "skill"]) {
+  user: User!
+  skill: Skill!
+  level: String!
+}
+
+type MentorshipRequest @table {
+  mentee: User!
+  mentor: User!
+  status: String!
+  createdAt: Timestamp!
+  message: String
+}
+
+type Message @table {
+  sender: User!
+  receiver: User!
+  mentorshipRequest: MentorshipRequest
+  content: String!
+  createdAt: Timestamp!
+}
+
+type Meeting @table {
+  mentor: User!
+  mentee: User!
+  startTime: Timestamp!
+  endTime: Timestamp!
+  status: String!
+  createdAt: Timestamp!
+  topic: String
+  notes: String
+}

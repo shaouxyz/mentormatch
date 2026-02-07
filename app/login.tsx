@@ -22,6 +22,7 @@ import { isRateLimited, resetRateLimit, getRemainingAttempts } from '@/utils/rat
 import { startSession } from '@/utils/sessionManager';
 import { hybridSignIn } from '@/services/hybridAuthService';
 import { hybridGetProfile } from '@/services/hybridProfileService';
+import { clearAllUserData, unsuspendAccount } from '@/services/accountService';
 import { getCurrentFirebaseUser } from '@/services/firebaseAuthService';
 import { createFirebaseProfile } from '@/services/firebaseProfileService';
 import { Profile } from '@/types/types';
@@ -233,6 +234,54 @@ export default function LoginScreen() {
       }
       
       if (profile) {
+        if (profile.suspended) {
+          Alert.alert(
+            'Account suspended',
+            'Your account is suspended. Do you want to unsuspend and sign in?',
+            [
+              {
+                text: 'Cancel',
+                style: 'cancel',
+                onPress: async () => {
+                  await clearAllUserData();
+                  setLoading(false);
+                },
+              },
+              {
+                text: 'Unsuspend & Sign in',
+                onPress: async () => {
+                  try {
+                    await unsuspendAccount(user.email);
+                    const unsuspendedProfile = { ...profile, suspended: false };
+                    try {
+                      await AsyncStorage.setItem('profile', JSON.stringify(unsuspendedProfile));
+                      const allProfilesData = await AsyncStorage.getItem('allProfiles');
+                      let allProfiles: Profile[] = allProfilesData ? JSON.parse(allProfilesData) : [];
+                      const existingIndex = allProfiles.findIndex((p) => p.email === unsuspendedProfile.email);
+                      if (existingIndex === -1) {
+                        allProfiles.push(unsuspendedProfile);
+                        await AsyncStorage.setItem('allProfiles', JSON.stringify(allProfiles));
+                      }
+                      router.replace('/(tabs)/home');
+                    } catch (profileStorageError) {
+                      logger.warn('Failed to save profile after unsuspend', {
+                        error: profileStorageError instanceof Error ? profileStorageError.message : String(profileStorageError),
+                        email: user.email
+                      });
+                      router.replace('/(tabs)/home');
+                    }
+                  } catch (unsuspendError) {
+                    ErrorHandler.handleError(unsuspendError, 'Failed to unsuspend account');
+                  } finally {
+                    setLoading(false);
+                  }
+                },
+              },
+            ]
+          );
+          setLoading(false);
+          return;
+        }
         // Save profile locally if retrieved from Firebase
         try {
           await AsyncStorage.setItem('profile', JSON.stringify(profile));
@@ -281,18 +330,19 @@ export default function LoginScreen() {
       // Handle authentication failure
       const sanitizedEmail = sanitizeEmail(email);
       
-      // Log detailed error information for debugging
-      // Handle cases where error might be undefined, null, or not an Error object
-      let errorMessage = 'Unknown error';
+      // Log detailed error information for debugging (always extract a string so logs never show undefined)
+      let errorMessage: string;
       if (error === null || error === undefined) {
         errorMessage = 'Error object is null or undefined';
         logger.error('Login failed with null/undefined error', {
           email: sanitizedEmail,
           errorType: typeof error,
-          errorValue: error,
+          errorValue: String(error),
         });
-      } else if (error instanceof Error) {
-        errorMessage = error.message || 'Error without message';
+      } else if (typeof error === 'object' && (error as any).message != null) {
+        errorMessage = String((error as any).message);
+      } else if (typeof error === 'object' && (error as any).code != null) {
+        errorMessage = String((error as any).code);
       } else {
         errorMessage = String(error);
       }
@@ -305,10 +355,8 @@ export default function LoginScreen() {
         error: errorMessage,
         errorType: typeof error,
         errorConstructor: error?.constructor?.name,
-        firebaseErrorCode,
-        firebaseError,
-        fullError: error,
-        errorString: String(error),
+        firebaseErrorCode: firebaseErrorCode ?? undefined,
+        firebaseError: firebaseError != null ? String(firebaseError) : undefined,
       });
       
       // Increment rate limit on failed attempt

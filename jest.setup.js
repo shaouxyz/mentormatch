@@ -1,6 +1,17 @@
 // Set __DEV__ for test environment
 global.__DEV__ = true;
 
+// Mock safe-area-context for Jest (prevents native dependency issues)
+jest.mock('react-native-safe-area-context', () => {
+  const React = require('react');
+  return {
+    SafeAreaProvider: ({ children }) => children,
+    SafeAreaView: ({ children, style }) =>
+      React.createElement('View', { style }, children),
+    useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+  };
+});
+
 // Mock AsyncStorage
 jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock')
@@ -9,6 +20,7 @@ jest.mock('@react-native-async-storage/async-storage', () =>
 // Mock Firebase config
 jest.mock('./config/firebase.config', () => ({
   initializeFirebase: jest.fn(),
+  getFirebaseApp: jest.fn(() => ({})),
   getFirebaseAuth: jest.fn(() => ({})),
   getFirebaseFirestore: jest.fn(() => ({})),
   isFirebaseConfigured: jest.fn(() => false), // Default to not configured for tests

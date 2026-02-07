@@ -12,6 +12,9 @@ export interface Profile {
   location?: string;
   createdAt?: string;
   updatedAt?: string;
+  /** If true, user has suspended their account and cannot use the app until restored */
+  suspended?: boolean;
+  suspendedAt?: string;
 }
 
 export interface User {

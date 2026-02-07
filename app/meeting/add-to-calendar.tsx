@@ -6,7 +6,8 @@
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Linking } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Linking, Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Calendar from 'expo-calendar';
@@ -22,6 +23,7 @@ export default function AddToCalendarScreen() {
 
   const [meeting, setMeeting] = useState<Meeting | null>(null);
   const [loading, setLoading] = useState(true);
+  const [addingToPhoneCalendar, setAddingToPhoneCalendar] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -65,36 +67,94 @@ export default function AddToCalendarScreen() {
     }
   };
 
+  const openPhoneCalendarToEvent = async (eventId: string, eventStartMillis?: number) => {
+    const idStr = String(eventId);
+    let opened = false;
+    if (Platform.OS === 'android') {
+      try {
+        const result = Calendar.openEventInCalendar(idStr);
+        if (result && typeof (result as Promise<unknown>).then === 'function') {
+          await (result as Promise<void>);
+        }
+        opened = true;
+      } catch (e) {
+        logger.warn('openEventInCalendar failed', { eventId: idStr, error: e instanceof Error ? e.message : String(e) });
+      }
+    }
+    if (!opened) {
+      try {
+        await Calendar.openEventInCalendarAsync({ id: idStr });
+        opened = true;
+      } catch (e) {
+        logger.warn('openEventInCalendarAsync failed', { eventId: idStr, error: e instanceof Error ? e.message : String(e) });
+      }
+    }
+    if (!opened && Platform.OS === 'android' && eventStartMillis != null) {
+      try {
+        await Linking.openURL(`content://com.android.calendar/time/${eventStartMillis}`);
+      } catch (_) {
+        logger.warn('Fallback calendar URI failed', { eventStartMillis });
+      }
+    }
+  };
+
   const addToPhoneCalendar = async () => {
     if (!meeting) return;
+    const storageKey = `meetingCalendarAdded:${meeting.id}`;
+    const eventIdKey = `meetingCalendarEventId:${meeting.id}`;
+    const existingEventId = await AsyncStorage.getItem(eventIdKey);
+    const alreadyAdded = await AsyncStorage.getItem(storageKey);
+
+    if (alreadyAdded === 'true') {
+      if (existingEventId) {
+        const startMs = meeting.time ? new Date(meeting.time).getTime() : new Date(meeting.date).getTime();
+        await openPhoneCalendarToEvent(existingEventId, startMs);
+      }
+      Alert.alert('Already Added', 'This meeting is already in your calendar.');
+      return;
+    }
+
+    setAddingToPhoneCalendar(true);
     try {
       const hasPermission = await requestCalendarPermissions();
-      if (!hasPermission) return;
+      if (!hasPermission) {
+        setAddingToPhoneCalendar(false);
+        return;
+      }
 
       const calendarId = await getDefaultCalendar();
       if (!calendarId) {
         Alert.alert('Error', 'No calendar found');
+        setAddingToPhoneCalendar(false);
         return;
       }
 
-      const meetingDate = new Date(meeting.date);
-      const endDate = new Date(meetingDate.getTime() + (meeting.duration || 30) * 60000);
+      // Use full datetime: meeting.time is ISO string when set from schedule; fallback to meeting.date
+      const startDate = meeting.time ? new Date(meeting.time) : new Date(meeting.date);
+      const endDate = new Date(startDate.getTime() + (meeting.duration || 30) * 60000);
       const location =
         meeting.locationType === 'virtual' ? meeting.meetingLink : meeting.location;
 
       const eventDetails: Calendar.Event = {
         title: meeting.title,
         notes: meeting.description || '',
-        startDate: meetingDate,
+        startDate,
         endDate,
         location: location || undefined,
         alarms: [{ relativeOffset: -15 }, { relativeOffset: -60 }],
       };
 
-      await Calendar.createEventAsync(calendarId, eventDetails);
+      const eventId = await Calendar.createEventAsync(calendarId, eventDetails);
+      await AsyncStorage.setItem(storageKey, 'true');
+      await AsyncStorage.setItem(eventIdKey, eventId);
+      setAddingToPhoneCalendar(false);
+
+      const startMs = startDate.getTime();
+      await openPhoneCalendarToEvent(eventId, startMs);
       Alert.alert('Success', 'Event added to your calendar!');
       logger.info('Meeting added to phone calendar', { meetingId: meeting.id });
     } catch (error) {
+      setAddingToPhoneCalendar(false);
       logger.error('Error adding to phone calendar', error instanceof Error ? error : new Error(String(error)));
       Alert.alert('Error', 'Failed to add event to calendar');
     }
@@ -175,9 +235,23 @@ export default function AddToCalendarScreen() {
             </Text>
           </View>
 
-          <TouchableOpacity style={styles.option} onPress={addToPhoneCalendar} accessibilityLabel="Add to phone calendar">
-            <Ionicons name="calendar" size={20} color="#2563eb" />
-            <Text style={styles.optionText}>Phone Calendar</Text>
+          <TouchableOpacity
+            style={[styles.option, addingToPhoneCalendar && styles.optionDisabled]}
+            onPress={addToPhoneCalendar}
+            disabled={addingToPhoneCalendar}
+            accessibilityLabel="Add to phone calendar"
+            accessibilityHint="Adds this meeting to your device calendar without opening the calendar app"
+          >
+            {addingToPhoneCalendar ? (
+              <ActivityIndicator size="small" color="#2563eb" />
+            ) : (
+              <Ionicons name="calendar" size={20} color="#2563eb" />
+            )}
+            <View style={styles.optionTextWrap}>
+              <Text style={styles.optionText}>
+                {addingToPhoneCalendar ? 'Adding to calendar…' : 'Phone Calendar'}
+              </Text>
+            </View>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.option} onPress={exportToGoogleCalendar} accessibilityLabel="Add to Google Calendar">
@@ -265,6 +339,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e5e7eb',
   },
+  optionTextWrap: {
+    flex: 1,
+  },
   optionText: {
     fontSize: 16,
     fontWeight: '600',
@@ -275,6 +352,9 @@ const styles = StyleSheet.create({
   },
   cancelText: {
     color: '#6b7280',
+  },
+  optionDisabled: {
+    opacity: 0.7,
   },
 });
 

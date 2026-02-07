@@ -5,16 +5,15 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { logger } from '@/utils/logger';
-import { safeParseJSON, validateProfileSchema, validateMentorshipRequestSchema } from '@/utils/schemaValidation';
+import { safeParseJSON, validateProfileSchema } from '@/utils/schemaValidation';
 import { generateConversationId } from '@/services/hybridMessageService';
-import { hybridGetAllRequestsForUser, hybridUpdateRequestStatus } from '@/services/hybridRequestService';
+import { hybridGetAllRequestsForUser } from '@/services/hybridRequestService';
 
 interface Profile {
   name: string;
@@ -230,33 +229,6 @@ export default function MentorshipScreen() {
     }, [])
   );
 
-  const handleUnmatch = useCallback(
-    (connection: MentorshipConnection, role: 'mentor' | 'mentee') => {
-      const label = role === 'mentor' ? 'mentor' : 'mentee';
-      Alert.alert(
-        'Unmatch',
-        `Remove ${connection.name} from your ${label}s? They will no longer appear in your list.`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Unmatch',
-            style: 'destructive',
-            onPress: async () => {
-              try {
-                await hybridUpdateRequestStatus(connection.requestId, 'declined');
-                await loadConnections();
-              } catch (error) {
-                logger.error('Unmatch failed', error instanceof Error ? error : new Error(String(error)));
-                Alert.alert('Error', 'Failed to unmatch. Please try again.');
-              }
-            },
-          },
-        ]
-      );
-    },
-    [loadConnections]
-  );
-
   if (loading) {
     return (
       <View style={styles.container}>
@@ -303,7 +275,7 @@ export default function MentorshipScreen() {
                       <Text style={styles.connectionName}>{mentor.name}</Text>
                       {mentor.expertise && (
                         <Text style={styles.connectionDetail}>
-                          <Ionicons name="star" size={14} color="#f59e0b" /> {mentor.expertise}
+                          <Ionicons name="star" size={14} color="#f59e0b" /> Expertise: {mentor.expertise}
                         </Text>
                       )}
                       {mentor.responseNote && (
@@ -323,7 +295,6 @@ export default function MentorshipScreen() {
                       const profileData = await AsyncStorage.getItem('profile');
                       if (userData && profileData) {
                         const user = JSON.parse(userData);
-                        const profile = JSON.parse(profileData);
                         const conversationId = generateConversationId(user.email, mentor.email);
                         router.push({
                           pathname: '/messages/chat',
@@ -355,14 +326,6 @@ export default function MentorshipScreen() {
                   >
                     <Ionicons name="calendar" size={18} color="#10b981" />
                     <Text style={styles.scheduleButtonText}>Schedule</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.unmatchButton}
-                    onPress={() => handleUnmatch(mentor, 'mentor')}
-                    accessibilityLabel="Unmatch mentor"
-                  >
-                    <Ionicons name="close-circle" size={18} color="#dc2626" />
-                    <Text style={styles.unmatchButtonText}>Unmatch</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -423,7 +386,6 @@ export default function MentorshipScreen() {
                       const profileData = await AsyncStorage.getItem('profile');
                       if (userData && profileData) {
                         const user = JSON.parse(userData);
-                        const profile = JSON.parse(profileData);
                         const conversationId = generateConversationId(user.email, mentee.email);
                         router.push({
                           pathname: '/messages/chat',
@@ -455,14 +417,6 @@ export default function MentorshipScreen() {
                   >
                     <Ionicons name="calendar" size={18} color="#10b981" />
                     <Text style={styles.scheduleButtonText}>Schedule</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.unmatchButton}
-                    onPress={() => handleUnmatch(mentee, 'mentee')}
-                    accessibilityLabel="Unmatch mentee"
-                  >
-                    <Ionicons name="close-circle" size={18} color="#dc2626" />
-                    <Text style={styles.unmatchButtonText}>Unmatch</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -539,21 +493,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#10b981',
-  },
-  unmatchButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    backgroundColor: '#fef2f2',
-    borderRadius: 8,
-    gap: 6,
-  },
-  unmatchButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#dc2626',
   },
   connectionHeader: {
     flexDirection: 'row',

@@ -1,11 +1,13 @@
 # MentorMatch - End-to-End User Journey Test Plan
 
 ## Document Information
-- **Version**: 1.0
-- **Date**: 2026-01-26
+- **Version**: 1.1
+- **Date**: 2026-02-05
 - **App Version**: 1.0.0
 - **Platform**: Android & iOS (React Native Expo)
 - **Test Type**: End-to-End User Journey Testing
+
+**Recent changes (v1.1)**: Messages and Requests are combined in one tab ("Messages & Requests"); dedicated Meetings tab added; Add to Calendar is a full screen (with back); invitation code feature currently disabled—signup does not require it. **Unmatch mentor/mentee**: Mentorship tab shows "Unmatch" per connection; confirm updates request to declined and removes from list.
 
 ## Overview
 
@@ -59,17 +61,17 @@ This test plan covers the complete user journey from app installation through al
   1. Enter valid email: `newuser@example.com`
   2. Enter valid password: `SecurePass123!`
   3. Confirm password: `SecurePass123!`
-  4. Enter valid invitation code: `ABC12345`
+  4. (If invitation code feature enabled) Enter valid invitation code: `ABC12345`
   5. Tap "Sign Up" button
 - **Expected Results**:
   - ✅ Form validates all fields
-  - ✅ Invitation code validated
+  - ✅ (When invitation codes enabled) Invitation code validated and marked as used
   - ✅ Account created successfully
-  - ✅ Invitation code marked as used
   - ✅ Alert: "Account created successfully"
   - ✅ Navigates to login screen
   - ✅ User data saved to AsyncStorage
   - ✅ Firebase account created (if configured)
+- **Note**: Invitation code feature is currently **disabled**; signup does not show or require invitation code.
 
 #### Test Case UJ1.5: Sign Up with Invalid Invitation Code
 - **Precondition**: On signup screen
@@ -346,11 +348,11 @@ This test plan covers the complete user journey from app installation through al
 #### Test Case UJ3.5: View Incoming Request
 - **Precondition**: User logged in as mentor, has incoming request
 - **Steps**:
-  1. Navigate to Requests tab
+  1. Navigate to Messages & Requests tab
   2. View "Incoming" tab
 - **Expected Results**:
-  - ✅ Requests tab loads
-   - ✅ "Incoming" tab shows pending requests
+  - ✅ Messages & Requests tab loads (combined messages and requests)
+  - ✅ "Incoming" tab shows pending requests (where user is mentor; self-sent excluded)
    - ✅ Requester name displayed
    - ✅ Requester email displayed
    - ✅ Request note displayed
@@ -374,7 +376,7 @@ This test plan covers the complete user journey from app installation through al
   - ✅ Response note saved
   - ✅ Request moved to "Processed" tab
   - ✅ Connection established
-  - ✅ **Invitation code generated and added to inbox**
+  - ✅ (When invitation codes enabled) Invitation code generated and added to inbox
   - ✅ Alert: "Request accepted"
   - ✅ Navigates back to requests screen
 
@@ -407,10 +409,10 @@ This test plan covers the complete user journey from app installation through al
 #### Test Case UJ3.9: View Sent Requests
 - **Precondition**: User has sent requests
 - **Steps**:
-  1. Navigate to Requests tab
+  1. Navigate to Messages & Requests tab
   2. View "Sent" tab
 - **Expected Results**:
-  - ✅ "Sent" tab shows all sent requests
+  - ✅ "Sent" tab shows all sent requests (and sent conversations)
   - ✅ Mentor name displayed
   - ✅ Status shown (pending/accepted/declined)
   - ✅ Request note displayed
@@ -419,10 +421,10 @@ This test plan covers the complete user journey from app installation through al
 #### Test Case UJ3.10: View Processed Requests
 - **Precondition**: User has accepted/declined requests
 - **Steps**:
-  1. Navigate to Requests tab
+  1. Navigate to Messages & Requests tab
   2. View "Processed" tab
 - **Expected Results**:
-  - ✅ "Processed" tab shows all processed requests
+  - ✅ "Processed" tab shows all processed requests (with role label: Accepted (Mentor) / (Mentee))
   - ✅ Accepted requests shown with "Accepted" badge
   - ✅ Declined requests shown with "Declined" badge
   - ✅ Response notes displayed
@@ -443,7 +445,7 @@ This test plan covers the complete user journey from app installation through al
   - ✅ Mentor expertise displayed
   - ✅ Response note displayed (if exists)
   - ✅ Connected date shown
-  - ✅ "Message" and "Schedule" buttons visible
+  - ✅ "Message", "Schedule", and "Unmatch" buttons visible
 
 #### Test Case UJ3.12: View My Mentees
 - **Precondition**: User has accepted requests (as mentor)
@@ -457,7 +459,7 @@ This test plan covers the complete user journey from app installation through al
   - ✅ Mentee interest displayed
   - ✅ Original request note displayed (if exists)
   - ✅ Connected date shown
-  - ✅ "Message" and "Schedule" buttons visible
+  - ✅ "Message", "Schedule", and "Unmatch" buttons visible
 
 #### Test Case UJ3.13: View Matched Profile Contact Info
 - **Precondition**: User has accepted connection with another user
@@ -481,9 +483,45 @@ This test plan covers the complete user journey from app installation through al
   - ✅ Contact info hidden
   - ✅ Only public profile info shown
 
+#### Test Case UJ3.15: Unmatch Mentor
+- **Precondition**: User has at least one mentor
+- **Steps**:
+  1. Navigate to Mentorship tab
+  2. Tap "Unmatch" on a mentor card
+  3. In alert, tap "Unmatch" (confirm)
+- **Expected Results**:
+  - ✅ Confirmation alert: remove from mentors
+  - ✅ Request status updated to declined
+  - ✅ Mentor no longer appears in My Mentors
+  - ✅ List refreshed
+
+#### Test Case UJ3.16: Unmatch Mentee
+- **Precondition**: User has at least one mentee
+- **Steps**:
+  1. Navigate to Mentorship tab
+  2. Tap "Unmatch" on a mentee card
+  3. In alert, tap "Unmatch" (confirm)
+- **Expected Results**:
+  - ✅ Confirmation alert: remove from mentees
+  - ✅ Request status updated to declined
+  - ✅ Mentee no longer appears in My Mentees
+  - ✅ List refreshed
+
+#### Test Case UJ3.17: Cancel Unmatch
+- **Precondition**: User has at least one connection
+- **Steps**:
+  1. Tap "Unmatch" on a mentor or mentee
+  2. In alert, tap "Cancel"
+- **Expected Results**:
+  - ✅ Alert dismissed
+  - ✅ Connection still in list
+  - ✅ No status change
+
 ---
 
 ## USER JOURNEY 4: INVITATION CODE SYSTEM
+
+**Note**: Invitation code feature is currently **disabled** (`config.features.enableInvitationCodes: false`). The cases below apply when the feature is re-enabled.
 
 ### Phase 1: Receiving Invitation Code
 
@@ -533,17 +571,17 @@ This test plan covers the complete user journey from app installation through al
 #### Test Case UJ5.1: Navigate to Messages
 - **Precondition**: User has connections
 - **Steps**:
-  1. Navigate to Messages tab
+  1. Navigate to Messages & Requests tab (conversations appear in Incoming/Sent/Processed)
 - **Expected Results**:
-  - ✅ Messages tab loads
-  - ✅ List of conversations displayed
+  - ✅ Messages & Requests tab loads (combined with mentorship requests)
+  - ✅ List of conversations displayed where applicable
   - ✅ Conversations with matched users shown
   - ✅ Unread message badges visible
   - ✅ Last message preview shown
   - ✅ Timestamp shown
 
 #### Test Case UJ5.2: Start New Conversation
-- **Precondition**: On Messages tab, have matched connection
+- **Precondition**: On Messages & Requests tab, have matched connection
 - **Steps**:
   1. Tap on a conversation (or start new)
   2. Navigate to chat screen
@@ -609,8 +647,8 @@ This test plan covers the complete user journey from app installation through al
 #### Test Case UJ5.7: View Received Message
 - **Precondition**: User has unread messages
 - **Steps**:
-  1. Navigate to Messages tab
-  2. View conversation with unread message
+  1. Navigate to Messages & Requests tab
+  2. View conversation with unread message (in relevant sub-tab)
   3. Open conversation
 - **Expected Results**:
   - ✅ Unread badge visible on conversation
@@ -820,23 +858,21 @@ This test plan covers the complete user journey from app installation through al
   - ✅ Alert: "Meeting declined."
   - ✅ Navigates back
 
-### Phase 3: Viewing Upcoming Meetings
+### Phase 3: Viewing Meetings (Meetings Tab)
+
+**Overview**: A dedicated **Meetings** tab provides Upcoming, Incoming, Sent, Processed. Upcoming shows only future meetings (past excluded); self-meetings excluded. "Add to Calendar" opens a full Add to Calendar screen (user can go back without adding).
 
 #### Test Case UJ6.10: View Upcoming Meetings
 - **Precondition**: User has accepted meetings
 - **Steps**:
-  1. Navigate to Upcoming Meetings screen
+  1. Navigate to Meetings tab, view Upcoming (or open Upcoming from Mentorship)
 - **Expected Results**:
    - ✅ Upcoming Meetings screen loads
-   - ✅ All accepted meetings displayed
+   - ✅ Only future meetings (meetingDate >= now); past excluded
+   - ✅ Self-meetings excluded
    - ✅ Meetings sorted by date/time (soonest first)
-   - ✅ Meeting details shown:
-     - Title
-     - Date and time (formatted)
-     - Location/meeting link
-     - Duration
-     - Participant/organizer name
-   - ✅ "Add to Calendar" button visible
+   - ✅ Meeting details shown: Title, Date/time, Location/link, Duration, Participant/organizer
+   - ✅ "Add to Calendar" opens Add to Calendar screen (not blocking alert)
    - ✅ Pull-to-refresh available
 
 #### Test Case UJ6.11: View Meeting Details
@@ -861,33 +897,33 @@ This test plan covers the complete user journey from app installation through al
   - ✅ Past meetings NOT shown
   - ✅ Meetings filtered by current date/time
 
-### Phase 4: Calendar Integration
+### Phase 4: Calendar Integration (Add to Calendar Screen)
+
+**Overview**: "Add to Calendar" navigates to **Add to Calendar** screen; user can go back without adding. If already added to phone calendar, app shows "Already added" and does not open calendar app again.
 
 #### Test Case UJ6.13: Add Meeting to Phone Calendar (iOS/Android)
-- **Precondition**: Viewing upcoming meeting
+- **Precondition**: Viewing upcoming meeting, not yet added to phone calendar
 - **Steps**:
-  1. Tap "Add to Calendar" button
-  2. Grant calendar permissions (if first time)
-  3. Select calendar
-  4. Confirm
+  1. Tap "Add to Calendar" (navigates to Add to Calendar screen)
+  2. Tap "Add to Phone Calendar", grant permissions if prompted, confirm
 - **Expected Results**:
-  - ✅ Calendar permission requested
-  - ✅ Permission granted
-  - ✅ Meeting added to selected calendar
-  - ✅ All meeting details included:
-    - Title
-    - Date and time
-    - Duration
-    - Location/meeting link
-    - Description
-  - ✅ Alert: "Meeting added to calendar"
-  - ✅ Meeting visible in phone's calendar app
+  - ✅ Add to Calendar screen opens (not blocking Alert); user can cancel by going back
+  - ✅ Calendar permission requested when adding to phone
+  - ✅ Meeting added to selected calendar; details included (title, date/time, duration, location)
+  - ✅ Success message; optionally calendar app opens so user sees event
+
+#### Test Case UJ6.13a: Add to Calendar - Already Added to Phone
+- **Precondition**: Meeting was previously added to phone calendar
+- **Steps**:
+  1. Open Add to Calendar for same meeting, tap "Add to Phone Calendar"
+- **Expected Results**:
+  - ✅ Message that event is already added; calendar app not opened again
 
 #### Test Case UJ6.14: Add Meeting to Google Calendar
 - **Precondition**: Viewing upcoming meeting
 - **Steps**:
-  1. Tap "Add to Calendar" button
-  2. Select "Google Calendar" option
+  1. Tap "Add to Calendar" (opens Add to Calendar screen)
+  2. Tap "Google Calendar" option
 - **Expected Results**:
   - ✅ Google Calendar link generated
   - ✅ Link opens in browser or Google Calendar app
@@ -898,8 +934,8 @@ This test plan covers the complete user journey from app installation through al
 #### Test Case UJ6.15: Add Meeting to Outlook/Hotmail Calendar
 - **Precondition**: Viewing upcoming meeting
 - **Steps**:
-  1. Tap "Add to Calendar" button
-  2. Select "Outlook Calendar" option
+  1. Tap "Add to Calendar" (opens Add to Calendar screen)
+  2. Tap "Outlook Calendar" option
 - **Expected Results**:
   - ✅ Outlook Calendar link generated
   - ✅ Link opens in browser or Outlook app
@@ -910,13 +946,13 @@ This test plan covers the complete user journey from app installation through al
 #### Test Case UJ6.16: Calendar Permission Denial
 - **Precondition**: User denies calendar permission
 - **Steps**:
-  1. Tap "Add to Calendar" button
+  1. Open Add to Calendar screen, tap "Add to Phone Calendar"
   2. Deny permission when prompted
 - **Expected Results**:
   - ✅ Permission request shown
-  - ✅ Alert: "Calendar permission is required"
+  - ✅ Alert or message: calendar permission required
   - ✅ Meeting NOT added to calendar
-  - ✅ User can still view meeting in app
+  - ✅ User can go back from Add to Calendar screen without adding
 
 ### Phase 5: Meeting Reminders/Notifications
 

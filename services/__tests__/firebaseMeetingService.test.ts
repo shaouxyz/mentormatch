@@ -20,6 +20,16 @@ jest.mock('firebase/firestore', () => ({
   onSnapshot: jest.fn(),
 }));
 
+// Mock firebase/auth
+jest.mock('firebase/auth', () => ({
+  getAuth: jest.fn(() => ({
+    currentUser: {
+      email: 'test@example.com',
+      uid: 'test-uid',
+    },
+  })),
+}));
+
 jest.mock('../../config/firebase.config');
 jest.mock('../../utils/logger');
 
@@ -46,6 +56,21 @@ const mockFirebaseConfig = firebaseConfig as any;
 const mockLogger = logger as any;
 
 describe('Firebase Meeting Service', () => {
+  const mockAuth = {
+    currentUser: {
+      email: 'participant@example.com',
+      uid: 'test-uid',
+    },
+  };
+
+  beforeEach(() => {
+    // Mock getFirebaseApp
+    mockFirebaseConfig.getFirebaseApp = jest.fn(() => ({}));
+    // Mock getAuth
+    const { getAuth } = require('firebase/auth');
+    getAuth.mockReturnValue(mockAuth);
+  });
+
   const mockMeeting: Omit<Meeting, 'id'> = {
     organizerEmail: 'organizer@example.com',
     organizerName: 'Organizer',
@@ -179,10 +204,13 @@ describe('Firebase Meeting Service', () => {
 
   describe('updateMeeting', () => {
     it('should update meeting successfully', async () => {
-      // Mock getDoc to return existing meeting
+      // Mock getDoc to return existing meeting with participant email matching auth
       mockFirestore.getDoc.mockResolvedValue({
         exists: () => true,
-        data: () => mockMeeting,
+        data: () => ({
+          ...mockMeeting,
+          participantEmail: 'participant@example.com',
+        }),
       });
       
       await updateMeeting('meeting123', { status: 'accepted' });
@@ -196,7 +224,10 @@ describe('Firebase Meeting Service', () => {
       // Mock getDoc to return existing meeting
       mockFirestore.getDoc.mockResolvedValue({
         exists: () => true,
-        data: () => mockMeeting,
+        data: () => ({
+          ...mockMeeting,
+          participantEmail: 'participant@example.com',
+        }),
       });
       
       await updateMeeting('meeting123', { status: 'accepted' });
@@ -213,8 +244,44 @@ describe('Firebase Meeting Service', () => {
         exists: () => false,
       });
       
+      // Ensure auth is set up (from beforeEach)
+      const { getAuth } = require('firebase/auth');
+      getAuth.mockReturnValue(mockAuth);
+      
       await expect(updateMeeting('nonexistent', { status: 'accepted' })).rejects.toThrow('Meeting not found in Firestore');
       expect(mockFirestore.updateDoc).not.toHaveBeenCalled();
+    });
+
+    it('should throw error when user is not authenticated', async () => {
+      // Mock getAuth to return null currentUser
+      const { getAuth } = require('firebase/auth');
+      getAuth.mockReturnValueOnce({
+        currentUser: null,
+      });
+      
+      await expect(updateMeeting('meeting123', { status: 'accepted' })).rejects.toThrow('User not authenticated');
+    });
+
+    it('should throw error when user is not organizer or participant', async () => {
+      // Mock getAuth to return different user
+      const { getAuth } = require('firebase/auth');
+      getAuth.mockReturnValue({
+        currentUser: {
+          email: 'other@example.com',
+          uid: 'other-uid',
+        },
+      });
+      
+      // Mock getDoc to return meeting
+      mockFirestore.getDoc.mockResolvedValue({
+        exists: () => true,
+        data: () => ({
+          ...mockMeeting,
+          participantEmail: 'participant@example.com',
+        }),
+      });
+      
+      await expect(updateMeeting('meeting123', { status: 'accepted' })).rejects.toThrow('not authorized');
     });
 
     it('should handle errors and throw', async () => {

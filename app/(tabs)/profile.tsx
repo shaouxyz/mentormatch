@@ -15,6 +15,9 @@ import { logger } from '@/utils/logger';
 import { ErrorHandler } from '@/utils/errorHandler';
 import { safeParseJSON, validateProfileSchema } from '@/utils/schemaValidation';
 import { endSession } from '@/utils/sessionManager';
+import { suspendAccount, deleteAccount, clearAllUserData } from '@/services/accountService';
+import { hybridGetProfile } from '@/services/hybridProfileService';
+import { isFirebaseConfigured } from '@/config/firebase.config';
 
 interface Profile {
   name: string;
@@ -42,6 +45,7 @@ export default function ProfileScreen() {
   const router = useRouter();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [accountExpanded, setAccountExpanded] = useState(false);
   const hasLoadedRef = useRef(false);
   const isMountedRef = useRef(true);
 
@@ -69,6 +73,23 @@ export default function ProfileScreen() {
             null
           );
           if (parsedProfile) {
+            if (isFirebaseConfigured()) {
+              try {
+                const remote = await hybridGetProfile(parsedProfile.email);
+                if (remote?.suspended) {
+                  await clearAllUserData();
+                  if (isMountedRef.current) {
+                    setProfile(null);
+                    setLoading(false);
+                  }
+                  router.replace('/');
+                  Alert.alert('Account suspended', 'Your account has been suspended. Contact support if you need access.');
+                  return;
+                }
+              } catch (_) {
+                // Ignore fetch errors; use local profile
+              }
+            }
             setProfile(parsedProfile);
           } else {
             setProfile(null);
@@ -114,15 +135,58 @@ export default function ProfileScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              // End session
               await endSession();
-              // Clear user data from AsyncStorage
               await AsyncStorage.removeItem('user');
               await AsyncStorage.removeItem('profile');
-              // Navigate to welcome screen
               router.replace('/');
             } catch (error) {
               ErrorHandler.handleStorageError(error, 'log out');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleSuspendAccount = () => {
+    if (!profile?.email) return;
+    Alert.alert(
+      'Suspend Account',
+      'Your account will be suspended. You will be signed out and cannot sign in again until the account is restored. Continue?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Suspend',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await suspendAccount(profile.email);
+              router.replace('/');
+            } catch (error) {
+              ErrorHandler.handleError(error, 'Failed to suspend account');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDeleteAccount = () => {
+    if (!profile?.email) return;
+    Alert.alert(
+      'Delete Account',
+      'This will permanently delete your account and data. You will be signed out. This cannot be undone. Continue?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteAccount(profile.email);
+              router.replace('/');
+            } catch (error) {
+              ErrorHandler.handleError(error, 'Failed to delete account');
             }
           },
         },
@@ -256,9 +320,45 @@ export default function ProfileScreen() {
           accessibilityLabel="Log out button"
           accessibilityHint="Tap to log out of your account"
         >
-          <Ionicons name="log-out-outline" size={20} color="#ef4444" />
+          <Ionicons name="log-out-outline" size={20} color="#475569" />
           <Text style={styles.logoutButtonText}>Log Out</Text>
         </TouchableOpacity>
+
+        <View style={styles.section}>
+          <TouchableOpacity
+            style={styles.accountButton}
+            onPress={() => setAccountExpanded((prev) => !prev)}
+            accessibilityLabel="Account"
+            accessibilityHint={accountExpanded ? 'Collapse account options' : 'Expand to show Suspend and Delete account'}
+            accessibilityState={{ expanded: accountExpanded }}
+          >
+            <Ionicons name="person-circle-outline" size={20} color="#475569" />
+            <Text style={styles.accountButtonText}>Account</Text>
+            <Ionicons name={accountExpanded ? 'chevron-up' : 'chevron-down'} size={20} color="#64748b" />
+          </TouchableOpacity>
+          {accountExpanded && (
+            <>
+              <TouchableOpacity
+                style={styles.suspendButton}
+                onPress={handleSuspendAccount}
+                accessibilityLabel="Suspend Account"
+                accessibilityHint="Suspend your account; you will be signed out until restored"
+              >
+                <Ionicons name="pause-circle-outline" size={20} color="#b45309" />
+                <Text style={styles.suspendButtonText}>Suspend Account</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.deleteButton}
+                onPress={handleDeleteAccount}
+                accessibilityLabel="Delete Account"
+                accessibilityHint="Permanently delete your account and data"
+              >
+                <Ionicons name="trash-outline" size={20} color="#ef4444" />
+                <Text style={styles.deleteButtonText}>Delete Account</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
       </View>
     </ScrollView>
   );
@@ -369,19 +469,64 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  logoutButton: {
+  suspendButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fffbeb',
+    paddingVertical: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    gap: 8,
+  },
+  suspendButtonText: {
+    color: '#b45309',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  deleteButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#fef2f2',
     paddingVertical: 16,
     borderRadius: 12,
+    marginBottom: 12,
+    gap: 8,
+  },
+  deleteButtonText: {
+    color: '#ef4444',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f1f5f9',
+    paddingVertical: 16,
+    borderRadius: 12,
     marginTop: 12,
-    marginBottom: 32,
+    marginBottom: 12,
     gap: 8,
   },
   logoutButtonText: {
-    color: '#ef4444',
+    color: '#475569',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  accountButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f1f5f9',
+    paddingVertical: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    gap: 8,
+  },
+  accountButtonText: {
+    color: '#475569',
     fontSize: 16,
     fontWeight: '600',
   },

@@ -213,14 +213,16 @@ export async function hybridGetProfile(email: string): Promise<Profile | null> {
 }
 
 /**
- * Get all profiles (hybrid: merge Firebase and local)
+ * Get all profiles (hybrid: Firebase as source of truth when available, else local)
+ * When Firebase fetch succeeds, only Firebase profiles are returned so deleted accounts
+ * do not reappear from stale local cache. Local merge is used only when Firebase is
+ * unavailable or fails.
  */
 export async function hybridGetAllProfiles(): Promise<Profile[]> {
   try {
     const profiles: Profile[] = [];
     const emailSet = new Set<string>();
 
-    // Try Firebase first if configured
     if (isFirebaseConfigured()) {
       try {
         const firebaseProfiles = await getAllFirebaseProfiles();
@@ -229,6 +231,9 @@ export async function hybridGetAllProfiles(): Promise<Profile[]> {
           emailSet.add(profile.email);
         });
         logger.info('Retrieved profiles from Firebase', { count: firebaseProfiles.length });
+        // Overwrite local cache so deleted accounts don't reappear when Firebase is used later
+        await AsyncStorage.setItem('allProfiles', JSON.stringify(profiles));
+        return profiles;
       } catch (firebaseError) {
         logger.warn('Failed to get profiles from Firebase, using local only', {
           error: firebaseError instanceof Error ? firebaseError.message : String(firebaseError)
@@ -236,7 +241,6 @@ export async function hybridGetAllProfiles(): Promise<Profile[]> {
       }
     }
 
-    // Add local profiles that aren't already in the list
     const allProfilesData = await AsyncStorage.getItem('allProfiles');
     if (allProfilesData) {
       const localProfiles: Profile[] = JSON.parse(allProfilesData);
@@ -246,7 +250,7 @@ export async function hybridGetAllProfiles(): Promise<Profile[]> {
           emailSet.add(profile.email);
         }
       });
-      logger.info('Merged local profiles', { totalCount: profiles.length });
+      logger.info('Using local profiles only', { totalCount: profiles.length });
     }
 
     return profiles;

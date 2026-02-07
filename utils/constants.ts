@@ -24,6 +24,11 @@ export const PROFILES_PER_PAGE = 20; // For future pagination implementation
 export const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export const PHONE_REGEX = /^[\d\s\-\+\(\)]+$/;
 
+// Discover tab: emails to never show (e.g. deleted accounts that may still be in cache or Firestore)
+export const DISCOVER_HIDDEN_EMAILS = new Set(
+  ['shaouxyz+test@hotmail.com'].map((e) => e.toLowerCase().trim())
+);
+
 // AsyncStorage Keys
 export const STORAGE_KEYS = {
   USER: 'user',

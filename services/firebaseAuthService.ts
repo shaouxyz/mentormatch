@@ -11,6 +11,7 @@ import {
   signOut,
   updateProfile,
   sendPasswordResetEmail,
+  deleteUser as firebaseDeleteUser,
   User,
   UserCredential,
 } from 'firebase/auth';
@@ -67,14 +68,17 @@ export async function firebaseSignIn(email: string, password: string): Promise<U
     return userCredential;
   } catch (error: any) {
     const errorCode = error?.code || 'unknown';
-    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorMessage = (error != null && typeof error === 'object' && error.message != null)
+      ? String(error.message)
+      : (error != null && typeof error === 'object' && error.code)
+        ? String(error.code)
+        : String(error ?? 'unknown');
     
     logger.error('Error signing in with Firebase', {
       email,
       error: errorMessage,
       errorCode,
-      errorName: error?.name,
-      fullError: error,
+      errorName: error?.name ?? undefined,
     });
     
     // Preserve Firebase error code for better error handling upstream
@@ -173,5 +177,25 @@ export async function getFirebaseUserToken(): Promise<string | null> {
   } catch (error) {
     logger.error('Error getting Firebase user token', error instanceof Error ? error : new Error(String(error)));
     return null;
+  }
+}
+
+/**
+ * Delete the current Firebase Auth user (requires recent sign-in).
+ * Caller should clear Firestore profile and local data after.
+ */
+export async function deleteCurrentFirebaseUser(): Promise<void> {
+  try {
+    const auth = getFirebaseAuth();
+    const user = auth.currentUser;
+    if (!user) {
+      logger.info('No Firebase user to delete');
+      return;
+    }
+    await firebaseDeleteUser(user);
+    logger.info('Firebase user deleted', { email: user.email });
+  } catch (error) {
+    logger.error('Error deleting Firebase user', error instanceof Error ? error : new Error(String(error)));
+    throw error;
   }
 }

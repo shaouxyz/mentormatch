@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Linking,
+  Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -15,6 +16,9 @@ import { logger } from '@/utils/logger';
 import { safeParseJSON, validateProfileSchema } from '@/utils/schemaValidation';
 import { areUsersMatched } from '@/utils/connectionUtils';
 import { hybridGetProfile } from '@/services/hybridProfileService';
+import { hybridGetAllRequestsForUser, hybridUpdateRequestStatus } from '@/services/hybridRequestService';
+
+const normalizeEmail = (e: string | undefined | null) => (e || '').trim().toLowerCase();
 
 interface Profile {
   name: string;
@@ -46,6 +50,9 @@ export default function ViewProfileScreen() {
   const [loading, setLoading] = useState(true);
   const [isMatched, setIsMatched] = useState(false);
   const [isOwnProfile, setIsOwnProfile] = useState(false);
+  const [connectionRole, setConnectionRole] = useState<'mentor' | 'mentee' | null>(null);
+  const [connectionRequestId, setConnectionRequestId] = useState<string | null>(null);
+  const [pendingRequestId, setPendingRequestId] = useState<string | null>(null);
   const isLoadingRef = useRef(false);
   const lastParamsRef = useRef<string>('');
 
@@ -74,8 +81,61 @@ export default function ViewProfileScreen() {
     lastParamsRef.current = currentKey;
     isLoadingRef.current = true;
 
+    const loadConnectionRole = async (currentUserEmail: string, viewedEmail: string) => {
+      try {
+        const { all } = await hybridGetAllRequestsForUser(currentUserEmail);
+        const accepted = all.filter((r) => r.status === 'accepted');
+        const nu = normalizeEmail(currentUserEmail);
+        const nv = normalizeEmail(viewedEmail);
+        // Check "they are my mentee" first so mentee profiles show "Already your mentee"
+        const reqMentee = accepted.find(
+          (r) =>
+            normalizeEmail(r.mentorEmail) === nu && normalizeEmail(r.requesterEmail) === nv
+        );
+        if (reqMentee) {
+          setConnectionRole('mentee');
+          setConnectionRequestId(reqMentee.id);
+          setPendingRequestId(null);
+          return;
+        }
+        const req = accepted.find(
+          (r) =>
+            normalizeEmail(r.requesterEmail) === nu && normalizeEmail(r.mentorEmail) === nv
+        );
+        if (req) {
+          setConnectionRole('mentor');
+          setConnectionRequestId(req.id);
+          setPendingRequestId(null);
+          return;
+        }
+        // Pending: current user already requested this profile as mentor
+        const pendingReq = all.find(
+          (r) =>
+            r.status === 'pending' &&
+            normalizeEmail(r.requesterEmail) === nu &&
+            normalizeEmail(r.mentorEmail) === nv
+        );
+        if (pendingReq) {
+          setConnectionRole(null);
+          setConnectionRequestId(null);
+          setPendingRequestId(pendingReq.id);
+          return;
+        }
+        setConnectionRole(null);
+        setConnectionRequestId(null);
+        setPendingRequestId(null);
+      } catch (_) {
+        setConnectionRole(null);
+        setConnectionRequestId(null);
+        setPendingRequestId(null);
+      }
+    };
+
     const loadProfile = async () => {
       try {
+        setConnectionRole(null);
+        setConnectionRequestId(null);
+        setPendingRequestId(null);
         // If profile is passed directly
         if (profileValue) {
           const parsed = safeParseJSON(
@@ -99,6 +159,7 @@ export default function ViewProfileScreen() {
                 if (user.email !== parsed.email) {
                   const matched = await areUsersMatched(user.email, parsed.email);
                   setIsMatched(matched);
+                  await loadConnectionRole(user.email, parsed.email);
                 } else {
                   setIsMatched(true); // Own profile is always "matched"
                 }
@@ -134,6 +195,7 @@ export default function ViewProfileScreen() {
                   if (user.email !== foundProfile.email) {
                     const matched = await areUsersMatched(user.email, foundProfile.email);
                     setIsMatched(matched);
+                    await loadConnectionRole(user.email, foundProfile.email);
                   } else {
                     setIsMatched(true); // Own profile is always "matched"
                   }
@@ -179,6 +241,7 @@ export default function ViewProfileScreen() {
                   if (user.email !== foundProfile.email) {
                     const matched = await areUsersMatched(user.email, foundProfile.email);
                     setIsMatched(matched);
+                    await loadConnectionRole(user.email, foundProfile.email);
                   } else {
                     setIsMatched(true); // Own profile is always "matched"
                   }
@@ -216,6 +279,7 @@ export default function ViewProfileScreen() {
                   if (user.email !== testProfile.email) {
                     const matched = await areUsersMatched(user.email, testProfile.email);
                     setIsMatched(matched);
+                    await loadConnectionRole(user.email, testProfile.email);
                   } else {
                     setIsMatched(true); // Own profile is always "matched"
                   }
@@ -405,18 +469,134 @@ export default function ViewProfileScreen() {
           </View>
         </View>
 
-        <TouchableOpacity
-          style={styles.requestButton}
-          onPress={() => router.push({
-            pathname: '/request/send',
-            params: { profile: JSON.stringify(profile) },
-          })}
-          accessibilityLabel="Request as mentor button"
-          accessibilityHint={`Tap to send a mentorship request to ${profile.name}`}
-        >
-          <Ionicons name="person-add" size={20} color="#fff" />
-          <Text style={styles.requestButtonText}>Request as Mentor</Text>
-        </TouchableOpacity>
+        {!isOwnProfile && (
+          connectionRole === 'mentor' ? (
+            <View style={styles.connectionBlock}>
+              <View style={styles.alreadyConnectionLabel}>
+                <Ionicons name="checkmark-circle" size={20} color="#10b981" />
+                <Text style={styles.alreadyConnectionText}>Already your mentor</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.unmatchButton}
+                onPress={() => {
+                  if (!connectionRequestId) return;
+                  Alert.alert(
+                    'Unmatch',
+                    `Remove ${profile.name} from your mentors? They will no longer appear in your list.`,
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      {
+                        text: 'Unmatch',
+                        style: 'destructive',
+                        onPress: async () => {
+                          try {
+                            await hybridUpdateRequestStatus(connectionRequestId, 'declined');
+                            router.back();
+                          } catch (e) {
+                            logger.error('Unmatch failed', e instanceof Error ? e : new Error(String(e)));
+                            Alert.alert('Error', 'Failed to unmatch. Please try again.');
+                          }
+                        },
+                      },
+                    ]
+                  );
+                }}
+                accessibilityLabel="Unmatch mentor"
+              >
+                <Ionicons name="close-circle" size={20} color="#dc2626" />
+                <Text style={styles.unmatchButtonText}>Unmatch</Text>
+              </TouchableOpacity>
+            </View>
+          ) : connectionRole === 'mentee' ? (
+            <View style={styles.connectionBlock}>
+              <View style={styles.alreadyConnectionLabel}>
+                <Ionicons name="checkmark-circle" size={20} color="#10b981" />
+                <Text style={styles.alreadyConnectionText}>Already your mentee</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.unmatchButton}
+                onPress={() => {
+                  if (!connectionRequestId) return;
+                  Alert.alert(
+                    'Unmatch',
+                    `Remove ${profile.name} from your mentees? They will no longer appear in your list.`,
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      {
+                        text: 'Unmatch',
+                        style: 'destructive',
+                        onPress: async () => {
+                          try {
+                            await hybridUpdateRequestStatus(connectionRequestId, 'declined');
+                            router.back();
+                          } catch (e) {
+                            logger.error('Unmatch failed', e instanceof Error ? e : new Error(String(e)));
+                            Alert.alert('Error', 'Failed to unmatch. Please try again.');
+                          }
+                        },
+                      },
+                    ]
+                  );
+                }}
+                accessibilityLabel="Unmatch mentee"
+              >
+                <Ionicons name="close-circle" size={20} color="#dc2626" />
+                <Text style={styles.unmatchButtonText}>Unmatch</Text>
+              </TouchableOpacity>
+            </View>
+          ) : pendingRequestId ? (
+            <View style={styles.connectionBlock}>
+              <View style={styles.alreadyConnectionLabel}>
+                <Ionicons name="time-outline" size={20} color="#64748b" />
+                <Text style={styles.pendingRequestText}>Already requested as mentor</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.withdrawButton}
+                onPress={() => {
+                  if (!pendingRequestId) return;
+                  Alert.alert(
+                    'Withdraw request',
+                    `Cancel your mentorship request to ${profile.name}?`,
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      {
+                        text: 'Withdraw',
+                        style: 'destructive',
+                        onPress: async () => {
+                          try {
+                            await hybridUpdateRequestStatus(pendingRequestId, 'declined');
+                            setPendingRequestId(null);
+                            router.back();
+                          } catch (e) {
+                            logger.error('Withdraw request failed', e instanceof Error ? e : new Error(String(e)));
+                            Alert.alert('Error', 'Failed to withdraw request. Please try again.');
+                          }
+                        },
+                      },
+                    ]
+                  );
+                }}
+                accessibilityLabel="Withdraw request"
+              >
+                <Ionicons name="close-circle-outline" size={20} color="#dc2626" />
+                <Text style={styles.withdrawButtonText}>Withdraw request</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={styles.requestButton}
+              onPress={() => router.push({
+                pathname: '/request/send',
+                params: { profile: JSON.stringify(profile) },
+              })}
+              accessibilityLabel="Request as mentor button"
+              accessibilityHint={`Tap to send a mentorship request to ${profile.name}`}
+            >
+              <Ionicons name="person-add" size={20} color="#fff" />
+              <Text style={styles.requestButtonText}>Request as Mentor</Text>
+            </TouchableOpacity>
+          )
+        )}
       </View>
     </ScrollView>
   );
@@ -511,6 +691,62 @@ const styles = StyleSheet.create({
     color: '#64748b',
     textAlign: 'center',
     marginTop: 48,
+  },
+  connectionBlock: {
+    marginTop: 24,
+    marginBottom: 32,
+  },
+  alreadyConnectionLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    backgroundColor: '#d1fae5',
+    borderRadius: 12,
+    gap: 8,
+    marginBottom: 12,
+  },
+  alreadyConnectionText: {
+    color: '#047857',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  unmatchButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    backgroundColor: '#fef2f2',
+    borderRadius: 12,
+    gap: 8,
+  },
+  unmatchButtonText: {
+    color: '#dc2626',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  pendingRequestText: {
+    color: '#64748b',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  withdrawButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    backgroundColor: '#fef2f2',
+    borderRadius: 12,
+    gap: 8,
+    marginTop: 12,
+  },
+  withdrawButtonText: {
+    color: '#dc2626',
+    fontSize: 16,
+    fontWeight: '600',
   },
   requestButton: {
     flexDirection: 'row',

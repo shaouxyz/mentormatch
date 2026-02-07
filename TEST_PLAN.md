@@ -1,8 +1,8 @@
 # MentorMatch - Comprehensive Test Plan
 
 ## Document Information
-- **Version**: 1.1
-- **Date**: 2026-01-26
+- **Version**: 1.2
+- **Date**: 2026-02-05
 - **App Version**: 1.0.0
 - **Platform**: Android & iOS (React Native Expo)
 
@@ -101,6 +101,15 @@ These checks apply to **any** change (bug fix / feature / refactor / docs that a
 - **Expected Results**:
   - ✅ Navigates to `/login` screen
   - ✅ No errors
+
+#### Test Case 1.1.6: Initialization Non-Blocking
+- **Precondition**: Fresh app launch
+- **Steps**:
+  1. Launch app; observe first paint
+- **Expected Results**:
+  - ✅ Welcome screen renders without waiting for test accounts, data migration, session check, or Firebase init
+  - ✅ Initialization runs asynchronously; no blocking or hang
+  - ✅ See also: Section 26.25 (app.init.blocking, app.loading tests), Section 27 (phone load)
 
 ---
 
@@ -499,6 +508,27 @@ These checks apply to **any** change (bug fix / feature / refactor / docs that a
   - ✅ Profile NOT automatically added to `allProfiles` array
   - ⚠️ **Note**: This is current behavior - profiles are only in allProfiles if manually added
 
+#### Test Case 2.1.18: Optional Location Field (Create)
+- **Precondition**: On create profile screen
+- **Steps**:
+  1. Fill required fields; enter location: `San Francisco, CA` (or leave empty)
+  2. Tap "Save Profile"
+- **Expected Results**:
+  - ✅ Profile created with or without location
+  - ✅ Location saved when provided; optional when empty
+  - ✅ No validation error for empty location
+
+#### Test Case 2.1.19: Spaces in Expertise and Interest Fields
+- **Precondition**: On create profile screen
+- **Steps**:
+  1. Enter expertise: `Software Engineering` (with spaces)
+  2. Enter interest: `Product Management` (with spaces)
+  3. Fill other required fields and save
+- **Expected Results**:
+  - ✅ Spaces allowed in expertise and interest
+  - ✅ Profile created successfully
+  - ✅ Values saved and displayed correctly
+
 ---
 
 ### 2.2 Edit Profile (`app/profile/edit.tsx`)
@@ -549,6 +579,16 @@ These checks apply to **any** change (bug fix / feature / refactor / docs that a
 - **Expected Results**:
   - ✅ All changes saved
   - ✅ All fields updated correctly
+
+#### Test Case 2.2.6: Location Field (Edit)
+- **Precondition**: On edit profile screen, profile may or may not have location
+- **Steps**:
+  1. Add or update location (e.g. `New York, NY`), or clear location
+  2. Save
+- **Expected Results**:
+  - ✅ Location is optional; can add, update, or clear
+  - ✅ Profile saved with new location value
+  - ✅ No validation error for empty location
 
 ---
 
@@ -1137,22 +1177,37 @@ These checks apply to **any** change (bug fix / feature / refactor / docs that a
   - ✅ Warning logged about invalid user data
   - ✅ No invitation code generated (graceful degradation)
 
+#### Test Case 4.2.16: Only Mentor Can Accept/Decline
+- **Precondition**: User is the requester (mentee) viewing their own sent request, or non-mentor viewing request
+- **Steps**:
+  1. Navigate to respond screen for a request where current user is not the mentor
+  2. Observe screen
+- **Expected Results**:
+  - ✅ Accept and Decline buttons are not shown
+  - ✅ Status badge shown (e.g. Pending, Accepted, Declined) instead
+  - ✅ User cannot respond to their own request or if not the mentor
+
+**Note (Invitation codes)**: Test cases 4.2.8–4.2.15 apply when `config.features.enableInvitationCodes` is true. The invitation code feature is currently **disabled** (`enableInvitationCodes: false`); signup and request-respond flows do not show or require invitation code. When re-enabled, those cases apply.
+
 ---
 
-### 4.3 View Requests (`app/(tabs)/requests.tsx`)
+### 4.3 Messages & Requests (`app/(tabs)/requests.tsx`)
+
+**Overview**: This tab combines **mentorship requests** and **conversations** (messages). No separate Messages tab. Sub-tabs: Incoming, Sent, Processed. Header title: "Messages & Requests". Top spacing applied so content does not overlap status bar.
 
 #### Test Case 4.3.1: Incoming Tab - Display Pending Requests
-- **Precondition**: User has incoming requests
+- **Precondition**: User has incoming requests (user is mentor, requester is not self)
 - **Steps**:
-  1. Navigate to Requests tab
+  1. Navigate to Messages & Requests tab
   2. View Incoming tab
 - **Expected Results**:
-   - ✅ All pending requests where user is mentor shown
+   - ✅ All pending requests where user is mentor and requester ≠ current user shown (self-sent requests excluded from Incoming)
    - ✅ Requester name displayed
    - ✅ Requester email displayed
    - ✅ Note displayed
    - ✅ "Accept" and "Decline" buttons visible
    - ✅ Timestamp shown
+   - ✅ Incoming may also show conversations (messages) from others
 
 #### Test Case 4.3.2: Incoming Tab - Empty State
 - **Precondition**: No incoming requests
@@ -1186,7 +1241,7 @@ These checks apply to **any** change (bug fix / feature / refactor / docs that a
   1. View Processed tab
 - **Expected Results**:
    - ✅ Accepted requests shown
-   - ✅ Status badge shows "Accepted"
+   - ✅ Status badge shows "Accepted (Mentor)" or "Accepted (Mentee)" as appropriate
    - ✅ Response note displayed (if exists)
    - ✅ Sorted by most recent first
 
@@ -1249,7 +1304,17 @@ These checks apply to **any** change (bug fix / feature / refactor / docs that a
    - ✅ Requests sorted by `respondedAt` (most recent first)
    - ✅ Or by `createdAt` if no `respondedAt`
 
-#### Test Case 4.3.13: Request Update After Response
+#### Test Case 4.3.13: Messages and Requests Combined - No Duplicate Keys
+- **Precondition**: User has both mentorship requests and conversations
+- **Steps**:
+  1. Load Messages & Requests tab with mixed data
+  2. Switch between Incoming, Sent, Processed
+- **Expected Results**:
+   - ✅ Conversations and requests combined in each sub-tab (Incoming, Sent, Processed) as appropriate
+   - ✅ List items have unique keys (e.g. mentorship-{id}, conversation-{id}); no "Encountered two children with the same key" warning
+   - ✅ Deduplication applied so same item does not appear twice
+
+#### Test Case 4.3.14: Request Update After Response
 - **Precondition**: Request responded to
 - **Steps**:
   1. Accept/decline request
@@ -1259,7 +1324,7 @@ These checks apply to **any** change (bug fix / feature / refactor / docs that a
    - ✅ Removed from Incoming tab
    - ✅ Status updated correctly
 
-#### Test Case 4.3.14: No User Data
+#### Test Case 4.3.15: No User Data
 - **Precondition**: User data missing
 - **Steps**:
   1. Navigate to Requests screen
@@ -1267,7 +1332,7 @@ These checks apply to **any** change (bug fix / feature / refactor / docs that a
    - ✅ Empty lists shown
    - ✅ No errors
 
-#### Test Case 4.3.15: Focus Effect
+#### Test Case 4.3.16: Focus Effect
 - **Precondition**: Requests screen
 - **Steps**:
   1. Navigate away
@@ -1365,7 +1430,15 @@ These checks apply to **any** change (bug fix / feature / refactor / docs that a
    - ✅ Or from test profiles
    - ✅ All profile data displayed
 
-#### Test Case 5.1.10: Multiple Mentors/Mentees
+#### Test Case 5.1.10: No Self as Mentor or Mentee
+- **Precondition**: User has accepted request where requester and mentor are the same (e.g. self-sent then accepted by mistake, or data inconsistency)
+- **Steps**:
+  1. View Mentorship tab
+- **Expected Results**:
+   - ✅ Such relationships excluded from My Mentors and My Mentees (requester !== mentor filter)
+   - ✅ User never sees themselves as their own mentor/mentee
+
+#### Test Case 5.1.11: Multiple Mentors/Mentees
 - **Precondition**: Multiple connections
 - **Steps**:
   1. View Mentorship tab
@@ -1373,6 +1446,53 @@ These checks apply to **any** change (bug fix / feature / refactor / docs that a
    - ✅ All mentors shown
    - ✅ All mentees shown
    - ✅ No duplicates
+
+#### Test Case 5.1.12: Unmatch Mentor
+- **Precondition**: User has at least one mentor (accepted request where user is requester)
+- **Steps**:
+  1. Navigate to Mentorship tab
+  2. Tap "Unmatch" on a mentor card
+  3. In alert, tap "Unmatch" (confirm)
+- **Expected Results**:
+   - ✅ Alert: "Unmatch" / "Remove {name} from your mentors? They will no longer appear in your list."
+   - ✅ Cancel and Unmatch (destructive) options shown
+   - ✅ On confirm: `hybridUpdateRequestStatus(requestId, 'declined')` called
+   - ✅ Connections list reloaded
+   - ✅ That mentor no longer appears in My Mentors
+   - ✅ Request status is 'declined' in storage/Firebase
+
+#### Test Case 5.1.13: Unmatch Mentee
+- **Precondition**: User has at least one mentee (accepted request where user is mentor)
+- **Steps**:
+  1. Navigate to Mentorship tab
+  2. Tap "Unmatch" on a mentee card
+  3. In alert, tap "Unmatch" (confirm)
+- **Expected Results**:
+   - ✅ Alert: "Remove {name} from your mentees? ..."
+   - ✅ On confirm: request status updated to 'declined'
+   - ✅ That mentee no longer appears in My Mentees
+   - ✅ List refreshed
+
+#### Test Case 5.1.14: Cancel Unmatch
+- **Precondition**: Mentorship tab with at least one mentor or mentee
+- **Steps**:
+  1. Tap "Unmatch" on a connection
+  2. In alert, tap "Cancel"
+- **Expected Results**:
+   - ✅ Alert dismissed
+   - ✅ No status change
+   - ✅ Connection still visible in list
+   - ✅ `hybridUpdateRequestStatus` not called
+
+#### Test Case 5.1.15: Unmatch Error Handling
+- **Precondition**: Unmatch confirm tapped, but update fails (e.g. network/service error)
+- **Steps**:
+  1. Mock `hybridUpdateRequestStatus` to throw
+  2. Tap Unmatch on a connection, confirm
+- **Expected Results**:
+   - ✅ Error caught and logged
+   - ✅ Alert: "Failed to unmatch. Please try again."
+   - ✅ Connection may still appear until retry succeeds (no crash)
 
 ---
 
@@ -1625,41 +1745,158 @@ These checks apply to **any** change (bug fix / feature / refactor / docs that a
   - ✅ 1-hour-before: Exactly 1 hour before meeting time
   - ✅ 5-minutes-before: Exactly 5 minutes before meeting time
 
+### 6.3 Meetings Tab (`app/(tabs)/meetings.tsx`)
+
+**Overview**: Dedicated tab for meeting management. Sub-tabs: Upcoming, Incoming, Sent, Processed. Uses `Screen` wrapper for top safe area. Email comparison uses normalized (trimmed, lowercased) emails.
+
+#### Test Case 6.3.1: Upcoming Tab - Only Future Meetings
+- **Precondition**: User has accepted meetings, some in the past
+- **Steps**:
+  1. Navigate to Meetings tab, view Upcoming
+- **Expected Results**:
+   - ✅ Only meetings with meetingDate >= now shown
+   - ✅ Past meetings excluded from Upcoming
+
+#### Test Case 6.3.2: Upcoming Tab - Exclude Self-Meetings
+- **Precondition**: Meeting where organizer and participant are the same user
+- **Steps**:
+  1. View Upcoming (or any sub-tab)
+- **Expected Results**:
+   - ✅ Meetings where user is both organizer and only participant are not shown (no "meeting with self")
+
+#### Test Case 6.3.3: Incoming Tab - Exclude Self-Sent
+- **Precondition**: User sent a meeting request to themselves (organizer = current user, participant = current user or same)
+- **Steps**:
+  1. View Incoming tab
+- **Expected Results**:
+   - ✅ Only meetings where organizer ≠ current user (i.e. others sent to me) shown in Incoming
+   - ✅ Self-sent meetings do not appear in Incoming
+
+#### Test Case 6.3.4: Sent Tab - Pending Label and Tappable
+- **Precondition**: User has sent meeting requests (pending or accepted)
+- **Steps**:
+  1. View Sent tab
+  2. Tap a meeting
+- **Expected Results**:
+   - ✅ Sent meetings show status (e.g. Pending, Accepted), not "Respond" button
+   - ✅ Tapping a sent meeting opens meeting detail/respond screen (view-only or to see details)
+
+#### Test Case 6.3.5: Processed Tab
+- **Precondition**: User has accepted or declined meetings
+- **Steps**:
+  1. View Processed tab
+- **Expected Results**:
+   - ✅ Processed meetings listed with status
+   - ✅ Correct categorization
+
+### 6.4 Meeting Respond Screen (`app/meeting/respond.tsx`)
+
+#### Test Case 6.4.1: No Undefined in Firestore Update
+- **Precondition**: User accepts/declines meeting without optional response note
+- **Steps**:
+  1. Accept or decline meeting, leave response note empty
+  2. Submit
+- **Expected Results**:
+   - ✅ Firestore update does not include `responseNote` (or field omitted) when note is undefined/empty
+   - ✅ No Firestore error "Unsupported field value: undefined"
+
+#### Test Case 6.4.2: Organizer and Participant Details Shown
+- **Precondition**: On meeting respond/detail screen
+- **Steps**:
+  1. View meeting request
+- **Expected Results**:
+   - ✅ Organizer name and email displayed
+   - ✅ Participant name and email displayed
+   - ✅ Meeting details (title, date, time, location/link) shown
+
+### 6.5 Add to Calendar Screen (`app/meeting/add-to-calendar.tsx`)
+
+**Overview**: Dedicated screen for adding a meeting to calendar. Replaces blocking Alert. User can go back (e.g. left edge swipe or back button) without adding. Options: Add to Phone Calendar, Google Calendar, Outlook.
+
+#### Test Case 6.5.1: Back Navigation Without Adding
+- **Precondition**: User navigated to Add to Calendar screen
+- **Steps**:
+  1. Swipe from left edge (or tap back)
+- **Expected Results**:
+   - ✅ Returns to previous screen without adding to calendar
+  - ✅ No system alert blocking exit
+
+#### Test Case 6.5.2: Add to Phone Calendar - First Time
+- **Precondition**: Meeting not previously added to phone calendar
+- **Steps**:
+  1. Open Add to Calendar for a meeting
+  2. Tap "Add to Phone Calendar" (or equivalent)
+  3. Grant calendar permission if prompted
+- **Expected Results**:
+   - ✅ Event created in device calendar
+   - ✅ Success message shown
+   - ✅ Optionally calendar app opens so user can see the event (platform-specific)
+
+#### Test Case 6.5.3: Add to Phone Calendar - Already Added
+- **Precondition**: Meeting was previously added (stored in AsyncStorage)
+- **Steps**:
+  1. Open Add to Calendar for same meeting again
+  2. Tap "Add to Phone Calendar"
+- **Expected Results**:
+   - ✅ Message shown that event is already added (e.g. "Already added to calendar")
+   - ✅ Calendar app is not opened again (no duplicate add, no unnecessary launch)
+
+#### Test Case 6.5.4: Google Calendar and Outlook Options
+- **Precondition**: On Add to Calendar screen
+- **Steps**:
+  1. Tap Google Calendar or Outlook option
+- **Expected Results**:
+   - ✅ Opens external URL or app for adding to Google/Outlook calendar
+   - ✅ Or copy link / export flow as implemented
+
+#### Test Case 6.5.5: Upcoming Screen - Add to Calendar Navigates to Screen
+- **Precondition**: On Upcoming meetings screen
+- **Steps**:
+  1. Tap a meeting
+  2. Tap "Add to calendar" (or similar)
+- **Expected Results**:
+   - ✅ Navigates to `/meeting/add-to-calendar` with meeting params (not a blocking Alert)
+   - ✅ User can cancel by going back
+
 ---
 
 ## 7. NAVIGATION & ROUTING
 
-### 6.1 Tab Navigation
+### 7.1 Tab Navigation
 
-#### Test Case 6.1.1: Tab Switching
+**Tabs**: Discover, Mentorship, Messages & Requests (combined messages + requests), Meetings, Profile. There is no separate Messages tab.
+
+#### Test Case 7.1.1: Tab Switching
 - **Precondition**: User logged in
 - **Steps**:
   1. Switch between all tabs
 - **Expected Results**:
    - ✅ Discover tab works
    - ✅ Mentorship tab works
-   - ✅ Requests tab works
+   - ✅ Messages & Requests tab works (chat icon)
+   - ✅ Meetings tab works
    - ✅ Profile tab works
    - ✅ Icons change correctly
    - ✅ Active tab highlighted
 
-#### Test Case 6.1.2: Tab Icons
+#### Test Case 7.1.2: Tab Icons
 - **Precondition**: On tab bar
 - **Steps**:
   1. View all tabs
 - **Expected Results**:
    - ✅ Discover: search icon
    - ✅ Mentorship: people icon
-   - ✅ Requests: mail icon
+   - ✅ Messages & Requests: chatbubbles icon
+   - ✅ Meetings: calendar icon
    - ✅ Profile: person icon
    - ✅ Active color: #2563eb
    - ✅ Inactive color: #64748b
 
 ---
 
-### 6.2 Stack Navigation
+### 7.2 Stack Navigation
 
-#### Test Case 6.2.1: Profile View Navigation
+#### Test Case 7.2.1: Profile View Navigation
 - **Precondition**: On Discover screen
 - **Steps**:
   1. Tap profile card
@@ -1668,7 +1905,7 @@ These checks apply to **any** change (bug fix / feature / refactor / docs that a
    - ✅ Back button works
    - ✅ Header visible
 
-#### Test Case 6.2.2: Request Send Navigation
+#### Test Case 7.2.2: Request Send Navigation
 - **Precondition**: Viewing profile
 - **Steps**:
   1. Tap "Request as Mentor"
@@ -1676,7 +1913,7 @@ These checks apply to **any** change (bug fix / feature / refactor / docs that a
    - ✅ Navigates to send request
    - ✅ Back button works
 
-#### Test Case 6.2.3: Request Respond Navigation
+#### Test Case 7.2.3: Request Respond Navigation
 - **Precondition**: On Requests screen
 - **Steps**:
   1. Tap Accept/Decline
@@ -1848,6 +2085,45 @@ These checks apply to **any** change (bug fix / feature / refactor / docs that a
    - ✅ Refs prevent duplicates
    - ✅ Correct final state
 
+### 8.3 Error Boundary (`components/ErrorBoundary.tsx`)
+
+**Overview**: Root layout (`app/_layout.tsx`) wraps the app in `ErrorBoundary` to catch React render errors and prevent full-app crashes. Used globally around `SafeAreaProvider` and `AuthProvider`.
+
+#### Test Case 8.3.1: Catch Child Error and Show Fallback
+- **Precondition**: A child component throws during render
+- **Steps**:
+  1. Trigger an error in a component tree wrapped by ErrorBoundary
+- **Expected Results**:
+   - ✅ Error caught by getDerivedStateFromError / componentDidCatch
+   - ✅ Error logged (logger.error with componentStack)
+   - ✅ Fallback UI shown: "Something went wrong", message, "Try Again" button
+   - ✅ App does not white-screen or crash
+
+#### Test Case 8.3.2: Try Again Resets State
+- **Precondition**: ErrorBoundary is showing fallback (hasError = true)
+- **Steps**:
+  1. Tap "Try Again" button
+- **Expected Results**:
+   - ✅ handleReset clears hasError, error, errorInfo
+   - ✅ Children re-rendered (recovery attempt)
+   - ✅ accessibilityLabel "Retry button" / accessibilityHint present
+
+#### Test Case 8.3.3: Custom Fallback Prop
+- **Precondition**: ErrorBoundary used with fallback prop
+- **Steps**:
+  1. Provide fallback={customNode}; trigger child error
+- **Expected Results**:
+   - ✅ Custom fallback rendered instead of default UI
+   - ✅ Default "Try Again" UI not shown
+
+#### Test Case 8.3.4: DEV Mode Error Details
+- **Precondition**: __DEV__ is true, error was caught
+- **Steps**:
+  1. Trigger error; view fallback
+- **Expected Results**:
+   - ✅ Error message and componentStack shown in errorDetails section
+   - ✅ (Production: __DEV__ false, error details not shown)
+
 ---
 
 ## 9. UI/UX TESTING
@@ -1951,6 +2227,27 @@ These checks apply to **any** change (bug fix / feature / refactor / docs that a
    - ✅ Smooth scrolling
    - ✅ Pull-to-refresh works
    - ✅ No jank
+
+### 9.4 Safe Area & Layout
+
+**Overview**: App uses `SafeAreaProvider` (root) and a reusable `Screen` component (`components/Screen.tsx`) that wraps content in `SafeAreaView` with `edges={['top']}` so content does not overlap the device status bar or camera notch.
+
+#### Test Case 9.4.1: Top Spacing on Main Views
+- **Precondition**: Device with notch or status bar
+- **Steps**:
+  1. Open Meetings tab, Messages & Requests tab, Meeting respond, Upcoming meetings, Chat screen
+- **Expected Results**:
+   - ✅ Content does not overlap status bar / notch
+   - ✅ Consistent top spacing (Screen wrapper or equivalent padding)
+   - ✅ Headers and titles fully visible
+
+#### Test Case 9.4.2: Screen Component Usage
+- **Precondition**: Screens that use `Screen` wrapper
+- **Steps**:
+  1. Verify root container of main tab content and stack screens
+- **Expected Results**:
+   - ✅ Meetings, Requests, Meeting respond, Upcoming, Chat use `Screen` (or SafeAreaView) as root
+   - ✅ No hardcoded paddingTop: 60 (or similar) as sole solution; safe area respected
 
 ---
 
@@ -2330,6 +2627,9 @@ Notes: [Any issues found]
 - ✅ Added multiple input handling test case
 - ✅ Added test account auto-initialization test case
 - ✅ Created TEST_IMPLEMENTATION.md for detailed status
+- **2026-02-05**: Messages merged into Requests tab (Messages & Requests); dedicated Meetings tab (Upcoming, Incoming, Sent, Processed); Add to Calendar screen with back navigation and "already added" handling; mentor-only request respond; invitation code disabled via feature flag; safe area/Screen component; role labels (Mentor/Mentee) on processed requests; no self-sent in Incoming, no self as mentor/mentee; meeting respond Firestore undefined fix and participant/organizer details. See Sections 4.2–4.3, 5.1, 6.3–6.5, 7.1–7.2, 9.4, 23, 25.
+- **2026-02-05**: Unmatch mentor/mentee feature: Mentorship tab "Unmatch" button per connection; confirmation alert; updates request status to 'declined' via hybridUpdateRequestStatus; list refresh; cancel and error handling. See Section 5.1 (5.1.12–5.1.15), Section 26.3.8.
+- **Test plan review**: Profile location (2.1.18, 2.2.6) and spaces in expertise/interest (2.1.19); ErrorBoundary (8.3, 26.23.1); Hybrid Request Service note (26.19.5); Components & root layout (26.23, 26.24, 26.25); app init non-blocking (1.1.6, 26.25).
 
 ---
 
@@ -2795,36 +3095,38 @@ Notes: [Any issues found]
 
 ## 23. MESSAGING FEATURE
 
-### 23.1 Messages List Screen (`app/(tabs)/messages.tsx`)
+**Update**: There is no standalone Messages tab. Messages (conversations) are combined with Mentorship Requests in the **Messages & Requests** tab (`app/(tabs)/requests.tsx`), with sub-tabs Incoming, Sent, Processed. The former Messages list screen (`app/(tabs)/messages.tsx`) is hidden (href: null). Chat screen and messaging behavior unchanged.
+
+### 23.1 Messages List (within Messages & Requests tab)
+
+Conversations appear in the same tab as mentorship requests; see Section 4.3 for combined list behavior and test cases 4.3.13 (no duplicate keys, combined data).
 
 #### Test Case 23.1.1: Display Empty Messages List
-- **Precondition**: User logged in, no conversations
+- **Precondition**: User logged in, no conversations (and optionally no requests)
 - **Steps**:
-  1. Navigate to Messages tab
-  2. Observe screen
+  1. Navigate to Messages & Requests tab
+  2. Observe Incoming/Sent/Processed for conversations
 - **Expected Results**:
-  - ✅ "Messages" title displayed
-  - ✅ "No conversations yet" message shown
-  - ✅ "Connect with mentors or mentees to start messaging" subtitle shown
-  - ✅ Empty state icon displayed
+  - ✅ When no conversations: empty state for conversation list in relevant sub-tabs
+  - ✅ "Messages & Requests" title displayed
+  - ✅ Top spacing so content does not overlap status bar
 
 #### Test Case 23.1.2: Display Conversations List
 - **Precondition**: User has conversations
 - **Steps**:
-  1. Navigate to Messages tab
-  2. View conversations
+  1. Navigate to Messages & Requests tab
+  2. View Incoming/Sent/Processed where conversations appear
 - **Expected Results**:
-  - ✅ All conversations listed
+  - ✅ Conversations listed in appropriate sub-tabs (incoming, sent, processed)
   - ✅ Participant names displayed
-  - ✅ Last message preview shown
-  - ✅ Timestamp displayed (e.g., "5m ago", "2h ago")
+  - ✅ Last message preview / timestamp where shown
   - ✅ Unread count badge shown if > 0
   - ✅ Sorted by most recent
 
 #### Test Case 23.1.3: Navigate to Chat
 - **Precondition**: User has conversations
 - **Steps**:
-  1. Navigate to Messages tab
+  1. Navigate to Messages & Requests tab
   2. Tap on a conversation
 - **Expected Results**:
   - ✅ Navigate to chat screen
@@ -2832,13 +3134,13 @@ Notes: [Any issues found]
   - ✅ Participant info passed correctly
 
 #### Test Case 23.1.4: Pull to Refresh
-- **Precondition**: Messages tab open
+- **Precondition**: Messages & Requests tab open
 - **Steps**:
   1. Pull down to refresh
   2. Release
 - **Expected Results**:
   - ✅ Refresh indicator shown
-  - ✅ Conversations reloaded
+  - ✅ Conversations and requests reloaded
   - ✅ Updated data displayed
 
 ### 23.2 Chat Screen (`app/messages/chat.tsx`)
@@ -2929,8 +3231,8 @@ Notes: [Any issues found]
 - **Precondition**: User receives new message
 - **Steps**:
   1. Receive message while on different tab
-  2. Check Messages tab icon
-  3. Open Messages tab
+  2. Check Messages & Requests tab icon
+  3. Open Messages & Requests tab
   4. Open conversation
 - **Expected Results**:
   - ✅ Unread count increases
@@ -3056,6 +3358,8 @@ Notes: [Any issues found]
 ---
 
 ## 25. INVITATION CODE SYSTEM
+
+**Feature flag**: Invitation code feature is currently **disabled** via `config.features.enableInvitationCodes: false`. Signup does not show invitation code field; request-respond does not generate or add invitation codes to inbox. Test cases below apply when the feature is **re-enabled**. Code paths remain in place for future enablement.
 
 ### 25.1 Invitation Code Service
 
@@ -3510,6 +3814,20 @@ This section addresses **every uncovered statement, branch, and function** ident
    - ✅ Empty state messages shown
    - ✅ No errors
 
+#### Test Case 26.3.8: Unmatch Mentor/Mentee
+- **Target**: handleUnmatch, hybridUpdateRequestStatus, loadConnections, error path
+- **Precondition**: Mentorship screen with at least one mentor or mentee
+- **Steps**:
+  1. Tap "Unmatch" on a mentor or mentee card
+  2. Confirm in alert (Unmatch)
+  3. Optionally: tap Unmatch then Cancel
+  4. Mock hybridUpdateRequestStatus to throw; confirm Unmatch
+- **Expected Results**:
+   - ✅ Alert shown with correct copy (mentors vs mentees)
+   - ✅ On confirm: hybridUpdateRequestStatus(requestId, 'declined') called; loadConnections called
+   - ✅ On Cancel: no update, list unchanged
+   - ✅ On service error: error logged, Alert "Failed to unmatch. Please try again.", no crash
+
 ### 26.4 Messages Tab (`app/(tabs)/messages.tsx`)
 
 #### Test Case 26.4.1: useFocusEffect Callback Execution ✅ PARTIALLY FIXED
@@ -3740,6 +4058,20 @@ This section addresses **every uncovered statement, branch, and function** ident
    - ✅ Calendar logic executes for all cases
    - ✅ Permission checks work
    - ✅ Error handling works
+
+#### Test Case 26.9.4: Add to Calendar Navigates to Screen
+- **Precondition**: Upcoming meetings loaded
+- **Steps**:
+  1. Tap a meeting, then tap "Add to calendar"
+- **Expected Results**:
+   - ✅ Navigates to `/meeting/add-to-calendar` with meeting params (not Alert.alert)
+   - ✅ User can go back without adding
+
+### 26.9a Add to Calendar Screen (`app/meeting/add-to-calendar.tsx`)
+- **Test cases**: See Section 6.5 (Add to Calendar Screen). Coverage: back navigation, add to phone calendar (first time and already-added), Google/Outlook options, AsyncStorage "already added" check so calendar app is not re-opened.
+
+### 26.9b Meetings Tab (`app/(tabs)/meetings.tsx`)
+- **Test cases**: See Section 6.3 (Meetings Tab). Coverage: Upcoming (future only, no self-meetings), Incoming (exclude self-sent), Sent (tappable, Pending label), Processed; normalized email comparison.
 
 ### 26.10 Chat Screen (`app/messages/chat.tsx`)
 
@@ -4084,6 +4416,14 @@ This section addresses **every uncovered statement, branch, and function** ident
    - ✅ Error handling works
    - ✅ All branches tested
 
+#### Test Case 26.19.5: Hybrid Request Service (`services/hybridRequestService.ts`)
+- **Note**: No dedicated `hybridRequestService.test.ts`; behavior covered indirectly via request respond/send, requests tab, and mentorship tests that call `hybridGetRequestsForUser`, `hybridUpdateRequestStatus`, `hybridGetRequestsByStatus`.
+- **Recommended**: Add unit tests for Firebase-first then local fallback, and error paths (e.g. hybridUpdateRequestStatus when Firebase fails).
+- **Expected Results**:
+   - ✅ Get requests: Firebase then local fallback; correct filtering by user and status
+   - ✅ Update status: local update and Firebase sync when configured; decline path
+   - ✅ Error handling and logging when Firebase unavailable or fails
+
 ### 26.20 Services - Other Services
 
 #### Test Case 26.20.1: Inbox Service - Error Handling
@@ -4213,6 +4553,38 @@ This section addresses **every uncovered statement, branch, and function** ident
 - **Expected Results**:
    - ✅ Operations work
    - ✅ Branches tested
+
+### 26.23 Components & Root Layout
+
+#### Test Case 26.23.1: ErrorBoundary (`components/ErrorBoundary.tsx`)
+- **Coverage**: See Section 8.3. Unit test: render child; trigger error in child and assert fallback UI, Try Again, optional custom fallback and __DEV__ details.
+- **Expected Results**:
+   - ✅ Catches errors; fallback shown; reset works
+
+#### Test Case 26.23.2: Screen (`components/Screen.tsx`)
+- **Coverage**: Section 9.4. Simple wrapper; tested via screens that use it (meetings, requests, meeting respond, upcoming, chat).
+- **Expected Results**:
+   - ✅ SafeAreaView with edges={['top']} applied; no overlap with status bar
+
+#### Test Case 26.23.3: ProfileFormFields (`components/ProfileFormFields.tsx`)
+- **Coverage**: Used by profile create and edit; covered by `profile.create.test.tsx`, `profile.edit.test.tsx`, `profile.location.test.tsx`, `profile.spaces.test.tsx`.
+- **Expected Results**:
+   - ✅ All fields render; validation and onChange propagate correctly
+
+#### Test Case 26.23.4: Root Layout (`app/_layout.tsx`)
+- **Coverage**: Stack screens and providers. `app.loading.test.tsx` renders RootLayout; layout includes ErrorBoundary, SafeAreaProvider, AuthProvider, all Stack.Screen entries (index, signup, login, (tabs), profile/create, profile/edit, profile/view, request/send, request/respond, meeting/schedule, meeting/respond, meeting/upcoming, meeting/add-to-calendar, messages/chat).
+- **Expected Results**:
+   - ✅ All routes declared; providers wrap content; headerShown: false
+
+### 26.24 Profile Location & Spaces Tests
+
+- **Profile location** (`app/__tests__/profile.location.test.tsx`): Create and edit profile with optional location field; add, update, clear location. See Test Cases 2.1.18, 2.2.6.
+- **Profile spaces** (`app/__tests__/profile.spaces.test.tsx`): Expertise and interest fields accept spaces; create profile with multi-word values. See Test Case 2.1.19.
+
+### 26.25 App Initialization & Loading
+
+- **App init blocking** (`app/__tests__/app.init.blocking.test.tsx`): Initialization (testAccounts, dataMigration, sessionManager, Firebase) does not block initial render; welcome screen appears; init runs asynchronously.
+- **App loading** (`app/__tests__/app.loading.test.tsx`): RootLayout and WelcomeScreen load without hang; navigation and startup flows work. Complements Section 27 (phone load tests).
 
 ---
 

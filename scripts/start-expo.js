@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 /**
  * Start Expo using Node from Program Files (avoids Miniconda/other Node on PATH).
- * Uses port 8082 by default so Expo never prompts in non-interactive mode.
+ * Uses port 8090 by default so Expo never prompts in non-interactive mode.
+ * Runs Expo CLI via Node (no shell) so terminal keypresses (e.g. 'r' to reload) reach Metro.
  * Usage: node scripts/start-expo.js [--clear] [--tunnel] [--port N] ...
  */
 const { spawn } = require('child_process');
 const path = require('path');
+const fs = require('fs');
 
 const nodeDir = process.platform === 'win32'
   ? 'C:\\Program Files\\nodejs'
@@ -25,14 +27,17 @@ if (!hasPort) {
 }
 
 const cwd = path.resolve(__dirname, '..');
-const argsStr = args.map(a => (a.includes(' ') ? `"${a.replace(/"/g, '\\"')}"` : a)).join(' ');
-const cmd = `npx expo start ${argsStr}`;
+const expoCli = path.join(cwd, 'node_modules', 'expo', 'bin', 'cli');
+const nodeFromProgramFiles = process.platform === 'win32' ? path.join(nodeDir, 'node.exe') : path.join(nodeDir, 'node');
+const nodeBin = (process.platform === 'win32' && fs.existsSync(nodeFromProgramFiles)) ? nodeFromProgramFiles : process.execPath;
 
-const child = spawn(cmd, {
+// Spawn Node running Expo CLI directly (no shell) so 'r' reload and other keys reach Metro
+const child = spawn(nodeBin, [expoCli, 'start', ...args], {
   stdio: 'inherit',
-  shell: true,
+  shell: false,
   env,
   cwd,
+  windowsHide: false,
 });
 
 child.on('error', (err) => {

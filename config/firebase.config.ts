@@ -138,6 +138,25 @@ export function initializeFirebase(): void {
 }
 
 /**
+ * Get Firebase App instance
+ * @returns Firebase App instance
+ */
+export function getFirebaseApp(): FirebaseApp {
+  if (!app) {
+    initializeFirebase();
+    if (!app) {
+      const apps = getApps();
+      if (apps.length > 0) {
+        app = apps[0];
+      } else {
+        throw new Error('Firebase App is not initialized. Please check your Firebase configuration.');
+      }
+    }
+  }
+  return app;
+}
+
+/**
  * Get Firebase Authentication instance
  * @returns Firebase Auth instance
  */
@@ -147,7 +166,7 @@ export function getFirebaseAuth(): Auth {
     // After initialization, try to get auth again
     if (!auth) {
       try {
-        auth = getAuth(app || getApps()[0]);
+        auth = getAuth(getFirebaseApp());
       } catch (error) {
         logger.error('Failed to get Firebase Auth instance', error instanceof Error ? error : new Error(String(error)));
         throw new Error('Firebase Auth is not available. Please check your Firebase configuration.');

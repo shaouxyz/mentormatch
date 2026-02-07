@@ -21,19 +21,33 @@ import {
   QueryConstraint,
 } from 'firebase/firestore';
 import { getFirebaseFirestore } from '@/config/firebase.config';
+import { getCurrentFirebaseUser } from '@/services/firebaseAuthService';
 import { Message, Conversation } from '@/types/types';
 import { logger } from '@/utils/logger';
 
 const CONVERSATIONS_COLLECTION = 'conversations';
 const MESSAGES_COLLECTION = 'messages';
 
+/** Normalize email for Firestore (Auth token uses lowercase) */
+function normalizeEmail(email: string): string {
+  return (email || '').trim().toLowerCase();
+}
+
 /**
  * Generate conversation ID from two participant emails
  */
 export function generateConversationId(email1: string, email2: string): string {
-  // Sort emails to ensure consistent ID regardless of order
-  const sorted = [email1, email2].sort();
+  const e1 = normalizeEmail(email1);
+  const e2 = normalizeEmail(email2);
+  const sorted = [e1, e2].sort();
   return `${sorted[0]}_${sorted[1]}`;
+}
+
+/** Normalize a conversation ID (e.g. from route params) so it matches stored docs */
+function normalizeConversationId(conversationId: string): string {
+  const parts = conversationId.split('_');
+  if (parts.length >= 2) return generateConversationId(parts[0], parts[1]);
+  return conversationId;
 }
 
 /**
@@ -46,32 +60,45 @@ export async function createOrGetConversation(
   user2Name: string
 ): Promise<Conversation> {
   try {
+    const u1 = normalizeEmail(user1Email);
+    const u2 = normalizeEmail(user2Email);
     const db = getFirebaseFirestore();
-    const conversationId = generateConversationId(user1Email, user2Email);
+    const conversationId = generateConversationId(u1, u2);
     const conversationRef = doc(db, CONVERSATIONS_COLLECTION, conversationId);
     
-    const conversationSnap = await getDoc(conversationRef);
-    
-    if (conversationSnap.exists()) {
-      logger.info('Conversation found', { conversationId });
-      return conversationSnap.data() as Conversation;
-    }
-    
-    // Create new conversation
     const conversation: Conversation = {
       id: conversationId,
-      participants: [user1Email, user2Email],
+      participants: [u1, u2],
       participantNames: {
-        [user1Email]: user1Name,
-        [user2Email]: user2Name,
+        [u1]: user1Name,
+        [u2]: user2Name,
       },
       unreadCount: {
-        [user1Email]: 0,
-        [user2Email]: 0,
+        [u1]: 0,
+        [u2]: 0,
       },
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
+
+    let conversationSnap;
+    try {
+      conversationSnap = await getDoc(conversationRef);
+    } catch (getError: unknown) {
+      // Permission denied can happen if doc exists with non-normalized participants; overwrite with normalized data
+      const msg = getError instanceof Error ? getError.message : String(getError);
+      if (msg.includes('permission') || msg.includes('Permission')) {
+        logger.info('Conversation get denied (likely casing), overwriting with normalized', { conversationId });
+        await setDoc(conversationRef, conversation);
+        return conversation;
+      }
+      throw getError;
+    }
+
+    if (conversationSnap.exists()) {
+      logger.info('Conversation found', { conversationId });
+      return conversationSnap.data() as Conversation;
+    }
     
     await setDoc(conversationRef, conversation);
     logger.info('Conversation created', { conversationId });
@@ -95,14 +122,19 @@ export async function sendMessage(
   text: string
 ): Promise<Message> {
   try {
+    // Use Firebase Auth email when signed in so Firestore rules allow create
+    const currentUser = getCurrentFirebaseUser();
+    const sender = currentUser?.email ?? normalizeEmail(senderEmail);
+    const receiver = normalizeEmail(receiverEmail);
+
     const db = getFirebaseFirestore();
     const messagesRef = collection(db, MESSAGES_COLLECTION);
     
     const message: Omit<Message, 'id'> = {
       conversationId,
-      senderEmail,
+      senderEmail: sender,
       senderName,
-      receiverEmail,
+      receiverEmail: receiver,
       receiverName,
       text,
       createdAt: new Date().toISOString(),
@@ -113,10 +145,12 @@ export async function sendMessage(
     
     // Update conversation with last message info
     const conversationRef = doc(db, CONVERSATIONS_COLLECTION, conversationId);
+    const convData = (await getDoc(conversationRef)).data();
+    const prevUnread = convData?.unreadCount?.[receiver] ?? 0;
     await updateDoc(conversationRef, {
       lastMessage: text,
       lastMessageAt: message.createdAt,
-      [`unreadCount.${receiverEmail}`]: (await getDoc(conversationRef)).data()?.unreadCount?.[receiverEmail] + 1 || 1,
+      [`unreadCount.${receiver}`]: prevUnread + 1,
       updatedAt: message.createdAt,
     });
     
@@ -138,12 +172,13 @@ export async function sendMessage(
  */
 export async function getMessages(conversationId: string, limitCount: number = 50): Promise<Message[]> {
   try {
+    const cid = normalizeConversationId(conversationId);
     const db = getFirebaseFirestore();
     const messagesRef = collection(db, MESSAGES_COLLECTION);
     
     const q = query(
       messagesRef,
-      where('conversationId', '==', conversationId),
+      where('conversationId', '==', cid),
       orderBy('createdAt', 'desc'),
       limit(limitCount)
     );
@@ -158,7 +193,7 @@ export async function getMessages(conversationId: string, limitCount: number = 5
     // Reverse to show oldest first
     messages.reverse();
     
-    logger.info('Messages retrieved', { conversationId, count: messages.length });
+    logger.info('Messages retrieved', { conversationId: cid, count: messages.length });
     return messages;
   } catch (error) {
     logger.error('Error getting messages', error instanceof Error ? error : new Error(String(error)));
@@ -175,12 +210,13 @@ export function subscribeToMessages(
   onError?: (error: Error) => void
 ): () => void {
   try {
+    const cid = normalizeConversationId(conversationId);
     const db = getFirebaseFirestore();
     const messagesRef = collection(db, MESSAGES_COLLECTION);
     
     const q = query(
       messagesRef,
-      where('conversationId', '==', conversationId),
+      where('conversationId', '==', cid),
       orderBy('createdAt', 'asc')
     );
     
@@ -212,12 +248,13 @@ export function subscribeToMessages(
  */
 export async function getUserConversations(userEmail: string): Promise<Conversation[]> {
   try {
+    const normalizedEmail = normalizeEmail(userEmail);
     const db = getFirebaseFirestore();
     const conversationsRef = collection(db, CONVERSATIONS_COLLECTION);
     
     const q = query(
       conversationsRef,
-      where('participants', 'array-contains', userEmail),
+      where('participants', 'array-contains', normalizedEmail),
       orderBy('updatedAt', 'desc')
     );
     
@@ -228,7 +265,7 @@ export async function getUserConversations(userEmail: string): Promise<Conversat
       conversations.push(doc.data() as Conversation);
     });
     
-    logger.info('Conversations retrieved', { userEmail, count: conversations.length });
+    logger.info('Conversations retrieved', { userEmail: normalizedEmail, count: conversations.length });
     return conversations;
   } catch (error) {
     logger.error('Error getting conversations', error instanceof Error ? error : new Error(String(error)));

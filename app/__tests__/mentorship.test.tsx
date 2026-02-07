@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
+import { Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import MentorshipScreen from '../(tabs)/mentorship';
 import * as expoRouter from 'expo-router';
@@ -12,13 +13,14 @@ jest.mock('../../services/hybridRequestService', () => ({
     received: [],
     all: [],
   })),
+  hybridUpdateRequestStatus: jest.fn(() => Promise.resolve()),
 }));
 
 // Get mock router (from global mock in jest.setup.js)
 const mockRouter = expoRouter.useRouter();
 const mockLogger = logger.logger as jest.Mocked<typeof logger.logger>;
 
-const { hybridGetAllRequestsForUser } = require('../../services/hybridRequestService');
+const { hybridGetAllRequestsForUser, hybridUpdateRequestStatus } = require('../../services/hybridRequestService');
 
 // Helper function to set up mock requests
 const setupMockRequests = (requests: any[]) => {
@@ -79,6 +81,8 @@ describe('MentorshipScreen', () => {
       received: [],
       all: [],
     });
+    (hybridUpdateRequestStatus as jest.Mock).mockResolvedValue(undefined);
+    jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     await AsyncStorage.setItem('user', JSON.stringify(mockUser));
     await AsyncStorage.setItem('profile', JSON.stringify({
       name: 'Current User',
@@ -271,6 +275,180 @@ describe('MentorshipScreen', () => {
         }),
       });
     }, { timeout: 3000 });
+  });
+
+  describe('Unmatch (TEST_PLAN 5.1.12-5.1.15)', () => {
+    it('5.1.12: should call hybridUpdateRequestStatus(declined) and reload when Unmatch mentor is confirmed', async () => {
+      const requestId = 'unmatch-mentor-req-1';
+      const acceptedRequest = createRequest({
+        id: requestId,
+        requesterEmail: 'user@example.com',
+        requesterName: 'Current User',
+        mentorEmail: 'mentor@example.com',
+        mentorName: 'Mentor User',
+        status: 'accepted',
+        respondedAt: new Date().toISOString(),
+      });
+      const mentorProfile = {
+        name: 'Mentor User',
+        email: 'mentor@example.com',
+        expertise: 'Software Development',
+        interest: 'Data Science',
+        expertiseYears: 5,
+        interestYears: 2,
+        phoneNumber: '+1234567890',
+      };
+      setupMockRequests([acceptedRequest]);
+      await AsyncStorage.setItem('allProfiles', JSON.stringify([mentorProfile]));
+
+      const { getByText, getByLabelText } = render(<MentorshipScreen />);
+      await waitForScreenReady(getByText);
+
+      await waitFor(() => {
+        expect(getByLabelText('Unmatch mentor')).toBeTruthy();
+      }, { timeout: 3000 });
+
+      fireEvent.press(getByLabelText('Unmatch mentor'));
+
+      await waitFor(() => {
+        expect(Alert.alert).toHaveBeenCalledWith(
+          'Unmatch',
+          expect.stringContaining('Remove Mentor User from your mentors'),
+          expect.any(Array)
+        );
+      });
+
+      const alertCall = (Alert.alert as jest.Mock).mock.calls[0];
+      const confirmButton = alertCall[2][1];
+      expect(confirmButton.text).toBe('Unmatch');
+      await confirmButton.onPress();
+
+      await waitFor(() => {
+        expect(hybridUpdateRequestStatus).toHaveBeenCalledWith(requestId, 'declined');
+      });
+      expect(hybridGetAllRequestsForUser).toHaveBeenCalledTimes(2);
+    });
+
+    it('5.1.13: should call hybridUpdateRequestStatus(declined) when Unmatch mentee is confirmed', async () => {
+      const requestId = 'unmatch-mentee-req-1';
+      const acceptedRequest = createRequest({
+        id: requestId,
+        requesterEmail: 'mentee@example.com',
+        requesterName: 'Mentee User',
+        mentorEmail: 'user@example.com',
+        mentorName: 'Current User',
+        status: 'accepted',
+        respondedAt: new Date().toISOString(),
+      });
+      const menteeProfile = {
+        name: 'Mentee User',
+        email: 'mentee@example.com',
+        expertise: 'Data Science',
+        interest: 'Software Development',
+        expertiseYears: 2,
+        interestYears: 1,
+        phoneNumber: '+1234567891',
+      };
+      setupMockRequests([acceptedRequest]);
+      await AsyncStorage.setItem('allProfiles', JSON.stringify([menteeProfile]));
+
+      const { getByText, getByLabelText } = render(<MentorshipScreen />);
+      await waitForScreenReady(getByText);
+
+      await waitFor(() => {
+        expect(getByLabelText('Unmatch mentee')).toBeTruthy();
+      }, { timeout: 3000 });
+
+      fireEvent.press(getByLabelText('Unmatch mentee'));
+
+      await waitFor(() => {
+        expect(Alert.alert).toHaveBeenCalledWith(
+          'Unmatch',
+          expect.stringContaining('Remove Mentee User from your mentees'),
+          expect.any(Array)
+        );
+      });
+
+      const alertCall = (Alert.alert as jest.Mock).mock.calls[0];
+      await alertCall[2][1].onPress();
+
+      await waitFor(() => {
+        expect(hybridUpdateRequestStatus).toHaveBeenCalledWith(requestId, 'declined');
+      });
+    });
+
+    it('5.1.14: should not call hybridUpdateRequestStatus when Cancel is tapped', async () => {
+      const acceptedRequest = createRequest({
+        id: 'cancel-unmatch-req',
+        requesterEmail: 'user@example.com',
+        mentorEmail: 'mentor@example.com',
+        mentorName: 'Mentor User',
+        status: 'accepted',
+        respondedAt: new Date().toISOString(),
+      });
+      const mentorProfile = {
+        name: 'Mentor User',
+        email: 'mentor@example.com',
+        expertise: 'Test',
+        interest: 'Test',
+        expertiseYears: 5,
+        interestYears: 2,
+        phoneNumber: '+1234567890',
+      };
+      setupMockRequests([acceptedRequest]);
+      await AsyncStorage.setItem('allProfiles', JSON.stringify([mentorProfile]));
+
+      const { getByText, getByLabelText } = render(<MentorshipScreen />);
+      await waitForScreenReady(getByText);
+
+      fireEvent.press(getByLabelText('Unmatch mentor'));
+
+      await waitFor(() => {
+        expect(Alert.alert).toHaveBeenCalled();
+      });
+
+      const alertCall = (Alert.alert as jest.Mock).mock.calls[0];
+      const cancelButton = alertCall[2][0];
+      expect(cancelButton.text).toBe('Cancel');
+      if (cancelButton.onPress) cancelButton.onPress();
+
+      expect(hybridUpdateRequestStatus).not.toHaveBeenCalled();
+    });
+
+    it('5.1.15: should show error alert when hybridUpdateRequestStatus fails', async () => {
+      (hybridUpdateRequestStatus as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
+      const acceptedRequest = createRequest({
+        id: 'error-unmatch-req',
+        requesterEmail: 'user@example.com',
+        mentorEmail: 'mentor@example.com',
+        mentorName: 'Mentor User',
+        status: 'accepted',
+        respondedAt: new Date().toISOString(),
+      });
+      const mentorProfile = {
+        name: 'Mentor User',
+        email: 'mentor@example.com',
+        expertise: 'Test',
+        interest: 'Test',
+        expertiseYears: 5,
+        interestYears: 2,
+        phoneNumber: '+1234567890',
+      };
+      setupMockRequests([acceptedRequest]);
+      await AsyncStorage.setItem('allProfiles', JSON.stringify([mentorProfile]));
+
+      const { getByText, getByLabelText } = render(<MentorshipScreen />);
+      await waitForScreenReady(getByText);
+
+      fireEvent.press(getByLabelText('Unmatch mentor'));
+      const alertCall = (Alert.alert as jest.Mock).mock.calls[0];
+      await alertCall[2][1].onPress();
+
+      await waitFor(() => {
+        expect(Alert.alert).toHaveBeenCalledWith('Error', 'Failed to unmatch. Please try again.');
+      });
+      expect(mockLogger.error).toHaveBeenCalledWith('Unmatch failed', expect.any(Error));
+    });
   });
 
   it('should display connection note if available', async () => {

@@ -8,6 +8,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -55,6 +57,7 @@ export default function RespondRequestScreen() {
   const [request, setRequest] = useState<MentorshipRequest | null>(null);
   const [responseNote, setResponseNote] = useState('');
   const [loading, setLoading] = useState(false);
+  const [withdrawing, setWithdrawing] = useState(false);
   const [currentUserEmail, setCurrentUserEmail] = useState<string>('');
   const [isAuthorized, setIsAuthorized] = useState<boolean>(false);
   const lastRequestParamRef = useRef<string | null>(null);
@@ -120,11 +123,14 @@ export default function RespondRequestScreen() {
     }
   }, [requestParam]); // Only depend on the actual request string
 
+  const normalizeEmail = (e: string | undefined | null) => (e || '').trim().toLowerCase();
+
   useEffect(() => {
     // Check if current user is authorized to respond (must be the mentor, not the requester)
     if (request && currentUserEmail) {
-      const userIsMentor = request.mentorEmail === currentUserEmail;
-      const userIsRequester = request.requesterEmail === currentUserEmail;
+      const nu = normalizeEmail(currentUserEmail);
+      const userIsMentor = normalizeEmail(request.mentorEmail) === nu;
+      const userIsRequester = normalizeEmail(request.requesterEmail) === nu;
       
       // Only allow response if user is the mentor (not the requester) and request is pending
       setIsAuthorized(userIsMentor && !userIsRequester && request.status === 'pending');
@@ -207,6 +213,35 @@ export default function RespondRequestScreen() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleWithdraw = () => {
+    if (!request) return;
+    const mentorName = request.mentorName || request.mentorEmail || 'mentor';
+    Alert.alert(
+      'Withdraw request',
+      `Cancel your mentorship request to ${mentorName}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Withdraw',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setWithdrawing(true);
+              await hybridUpdateRequestStatus(request.id, 'declined');
+              logger.info('Mentorship request withdrawn', { requestId: request.id });
+              router.back();
+            } catch (error) {
+              logger.error('Withdraw request failed', error instanceof Error ? error : new Error(String(error)));
+              Alert.alert('Error', 'Failed to withdraw request. Please try again.');
+            } finally {
+              setWithdrawing(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   if (!request) {
@@ -312,11 +347,27 @@ export default function RespondRequestScreen() {
             </View>
           ) : (
             <View style={styles.statusContainer}>
-              {request.status === 'pending' && currentUserEmail === request.requesterEmail && (
-                <View style={styles.statusBadge}>
-                  <Ionicons name="time-outline" size={16} color="#f59e0b" />
-                  <Text style={styles.statusTextPending}>Waiting for response</Text>
-                </View>
+              {request.status === 'pending' && normalizeEmail(currentUserEmail) === normalizeEmail(request.requesterEmail) && (
+                <>
+                  <View style={styles.statusBadge}>
+                    <Ionicons name="time-outline" size={16} color="#f59e0b" />
+                    <Text style={styles.statusTextPending}>Already requested as mentor</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.withdrawButton}
+                    onPress={handleWithdraw}
+                    disabled={withdrawing}
+                    accessibilityLabel="Withdraw request"
+                    accessibilityHint="Cancel this mentorship request"
+                  >
+                    {withdrawing ? (
+                      <ActivityIndicator size="small" color="#dc2626" />
+                    ) : (
+                      <Ionicons name="close-circle-outline" size={20} color="#dc2626" />
+                    )}
+                    <Text style={styles.withdrawButtonText}>Withdraw request</Text>
+                  </TouchableOpacity>
+                </>
               )}
               {request.status === 'accepted' && (
                 <View style={[styles.statusBadge, styles.statusBadgeAccepted]}>
@@ -514,6 +565,22 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#f59e0b',
+  },
+  withdrawButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: '#fef2f2',
+    borderRadius: 12,
+    gap: 8,
+  },
+  withdrawButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#dc2626',
   },
   statusTextAccepted: {
     fontSize: 16,

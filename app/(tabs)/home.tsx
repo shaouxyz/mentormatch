@@ -13,7 +13,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { initializeTestAccounts, TEST_ACCOUNTS } from '@/utils/testAccounts';
-import { MATCH_SCORE_EXPERTISE_INTEREST, MATCH_SCORE_INTEREST_EXPERTISE, MATCH_SCORE_THRESHOLD, PROFILES_PER_PAGE } from '@/utils/constants';
+import { MATCH_SCORE_EXPERTISE_INTEREST, MATCH_SCORE_INTEREST_EXPERTISE, MATCH_SCORE_THRESHOLD, PROFILES_PER_PAGE, DISCOVER_HIDDEN_EMAILS } from '@/utils/constants';
 import { logger } from '@/utils/logger';
 import { safeParseJSON, validateProfileSchema } from '@/utils/schemaValidation';
 import { config } from '@/utils/config';
@@ -199,6 +199,12 @@ export default function HomeScreen() {
           profilesAfterFilter: profilesList.length
         });
       }
+
+      // Never show deleted/hidden accounts in Discover
+      profilesList = profilesList.filter((profile) => {
+        const normalizedEmail = profile.email?.toLowerCase().trim();
+        return !normalizedEmail || !DISCOVER_HIDDEN_EMAILS.has(normalizedEmail);
+      });
 
       // Add test account profiles (excluding current user)
       const testProfiles: Profile[] = TEST_ACCOUNTS
