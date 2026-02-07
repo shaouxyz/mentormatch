@@ -5,6 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -13,7 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { logger } from '@/utils/logger';
 import { safeParseJSON, validateProfileSchema, validateMentorshipRequestSchema } from '@/utils/schemaValidation';
 import { generateConversationId } from '@/services/hybridMessageService';
-import { hybridGetAllRequestsForUser } from '@/services/hybridRequestService';
+import { hybridGetAllRequestsForUser, hybridUpdateRequestStatus } from '@/services/hybridRequestService';
 
 interface Profile {
   name: string;
@@ -26,6 +27,7 @@ interface Profile {
 }
 
 interface MentorshipConnection {
+  requestId: string;
   name: string;
   email: string;
   expertise?: string;
@@ -47,6 +49,9 @@ interface MentorshipRequest {
   createdAt: string;
   respondedAt?: string;
 }
+
+const normalizeEmail = (email: string | undefined | null): string =>
+  (email || '').trim().toLowerCase();
 
 export default function MentorshipScreen() {
   const router = useRouter();
@@ -94,7 +99,13 @@ export default function MentorshipScreen() {
         });
       }
       
-      const acceptedRequests = allRequests.filter((r) => r.status === 'accepted');
+      // Accepted mentorship connections, excluding self-relationships
+      const acceptedRequests = allRequests.filter((r) => {
+        if (r.status !== 'accepted') return false;
+        const requester = normalizeEmail(r.requesterEmail);
+        const mentor = normalizeEmail(r.mentorEmail);
+        return requester !== mentor;
+      });
 
       // Mentors: People who accepted requests from the current user
       // (current user is requester, mentor accepted)
@@ -141,6 +152,7 @@ export default function MentorshipScreen() {
           }
 
           return {
+            requestId: req.id,
             name: req.mentorName,
             email: req.mentorEmail,
             expertise: mentorProfile?.expertise,
@@ -184,6 +196,7 @@ export default function MentorshipScreen() {
           }
 
           return {
+            requestId: req.id,
             name: req.requesterName,
             email: req.requesterEmail,
             expertise: menteeProfile?.expertise,
@@ -215,6 +228,33 @@ export default function MentorshipScreen() {
       loadConnections();
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
+  );
+
+  const handleUnmatch = useCallback(
+    (connection: MentorshipConnection, role: 'mentor' | 'mentee') => {
+      const label = role === 'mentor' ? 'mentor' : 'mentee';
+      Alert.alert(
+        'Unmatch',
+        `Remove ${connection.name} from your ${label}s? They will no longer appear in your list.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Unmatch',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await hybridUpdateRequestStatus(connection.requestId, 'declined');
+                await loadConnections();
+              } catch (error) {
+                logger.error('Unmatch failed', error instanceof Error ? error : new Error(String(error)));
+                Alert.alert('Error', 'Failed to unmatch. Please try again.');
+              }
+            },
+          },
+        ]
+      );
+    },
+    [loadConnections]
   );
 
   if (loading) {
@@ -316,6 +356,14 @@ export default function MentorshipScreen() {
                     <Ionicons name="calendar" size={18} color="#10b981" />
                     <Text style={styles.scheduleButtonText}>Schedule</Text>
                   </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.unmatchButton}
+                    onPress={() => handleUnmatch(mentor, 'mentor')}
+                    accessibilityLabel="Unmatch mentor"
+                  >
+                    <Ionicons name="close-circle" size={18} color="#dc2626" />
+                    <Text style={styles.unmatchButtonText}>Unmatch</Text>
+                  </TouchableOpacity>
                 </View>
               </View>
             ))
@@ -408,6 +456,14 @@ export default function MentorshipScreen() {
                     <Ionicons name="calendar" size={18} color="#10b981" />
                     <Text style={styles.scheduleButtonText}>Schedule</Text>
                   </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.unmatchButton}
+                    onPress={() => handleUnmatch(mentee, 'mentee')}
+                    accessibilityLabel="Unmatch mentee"
+                  >
+                    <Ionicons name="close-circle" size={18} color="#dc2626" />
+                    <Text style={styles.unmatchButtonText}>Unmatch</Text>
+                  </TouchableOpacity>
                 </View>
               </View>
             ))
@@ -483,6 +539,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#10b981',
+  },
+  unmatchButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: '#fef2f2',
+    borderRadius: 8,
+    gap: 6,
+  },
+  unmatchButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#dc2626',
   },
   connectionHeader: {
     flexDirection: 'row',

@@ -6,6 +6,8 @@ import {
   FlatList,
   TouchableOpacity,
   RefreshControl,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -13,8 +15,10 @@ import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { logger } from '@/utils/logger';
 import { safeParseJSON } from '@/utils/schemaValidation';
-import { hybridGetUserMeetings } from '@/services/hybridMeetingService';
+import { hybridGetUserMeetings, hybridUpdateMeeting } from '@/services/hybridMeetingService';
+import { scheduleMeetingNotifications, cancelMeetingNotifications } from '@/services/meetingNotificationService';
 import { Meeting } from '@/types/types';
+import { Screen } from '@/components/Screen';
 
 /**
  * Meetings Tab Component
@@ -44,8 +48,12 @@ export default function MeetingsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [userEmail, setUserEmail] = useState<string>('');
+  const [respondingMeetingId, setRespondingMeetingId] = useState<string | null>(null);
   const isLoadingRef = useRef(false);
   const hasLoadedRef = useRef(false);
+
+  const normalizeEmail = (email: string | undefined | null): string =>
+    (email || '').trim().toLowerCase();
 
   const loadMeetings = useCallback(async () => {
     if (isLoadingRef.current) return;
@@ -79,6 +87,7 @@ export default function MeetingsScreen() {
       }
       
       const userEmail = user.email;
+      const normalizedUserEmail = normalizeEmail(userEmail);
       setUserEmail(userEmail);
 
       // Load all meetings
@@ -92,19 +101,40 @@ export default function MeetingsScreen() {
         });
         allMeetings = [];
       }
+
+      // Exclude self-meetings where organizer and participant are the same user
+      const visibleMeetings = allMeetings.filter((m) => {
+        const organizer = normalizeEmail(m.organizerEmail);
+        const participant = normalizeEmail(m.participantEmail);
+        return !(organizer === normalizedUserEmail && participant === normalizedUserEmail);
+      });
       
-      // Upcoming: Accepted meetings (scheduled meetings, sorted by date)
-      const upcoming = allMeetings
-        .filter(m => m.status === 'accepted')
+      // Upcoming: Accepted meetings in the future (scheduled meetings, sorted by date)
+      const now = new Date();
+      const upcoming = visibleMeetings
+        .filter((m) => {
+          if (m.status !== 'accepted') return false;
+          const meetingDate = new Date(m.date);
+          return meetingDate >= now;
+        })
         .sort((a, b) => {
           const dateA = new Date(a.date).getTime();
           const dateB = new Date(b.date).getTime();
           return dateA - dateB; // Earliest first (upcoming)
         });
       
-      // Incoming: Pending meetings where user is participant
-      const incoming = allMeetings
-        .filter(m => m.participantEmail === userEmail && m.status === 'pending')
+      // Incoming: Pending meetings where user is participant,
+      // excluding self-sent meetings (organizer === participant === user)
+      const incoming = visibleMeetings
+        .filter(m => {
+          const participant = normalizeEmail(m.participantEmail);
+          const organizer = normalizeEmail(m.organizerEmail);
+          return (
+            participant === normalizedUserEmail &&
+            organizer !== normalizedUserEmail &&
+            m.status === 'pending'
+          );
+        })
         .sort((a, b) => {
           const dateA = new Date(a.createdAt).getTime();
           const dateB = new Date(b.createdAt).getTime();
@@ -112,8 +142,8 @@ export default function MeetingsScreen() {
         });
       
       // Sent: Pending meetings where user is organizer
-      const sent = allMeetings
-        .filter(m => m.organizerEmail === userEmail && m.status === 'pending')
+      const sent = visibleMeetings
+        .filter(m => normalizeEmail(m.organizerEmail) === normalizedUserEmail && m.status === 'pending')
         .sort((a, b) => {
           const dateA = new Date(a.createdAt).getTime();
           const dateB = new Date(b.createdAt).getTime();
@@ -122,7 +152,7 @@ export default function MeetingsScreen() {
       
       // Processed: Accepted/declined/cancelled meetings (excluding upcoming accepted ones)
       // This shows historical meetings that are not upcoming
-      const processed = allMeetings
+      const processed = visibleMeetings
         .filter(m => {
           // Include declined/cancelled, and accepted meetings that are in the past
           if (m.status === 'declined' || m.status === 'cancelled') {
@@ -182,6 +212,42 @@ export default function MeetingsScreen() {
     setRefreshing(false);
   };
 
+  const handleMeetingResponse = useCallback(async (meetingId: string, meeting: Meeting, accepted: boolean) => {
+    try {
+      setRespondingMeetingId(meetingId);
+      const updateData: Partial<Meeting> = {
+        status: accepted ? 'accepted' : 'declined',
+        respondedAt: new Date().toISOString(),
+      };
+      await hybridUpdateMeeting(meetingId, updateData);
+      if (accepted) {
+        const meetingWithUpdate: Meeting = { ...meeting, ...updateData, status: 'accepted' };
+        try {
+          await scheduleMeetingNotifications(meetingWithUpdate);
+        } catch (e) {
+          logger.warn('Failed to schedule meeting notifications', { meetingId });
+        }
+      } else {
+        try {
+          await cancelMeetingNotifications(meetingId);
+        } catch (e) {
+          logger.warn('Failed to cancel meeting notifications', { meetingId });
+        }
+      }
+      Alert.alert(
+        'Success',
+        accepted ? 'Meeting accepted! It has been added to your calendar.' : 'Meeting declined.',
+        [{ text: 'OK', onPress: () => loadMeetings() }]
+      );
+      logger.info('Meeting response submitted', { meetingId, accepted });
+    } catch (error) {
+      logger.error('Error responding to meeting', error instanceof Error ? error : new Error(String(error)));
+      Alert.alert('Error', 'Failed to respond to meeting. Please try again.');
+    } finally {
+      setRespondingMeetingId(null);
+    }
+  }, [loadMeetings]);
+
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
     return date.toLocaleDateString('en-US', {
@@ -201,8 +267,18 @@ export default function MeetingsScreen() {
   };
 
   const renderMeetingItem = useCallback(({ item }: { item: Meeting }) => {
-    const isReceiver = item.participantEmail === userEmail;
-    const otherPerson = isReceiver 
+    const normalizedUserEmail = normalizeEmail(userEmail);
+    const participantEmail = normalizeEmail(item.participantEmail);
+    const organizerEmail = normalizeEmail(item.organizerEmail);
+
+    const isSelfMeeting =
+      participantEmail === organizerEmail &&
+      organizerEmail === normalizedUserEmail;
+
+    // You are "receiver" only if you're the participant and it's not a self-sent meeting
+    const isReceiver = participantEmail === normalizedUserEmail && !isSelfMeeting;
+
+    const otherPerson = isReceiver
       ? { name: item.organizerName, email: item.organizerEmail }
       : { name: item.participantName, email: item.participantEmail };
     
@@ -214,13 +290,8 @@ export default function MeetingsScreen() {
       <TouchableOpacity
         style={styles.meetingCard}
         onPress={() => {
-          if (item.status === 'pending' && isReceiver) {
-            router.push({
-              pathname: '/meeting/respond',
-              params: { meetingId: item.id },
-            });
-          } else if (item.status === 'accepted') {
-            // For accepted meetings, use the respond screen to view details
+          // For pending incoming, Accept/Decline are shown inline; only navigate for accepted or when viewing.
+          if (item.status === 'accepted' || (item.status === 'pending' && !isReceiver)) {
             router.push({
               pathname: '/meeting/respond',
               params: { meetingId: item.id },
@@ -230,7 +301,7 @@ export default function MeetingsScreen() {
         accessibilityLabel={`Meeting: ${item.title} with ${otherPerson.name}`}
         accessibilityHint={
           item.status === 'pending' && isReceiver
-            ? "Tap to respond to meeting request"
+            ? "Use Accept or Decline to respond"
             : item.status === 'accepted'
             ? "Tap to view meeting details"
             : "Tap to view meeting"
@@ -269,17 +340,30 @@ export default function MeetingsScreen() {
         <View style={styles.statusContainer}>
           {item.status === 'pending' && isReceiver && (
             <View style={styles.actions}>
-              <TouchableOpacity
-                style={[styles.actionButton, styles.acceptButton]}
-                onPress={() => router.push({
-                  pathname: '/meeting/respond',
-                  params: { meetingId: item.id },
-                })}
-                accessibilityLabel={`Respond to meeting request from ${otherPerson.name}`}
-              >
-                <Ionicons name="checkmark-circle" size={20} color="#fff" />
-                <Text style={styles.acceptButtonText}>Respond</Text>
-              </TouchableOpacity>
+              {respondingMeetingId === item.id ? (
+                <ActivityIndicator size="small" color="#10b981" style={styles.respondingSpinner} />
+              ) : (
+                <>
+                  <TouchableOpacity
+                    style={[styles.actionButton, styles.acceptButton]}
+                    onPress={() => handleMeetingResponse(item.id, item, true)}
+                    accessibilityLabel={`Accept meeting request from ${otherPerson.name}`}
+                    accessibilityHint="Tap to accept this meeting"
+                  >
+                    <Ionicons name="checkmark-circle" size={20} color="#fff" />
+                    <Text style={styles.acceptButtonText}>Accept</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.actionButton, styles.declineButton]}
+                    onPress={() => handleMeetingResponse(item.id, item, false)}
+                    accessibilityLabel={`Decline meeting request from ${otherPerson.name}`}
+                    accessibilityHint="Tap to decline this meeting"
+                  >
+                    <Ionicons name="close-circle" size={20} color="#fff" />
+                    <Text style={styles.declineButtonText}>Decline</Text>
+                  </TouchableOpacity>
+                </>
+              )}
             </View>
           )}
           
@@ -334,7 +418,7 @@ export default function MeetingsScreen() {
         )}
       </TouchableOpacity>
     );
-  }, [userEmail, router]);
+  }, [userEmail, router, handleMeetingResponse, respondingMeetingId]);
 
   const getDisplayMeetings = () => {
     switch (activeTab) {
@@ -355,17 +439,17 @@ export default function MeetingsScreen() {
 
   if (loading && !hasLoadedRef.current) {
     return (
-      <View style={styles.container}>
+      <Screen style={styles.container}>
         <StatusBar style="auto" />
         <View style={styles.loadingContainer}>
           <Text style={styles.loadingText}>Loading meetings...</Text>
         </View>
-      </View>
+      </Screen>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <Screen style={styles.container}>
       <StatusBar style="auto" />
       
       <View style={styles.header}>
@@ -450,7 +534,7 @@ export default function MeetingsScreen() {
           contentContainerStyle={styles.list}
         />
       )}
-    </View>
+    </Screen>
   );
 }
 
@@ -460,7 +544,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8fafc',
   },
   header: {
-    paddingTop: 60,
     paddingHorizontal: 20,
     paddingBottom: 16,
     backgroundColor: '#fff',
@@ -582,10 +665,21 @@ const styles = StyleSheet.create({
   acceptButton: {
     backgroundColor: '#10b981',
   },
+  declineButton: {
+    backgroundColor: '#ef4444',
+  },
   acceptButtonText: {
     color: '#fff',
     fontSize: 14,
     fontWeight: '600',
+  },
+  declineButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  respondingSpinner: {
+    marginVertical: 8,
   },
   statusBadge: {
     flexDirection: 'row',

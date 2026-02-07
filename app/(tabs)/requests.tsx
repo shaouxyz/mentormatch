@@ -16,6 +16,7 @@ import { safeParseJSON, validateMentorshipRequestSchema } from '@/utils/schemaVa
 import { hybridGetAllRequestsForUser } from '@/services/hybridRequestService';
 import { hybridGetUserConversations } from '@/services/hybridMessageService';
 import { Conversation } from '@/types/types';
+import { Screen } from '@/components/Screen';
 
 interface MentorshipRequest {
   id: string;
@@ -53,6 +54,18 @@ interface MentorshipRequest {
 type RequestItem = 
   | { type: 'mentorship'; data: MentorshipRequest }
   | { type: 'conversation'; data: Conversation };
+
+const normalizeEmail = (email: string | undefined | null): string =>
+  (email || '').trim().toLowerCase();
+
+function dedupeById<T extends { id: string }>(items: T[]): T[] {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    if (seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
+  });
+}
 
 export default function RequestsScreen() {
   const router = useRouter();
@@ -95,19 +108,31 @@ export default function RequestsScreen() {
       }
       
       const userEmail = user.email;
+      const normalizedUserEmail = normalizeEmail(userEmail);
       setUserEmail(userEmail);
 
       // Use hybrid service to get requests (Firebase first, then local fallback)
-      const { all: allRequests } = await hybridGetAllRequestsForUser(userEmail);
+      const { all: allRequestsRaw } = await hybridGetAllRequestsForUser(userEmail);
+      // Deduplicate requests by id to avoid duplicate FlatList keys
+      const allRequests = dedupeById(allRequestsRaw);
       
-      // Incoming: requests where user is mentor and status is pending
+      // Incoming: requests where user is mentor and status is pending,
+      // excluding self-sent requests (requester === mentor === user)
       const incoming = allRequests.filter(
-        (r) => r.mentorEmail === userEmail && r.status === 'pending'
+        (r) => {
+          const mentor = normalizeEmail(r.mentorEmail);
+          const requester = normalizeEmail(r.requesterEmail);
+          return (
+            mentor === normalizedUserEmail &&
+            r.status === 'pending' &&
+            requester !== normalizedUserEmail
+          );
+        }
       );
       
       // Outgoing: all requests where user is requester (including pending)
       const outgoing = allRequests.filter(
-        (r) => r.requesterEmail === userEmail && r.status === 'pending'
+        (r) => normalizeEmail(r.requesterEmail) === normalizedUserEmail && r.status === 'pending'
       );
 
       // Processed: requests that are accepted or declined (both incoming and outgoing)
@@ -125,16 +150,17 @@ export default function RequestsScreen() {
         });
 
         // Load conversations and organize them
-        let allConversations: Conversation[] = [];
+        let allConversationsRaw: Conversation[] = [];
         try {
-          allConversations = await hybridGetUserConversations(userEmail);
-          logger.info('Conversations loaded for requests tab', { count: allConversations.length });
+          allConversationsRaw = await hybridGetUserConversations(userEmail);
+          logger.info('Conversations loaded for requests tab', { count: allConversationsRaw.length });
         } catch (error) {
           logger.warn('Failed to load conversations for requests tab', {
             error: error instanceof Error ? error.message : String(error),
           });
-          allConversations = [];
+          allConversationsRaw = [];
         }
+        const allConversations = dedupeById(allConversationsRaw);
         
         // Organize conversations:
         // Incoming: Conversations with unread messages (you need to respond)
@@ -336,7 +362,13 @@ export default function RequestsScreen() {
     const request = item.data;
     return (
       <View style={styles.requestCard}>
-        <View style={styles.requestHeader}>
+        <Text style={styles.mentorRequestLabel}>Mentorship request</Text>
+        <TouchableOpacity
+          style={styles.requestHeader}
+          onPress={() => router.push({ pathname: '/profile/view', params: { email: request.requesterEmail } })}
+          accessibilityLabel={`View ${request.requesterName}'s profile`}
+          accessibilityHint="Tap to open requester's profile"
+        >
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>
               {request.requesterName.charAt(0).toUpperCase()}
@@ -349,7 +381,8 @@ export default function RequestsScreen() {
               {new Date(request.createdAt).toLocaleDateString()}
             </Text>
           </View>
-        </View>
+          <Ionicons name="chevron-forward" size={20} color="#94a3b8" />
+        </TouchableOpacity>
 
         {request.note && (
           <View style={styles.noteContainer}>
@@ -380,7 +413,7 @@ export default function RequestsScreen() {
         </View>
       </View>
     );
-  }, [handleAccept, handleDecline, renderConversationItem]);
+  }, [handleAccept, handleDecline, renderConversationItem, router]);
 
   const renderOutgoingRequest = useCallback(({ item }: { item: RequestItem }) => {
     if (item.type === 'conversation') {
@@ -390,7 +423,13 @@ export default function RequestsScreen() {
     const request = item.data;
       return (
         <View style={styles.requestCard}>
-          <View style={styles.requestHeader}>
+          <Text style={styles.mentorRequestLabel}>Your mentor request</Text>
+          <TouchableOpacity
+            style={styles.requestHeader}
+            onPress={() => router.push({ pathname: '/profile/view', params: { email: request.mentorEmail } })}
+            accessibilityLabel={`View ${request.mentorName}'s profile`}
+            accessibilityHint="Tap to open mentor's profile"
+          >
             <View style={styles.avatar}>
               <Text style={styles.avatarText}>
                 {request.mentorName.charAt(0).toUpperCase()}
@@ -403,7 +442,8 @@ export default function RequestsScreen() {
                 {new Date(request.createdAt).toLocaleDateString()}
               </Text>
             </View>
-          </View>
+            <Ionicons name="chevron-forward" size={20} color="#94a3b8" />
+          </TouchableOpacity>
 
           {request.note && (
             <View style={styles.noteContainer}>
@@ -441,7 +481,7 @@ export default function RequestsScreen() {
           )}
         </View>
       );
-  }, [renderConversationItem]);
+  }, [renderConversationItem, router]);
 
   const renderProcessedRequest = useCallback(({ item }: { item: RequestItem }) => {
     if (item.type === 'conversation') {
@@ -476,9 +516,22 @@ export default function RequestsScreen() {
       otherPersonEmail = request.requesterEmail;
     }
 
+    const roleSuffix =
+      userEmail && (request.mentorEmail === userEmail || request.requesterEmail === userEmail)
+        ? isRequester
+          ? ' (Mentee)'
+          : ' (Mentor)'
+        : '';
+
     return (
       <View style={styles.requestCard}>
-        <View style={styles.requestHeader}>
+        <Text style={styles.mentorRequestLabel}>Mentorship request{roleSuffix}</Text>
+        <TouchableOpacity
+          style={styles.requestHeader}
+          onPress={() => router.push({ pathname: '/profile/view', params: { email: otherPersonEmail } })}
+          accessibilityLabel={`View ${otherPersonName}'s profile`}
+          accessibilityHint="Tap to open profile"
+        >
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>
               {otherPersonName.charAt(0).toUpperCase()}
@@ -491,13 +544,14 @@ export default function RequestsScreen() {
               {new Date(request.respondedAt || request.createdAt).toLocaleDateString()}
             </Text>
           </View>
-        </View>
+          <Ionicons name="chevron-forward" size={20} color="#94a3b8" />
+        </TouchableOpacity>
 
         <View style={styles.statusContainer}>
           {request.status === 'accepted' && (
             <View style={[styles.statusBadge, styles.statusBadgeAccepted]}>
               <Ionicons name="checkmark-circle" size={16} color="#10b981" />
-              <Text style={styles.statusTextAccepted}>Accepted</Text>
+              <Text style={styles.statusTextAccepted}>Accepted{roleSuffix}</Text>
             </View>
           )}
           {request.status === 'declined' && (
@@ -525,7 +579,7 @@ export default function RequestsScreen() {
         )}
       </View>
     );
-  }, [userEmail]);
+  }, [userEmail, router]);
 
   const getDisplayRequests = () => {
     switch (activeTab) {
@@ -557,17 +611,17 @@ export default function RequestsScreen() {
 
   if (loading && !hasLoadedRef.current) {
     return (
-      <View style={styles.container}>
+      <Screen style={styles.container}>
         <StatusBar style="auto" />
         <View style={styles.loadingContainer}>
           <Text style={styles.loadingText}>Loading requests...</Text>
         </View>
-      </View>
+      </Screen>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <Screen style={styles.container}>
       <StatusBar style="auto" />
       
       <View style={styles.header}>
@@ -686,7 +740,7 @@ export default function RequestsScreen() {
           </View>
         }
       />
-    </View>
+    </Screen>
   );
 }
 
@@ -696,7 +750,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8fafc',
   },
   header: {
-    paddingTop: 60,
     paddingHorizontal: 20,
     paddingBottom: 16,
     backgroundColor: '#fff',
@@ -750,6 +803,14 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  mentorRequestLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#2563eb',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 8,
   },
   requestHeader: {
     flexDirection: 'row',

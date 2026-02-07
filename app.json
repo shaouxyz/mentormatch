@@ -3,15 +3,14 @@
     "name": "MentorMatch",
     "slug": "mentormatch",
     "version": "1.0.0",
+    "runtimeVersion": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "splash": {
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.mentormatch.app"
@@ -27,8 +26,13 @@
     "scheme": "mentormatch",
     "plugins": [
       "expo-router",
-      "expo-font"
+      "expo-font",
+      "@react-native-community/datetimepicker"
     ],
+    "updates": {
+      "enabled": true,
+      "url": "https://u.expo.dev/a027433a-a98a-499c-8e19-e4581565b366"
+    },
     "extra": {
       "router": {},
       "eas": {
