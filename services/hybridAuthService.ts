@@ -84,8 +84,12 @@ export async function hybridSignIn(email: string, password: string): Promise<any
         const firebaseUid = firebaseUser.user?.uid ?? '';
         try {
           const localUser = await authenticateLocalUser(email, password);
-          logger.info('User also authenticated locally', { email });
-          return ensureUserHasEmail(localUser, resolvedEmail);
+          if (localUser) {
+            logger.info('User also authenticated locally', { email });
+            return ensureUserHasEmail(localUser, resolvedEmail);
+          }
+          // No local user (e.g. account exists only in Firebase on this device) — fall through to create/minimal user
+          throw new Error('No local user');
         } catch (localError) {
           try {
             const localUser = await createLocalUser(email, password);
