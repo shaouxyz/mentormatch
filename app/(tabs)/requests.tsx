@@ -463,7 +463,7 @@ export default function RequestsScreen() {
       <StatusBar style="auto" />
       
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Messages & Requests</Text>
+        <Text style={styles.headerTitle}>Mentorship Requests</Text>
       </View>
       
       <View style={styles.tabContainer}>

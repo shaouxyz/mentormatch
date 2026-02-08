@@ -128,43 +128,61 @@ export default function MeetingsScreen() {
           return dateA - dateB; // Earliest first (upcoming)
         });
       
-      // Incoming: Pending meetings where user is participant,
-      // excluding self-sent meetings (organizer === participant === user)
+      // Incoming: Pending meeting requests (user is participant) OR accepted meetings where
+      // the other party requested cancel or reschedule (waiting for my agree/decline)
       const incoming = visibleMeetings
         .filter(m => {
           const participant = normalizeEmail(m.participantEmail);
           const organizer = normalizeEmail(m.organizerEmail);
-          return (
-            participant === normalizedUserEmail &&
-            organizer !== normalizedUserEmail &&
-            m.status === 'pending'
-          );
+          const cancelRequester = m.cancelRequestedBy ? normalizeEmail(m.cancelRequestedBy) : null;
+          const rescheduleRequester = m.rescheduleRequestedBy ? normalizeEmail(m.rescheduleRequestedBy) : null;
+          const isParticipant = participant === normalizedUserEmail;
+          const isOrganizer = organizer === normalizedUserEmail;
+          if (m.status === 'pending') {
+            return isParticipant && organizer !== normalizedUserEmail;
+          }
+          if (m.status === 'accepted') {
+            const otherRequestedCancel = cancelRequester && cancelRequester !== normalizedUserEmail;
+            const otherRequestedReschedule = rescheduleRequester && rescheduleRequester !== normalizedUserEmail;
+            return (otherRequestedCancel || otherRequestedReschedule) && (isParticipant || isOrganizer);
+          }
+          return false;
         })
         .sort((a, b) => {
-          const dateA = new Date(a.createdAt).getTime();
-          const dateB = new Date(b.createdAt).getTime();
+          const dateA = new Date(a.updatedAt || a.createdAt).getTime();
+          const dateB = new Date(b.updatedAt || b.createdAt).getTime();
           return dateB - dateA; // Most recent first
         });
       
-      // Sent: Pending meetings where user is organizer
+      // Sent: Pending meetings where user is organizer OR accepted meetings where
+      // user sent a cancel or reschedule request (waiting for other party to agree/decline)
       const sent = visibleMeetings
-        .filter(m => normalizeEmail(m.organizerEmail) === normalizedUserEmail && m.status === 'pending')
+        .filter(m => {
+          const organizer = normalizeEmail(m.organizerEmail);
+          const cancelRequester = m.cancelRequestedBy ? normalizeEmail(m.cancelRequestedBy) : null;
+          const rescheduleRequester = m.rescheduleRequestedBy ? normalizeEmail(m.rescheduleRequestedBy) : null;
+          if (m.status === 'pending') {
+            return organizer === normalizedUserEmail;
+          }
+          if (m.status === 'accepted') {
+            return cancelRequester === normalizedUserEmail || rescheduleRequester === normalizedUserEmail;
+          }
+          return false;
+        })
         .sort((a, b) => {
-          const dateA = new Date(a.createdAt).getTime();
-          const dateB = new Date(b.createdAt).getTime();
+          const dateA = new Date(a.updatedAt || a.createdAt).getTime();
+          const dateB = new Date(b.updatedAt || b.createdAt).getTime();
           return dateB - dateA; // Most recent first
         });
       
-      // Processed: Accepted/declined/cancelled meetings (excluding upcoming accepted ones)
-      // Accepted: only when meeting end time is in the past
+      // Processed: Accepted/declined/cancelled meetings (including upcoming accepted)
       const processed = visibleMeetings
         .filter(m => {
           if (m.status === 'declined' || m.status === 'cancelled') {
             return true;
           }
           if (m.status === 'accepted') {
-            const endTime = getMeetingEndTime(m);
-            return endTime <= now;
+            return true;
           }
           return false;
         })
@@ -376,7 +394,19 @@ export default function MeetingsScreen() {
             </View>
           )}
 
-          {item.status === 'accepted' && (
+          {item.status === 'accepted' && item.cancelRequestedBy && (
+            <View style={[styles.statusBadge, styles.statusBadgeCancelRequested]}>
+              <Ionicons name="close-circle-outline" size={16} color="#b45309" />
+              <Text style={styles.statusTextCancelRequested}>Cancel requested</Text>
+            </View>
+          )}
+          {item.status === 'accepted' && !item.cancelRequestedBy && item.rescheduleRequestedBy && (
+            <View style={[styles.statusBadge, styles.statusBadgeRescheduleRequested]}>
+              <Ionicons name="calendar-outline" size={16} color="#0d9488" />
+              <Text style={styles.statusTextRescheduleRequested}>Reschedule requested</Text>
+            </View>
+          )}
+          {item.status === 'accepted' && !item.cancelRequestedBy && !item.rescheduleRequestedBy && (
             <View style={[styles.statusBadge, styles.statusBadgeAccepted]}>
               <Ionicons name="checkmark-circle" size={16} color="#10b981" />
               <Text style={styles.statusTextAccepted}>Accepted</Text>
@@ -702,6 +732,12 @@ const styles = StyleSheet.create({
   statusBadgeCancelled: {
     backgroundColor: '#f3f4f6',
   },
+  statusBadgeCancelRequested: {
+    backgroundColor: '#fffbeb',
+  },
+  statusBadgeRescheduleRequested: {
+    backgroundColor: '#f0fdfa',
+  },
   statusTextPending: {
     fontSize: 14,
     fontWeight: '600',
@@ -711,6 +747,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#10b981',
+  },
+  statusTextCancelRequested: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#b45309',
+  },
+  statusTextRescheduleRequested: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0d9488',
   },
   statusTextDeclined: {
     fontSize: 14,

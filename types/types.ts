@@ -97,6 +97,18 @@ export interface Meeting {
   meetingLink?: string; // For virtual meetings
   status: 'pending' | 'accepted' | 'declined' | 'cancelled';
   responseNote?: string;
+  /** Email of the user who requested to cancel this accepted meeting. When set, the other party can agree or decline. */
+  cancelRequestedBy?: string | null;
+  /** Emails of users who agreed to the cancel request. When the other party agrees, status is set to cancelled. */
+  cancelApprovedBy?: string[] | null;
+  /** Email of the user who requested to reschedule this accepted meeting. When set, the other party can agree or decline. */
+  rescheduleRequestedBy?: string | null;
+  /** Proposed new date (ISO string) for the reschedule request. */
+  rescheduleProposedDate?: string | null;
+  /** Proposed new time (ISO string) for the reschedule request. */
+  rescheduleProposedTime?: string | null;
+  /** Proposed new duration in minutes. If not set, current meeting duration is kept. */
+  rescheduleProposedDuration?: number | null;
   createdAt: string;
   updatedAt: string;
   respondedAt?: string;
