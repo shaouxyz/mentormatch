@@ -10,13 +10,19 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
+      "appleTeamId": "VGVDQ76R5T",
       "supportsTablet": true,
-      "bundleIdentifier": "com.mentormatch.app"
+      "bundleIdentifier": "com.xyz.mentormatch",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
-      "package": "com.mentormatch.app",
+      "package": "com.xyz.mentormatch",
       "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#ffffff"
