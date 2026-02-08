@@ -67,7 +67,31 @@ export default function AddToCalendarScreen() {
     }
   };
 
-  const openPhoneCalendarToEvent = async (eventId: string, eventStartMillis?: number) => {
+  /** Returns true if an event with the same title and start time exists in any writable calendar. */
+  const isMeetingAlreadyInCalendar = async (): Promise<boolean> => {
+    if (!meeting) return false;
+    try {
+      const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
+      const writableIds = calendars.filter((cal) => cal.allowsModifications).map((cal) => cal.id);
+      if (writableIds.length === 0) return false;
+      const startDate = meeting.time ? new Date(meeting.time) : new Date(meeting.date);
+      const endDate = new Date(startDate.getTime() + (meeting.duration || 30) * 60000);
+      const rangeStart = new Date(startDate.getTime() - 60 * 1000);
+      const rangeEnd = new Date(endDate.getTime() + 60 * 1000);
+      const events = await Calendar.getEventsAsync(writableIds, rangeStart, rangeEnd);
+      const startMs = startDate.getTime();
+      return events.some(
+        (e) =>
+          e.title === meeting.title &&
+          Math.abs(new Date(e.startDate).getTime() - startMs) < 60 * 1000
+      );
+    } catch {
+      return false;
+    }
+  };
+
+  /** Opens the calendar app to the given event (or time). Returns true if opened successfully. */
+  const openPhoneCalendarToEvent = async (eventId: string, eventStartMillis?: number): Promise<boolean> => {
     const idStr = String(eventId);
     let opened = false;
     if (Platform.OS === 'android') {
@@ -92,10 +116,12 @@ export default function AddToCalendarScreen() {
     if (!opened && Platform.OS === 'android' && eventStartMillis != null) {
       try {
         await Linking.openURL(`content://com.android.calendar/time/${eventStartMillis}`);
+        opened = true;
       } catch (_) {
         logger.warn('Fallback calendar URI failed', { eventStartMillis });
       }
     }
+    return opened;
   };
 
   const addToPhoneCalendar = async () => {
@@ -105,13 +131,28 @@ export default function AddToCalendarScreen() {
     const existingEventId = await AsyncStorage.getItem(eventIdKey);
     const alreadyAdded = await AsyncStorage.getItem(storageKey);
 
-    if (alreadyAdded === 'true') {
-      if (existingEventId) {
-        const startMs = meeting.time ? new Date(meeting.time).getTime() : new Date(meeting.date).getTime();
-        await openPhoneCalendarToEvent(existingEventId, startMs);
+    if (alreadyAdded === 'true' && existingEventId) {
+      let eventExists = false;
+      try {
+        await Calendar.getEventAsync(existingEventId);
+        eventExists = true;
+      } catch {
+        // Event was deleted from calendar; clear state and allow re-add
+        await AsyncStorage.multiRemove([storageKey, eventIdKey]);
       }
-      Alert.alert('Already Added', 'This meeting is already in your calendar.');
-      return;
+      if (eventExists) {
+        Alert.alert('Already Added', 'This meeting is already in your calendar.');
+        return;
+      }
+    }
+
+    if (alreadyAdded === 'true' && !existingEventId) {
+      const inCalendar = await isMeetingAlreadyInCalendar();
+      if (inCalendar) {
+        Alert.alert('Already Added', 'This meeting is already in your calendar.');
+        return;
+      }
+      await AsyncStorage.removeItem(storageKey);
     }
 
     setAddingToPhoneCalendar(true);
@@ -122,20 +163,19 @@ export default function AddToCalendarScreen() {
         return;
       }
 
-      const calendarId = await getDefaultCalendar();
-      if (!calendarId) {
-        Alert.alert('Error', 'No calendar found');
+      const alreadyInCalendar = await isMeetingAlreadyInCalendar();
+      if (alreadyInCalendar) {
         setAddingToPhoneCalendar(false);
+        Alert.alert('Already Added', 'This meeting is already in your calendar.');
         return;
       }
 
-      // Use full datetime: meeting.time is ISO string when set from schedule; fallback to meeting.date
       const startDate = meeting.time ? new Date(meeting.time) : new Date(meeting.date);
       const endDate = new Date(startDate.getTime() + (meeting.duration || 30) * 60000);
       const location =
         meeting.locationType === 'virtual' ? meeting.meetingLink : meeting.location;
 
-      const eventDetails: Calendar.Event = {
+      const eventData: Omit<Partial<Calendar.Event>, 'id'> = {
         title: meeting.title,
         notes: meeting.description || '',
         startDate,
@@ -144,15 +184,36 @@ export default function AddToCalendarScreen() {
         alarms: [{ relativeOffset: -15 }, { relativeOffset: -60 }],
       };
 
-      const eventId = await Calendar.createEventAsync(calendarId, eventDetails);
-      await AsyncStorage.setItem(storageKey, 'true');
-      await AsyncStorage.setItem(eventIdKey, eventId);
-      setAddingToPhoneCalendar(false);
+      if (Platform.OS === 'android') {
+        // Use system "add event" dialog so the user sees the native Save button
+        const result = await Calendar.createEventInCalendarAsync(eventData);
+        setAddingToPhoneCalendar(false);
+        if (result.action === 'canceled' || result.action === 'deleted') {
+          Alert.alert('Cancelled', 'Event was not added to your calendar.');
+        } else {
+          await AsyncStorage.setItem(storageKey, 'true');
+          if (result.id) await AsyncStorage.setItem(eventIdKey, result.id);
+          Alert.alert('Done', 'If you tapped Save, the event is now in your calendar.');
+        }
+        logger.info('Android add to calendar dialog closed', { meetingId: meeting.id, action: result.action });
+      } else {
+        const calendarId = await getDefaultCalendar();
+        if (!calendarId) {
+          Alert.alert('Error', 'No calendar found');
+          setAddingToPhoneCalendar(false);
+          return;
+        }
 
-      const startMs = startDate.getTime();
-      await openPhoneCalendarToEvent(eventId, startMs);
-      Alert.alert('Success', 'Event added to your calendar!');
-      logger.info('Meeting added to phone calendar', { meetingId: meeting.id });
+        const eventId = await Calendar.createEventAsync(calendarId, eventData as Calendar.Event);
+        await AsyncStorage.setItem(storageKey, 'true');
+        await AsyncStorage.setItem(eventIdKey, eventId);
+        setAddingToPhoneCalendar(false);
+
+        const startMs = startDate.getTime();
+        await openPhoneCalendarToEvent(eventId, startMs);
+        Alert.alert('Success', 'Event added to your calendar!');
+        logger.info('Meeting added to phone calendar', { meetingId: meeting.id });
+      }
     } catch (error) {
       setAddingToPhoneCalendar(false);
       logger.error('Error adding to phone calendar', error instanceof Error ? error : new Error(String(error)));
