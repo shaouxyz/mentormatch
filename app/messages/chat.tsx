@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,7 @@ import {
   Platform,
   Alert,
 } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -18,7 +18,11 @@ import {
   hybridGetMessages,
   hybridCreateOrGetConversation,
   subscribeToMessages,
+  hybridMarkMessagesAsRead,
+  hybridGetUserConversations,
 } from '@/services/hybridMessageService';
+import { useUnreadMessages } from '@/contexts/UnreadMessagesContext';
+import { getTotalUnread } from '@/utils/unreadMessages';
 import { hybridGetProfile } from '@/services/hybridProfileService';
 import { isFirebaseConfigured } from '@/config/firebase.config';
 import { Message } from '@/types/types';
@@ -36,6 +40,7 @@ import { Screen } from '@/components/Screen';
 export default function ChatScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
+  const { setTotalUnread } = useUnreadMessages();
   const { conversationId, participantEmail, participantName } = params as {
     conversationId: string;
     participantEmail: string;
@@ -75,6 +80,21 @@ export default function ChatScreen() {
       }
     }
   }, [currentUserEmail, conversationId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!conversationId || !currentUserEmail) return;
+      hybridMarkMessagesAsRead(conversationId, currentUserEmail)
+        .then(async () => {
+          const conversations = await hybridGetUserConversations(currentUserEmail);
+          const total = getTotalUnread(conversations, currentUserEmail);
+          setTotalUnread(total);
+        })
+        .catch((e) =>
+          logger.warn('Mark as read failed', { conversationId, error: e instanceof Error ? e.message : String(e) })
+        );
+    }, [conversationId, currentUserEmail, setTotalUnread])
+  );
 
   const loadUserData = async () => {
     try {

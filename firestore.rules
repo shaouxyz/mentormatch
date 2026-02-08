@@ -48,11 +48,13 @@ service cloud.firestore {
       allow update, delete: if false;
     }
     
-    // Meetings collection
+    // Meetings collection (organizerEmailLower/participantEmailLower allow case-insensitive match)
     match /meetings/{meetingId} {
       allow read: if isSignedIn() && 
         (resource.data.organizerEmail == request.auth.token.email || 
-         resource.data.participantEmail == request.auth.token.email);
+         resource.data.participantEmail == request.auth.token.email ||
+         resource.data.get('organizerEmailLower', '') == request.auth.token.email ||
+         resource.data.get('participantEmailLower', '') == request.auth.token.email);
       allow create: if isSignedIn() && 
         request.resource.data.organizerEmail == request.auth.token.email &&
         request.resource.data.participantEmail is string &&
@@ -60,9 +62,12 @@ service cloud.firestore {
         request.resource.data.date is string;
       allow update: if isSignedIn() && 
         (resource.data.organizerEmail == request.auth.token.email || 
-         resource.data.participantEmail == request.auth.token.email);
+         resource.data.participantEmail == request.auth.token.email ||
+         resource.data.get('organizerEmailLower', '') == request.auth.token.email ||
+         resource.data.get('participantEmailLower', '') == request.auth.token.email);
       allow delete: if isSignedIn() && 
-        resource.data.organizerEmail == request.auth.token.email;
+        (resource.data.organizerEmail == request.auth.token.email ||
+         resource.data.get('organizerEmailLower', '') == request.auth.token.email);
     }
     
     // Conversations collection

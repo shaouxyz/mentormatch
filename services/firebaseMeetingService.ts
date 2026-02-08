@@ -40,12 +40,14 @@ export async function createMeetingRequest(meeting: Omit<Meeting, 'id'>): Promis
     const organizerEmail = normalizeEmail(meeting.organizerEmail);
     const participantEmail = normalizeEmail(meeting.participantEmail);
 
-    // Prepare meeting data for Firestore (normalized emails so queries match for all users)
+    // Prepare meeting data for Firestore (normalized emails + _lower for case-insensitive queries/rules)
     const meetingData: any = {
       organizerEmail,
       organizerName: meeting.organizerName,
       participantEmail,
       participantName: meeting.participantName,
+      organizerEmailLower: organizerEmail,
+      participantEmailLower: participantEmail,
       title: meeting.title,
       date: meeting.date,
       time: meeting.time,
@@ -102,7 +104,8 @@ export async function createMeetingRequest(meeting: Omit<Meeting, 'id'>): Promis
 }
 
 /**
- * Get a meeting by ID
+ * Get a meeting by ID.
+ * Backfills organizerEmailLower/participantEmailLower when missing so list queries find the meeting.
  */
 export async function getMeeting(meetingId: string): Promise<Meeting | null> {
   try {
@@ -111,6 +114,25 @@ export async function getMeeting(meetingId: string): Promise<Meeting | null> {
     const meetingSnap = await getDoc(meetingRef);
     
     if (meetingSnap.exists()) {
+      const data = meetingSnap.data() as Record<string, unknown>;
+      const needsLower = !data.organizerEmailLower || !data.participantEmailLower;
+      if (needsLower) {
+        const normOrganizer = normalizeEmail(data.organizerEmail as string);
+        const normParticipant = normalizeEmail(data.participantEmail as string);
+        try {
+          await updateDoc(meetingRef, {
+            organizerEmailLower: normOrganizer,
+            participantEmailLower: normParticipant,
+            updatedAt: new Date().toISOString(),
+          });
+          logger.info('Meeting backfilled with email lower fields', { meetingId });
+        } catch (backfillError) {
+          logger.warn('Could not backfill meeting email lower fields', {
+            meetingId,
+            error: backfillError instanceof Error ? backfillError.message : String(backfillError),
+          });
+        }
+      }
       logger.info('Meeting retrieved from Firestore', { meetingId });
       return { id: meetingSnap.id, ...meetingSnap.data() } as Meeting;
     }
@@ -192,10 +214,22 @@ export async function updateMeeting(meetingId: string, updates: Partial<Meeting>
     
     // Note: Actual permission check is also done by Firestore security rules
     // This client-side check is for better error messages and debugging
+
+    // Normalize emails in doc so future queries find this meeting (backward compatibility)
+    const normOrganizer = normalizeEmail(meetingData.organizerEmail);
+    const normParticipant = normalizeEmail(meetingData.participantEmail);
+    if (meetingData.organizerEmail !== normOrganizer || meetingData.participantEmail !== normParticipant) {
+      meetingData.organizerEmail = normOrganizer;
+      meetingData.participantEmail = normParticipant;
+    }
     
     // Filter out undefined values (Firestore doesn't allow undefined)
     const updateData: any = {
       updatedAt: new Date().toISOString(),
+      organizerEmail: meetingData.organizerEmail,
+      participantEmail: meetingData.participantEmail,
+      organizerEmailLower: normOrganizer,
+      participantEmailLower: normParticipant,
     };
     
     for (const [key, value] of Object.entries(updates)) {
@@ -245,84 +279,121 @@ export async function deleteMeeting(meetingId: string): Promise<void> {
 }
 
 /**
- * Get all meetings for a user
+ * Get all meetings for a user.
+ * Tries organizerEmailLower/participantEmailLower first; on permission error (e.g. rules
+ * not deployed or missing index) falls back to organizerEmail/participantEmail.
  */
 export async function getUserMeetings(userEmail: string): Promise<Meeting[]> {
-  try {
-    const normalizedEmail = normalizeEmail(userEmail);
-    const db = getFirebaseFirestore();
-    const meetingsRef = collection(db, MEETINGS_COLLECTION);
+  const normalizedEmail = normalizeEmail(userEmail);
+  const db = getFirebaseFirestore();
+  const meetingsRef = collection(db, MEETINGS_COLLECTION);
 
-    // Get meetings where user is organizer (query with normalized email so we find all)
+  const runQueries = (useLower: boolean) => {
+    const orgField = useLower ? 'organizerEmailLower' : 'organizerEmail';
+    const partField = useLower ? 'participantEmailLower' : 'participantEmail';
     const organizerQuery = query(
       meetingsRef,
-      where('organizerEmail', '==', normalizedEmail),
+      where(orgField, '==', normalizedEmail),
       orderBy('date', 'asc')
     );
-
-    // Get meetings where user is participant
     const participantQuery = query(
       meetingsRef,
-      where('participantEmail', '==', normalizedEmail),
+      where(partField, '==', normalizedEmail),
       orderBy('date', 'asc')
     );
-    
-    const [organizerSnapshot, participantSnapshot] = await Promise.all([
-      getDocs(organizerQuery),
-      getDocs(participantQuery),
-    ]);
-    
+    return Promise.all([getDocs(organizerQuery), getDocs(participantQuery)]);
+  };
+
+  const mergeSnapshots = (snapshots: Awaited<ReturnType<typeof runQueries>>) => {
     const meetings: Meeting[] = [];
     const meetingIds = new Set<string>();
-    
-    organizerSnapshot.forEach((doc) => {
-      meetings.push({ id: doc.id, ...doc.data() } as Meeting);
-      meetingIds.add(doc.id);
-    });
-    
-    participantSnapshot.forEach((doc) => {
-      if (!meetingIds.has(doc.id)) {
-        meetings.push({ id: doc.id, ...doc.data() } as Meeting);
-      }
-    });
-    
-    // Sort by date
+    for (const snapshot of snapshots) {
+      snapshot.forEach((docSnap) => {
+        if (!meetingIds.has(docSnap.id)) {
+          meetingIds.add(docSnap.id);
+          meetings.push({ id: docSnap.id, ...docSnap.data() } as Meeting);
+        }
+      });
+    }
     meetings.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    
+    return meetings;
+  };
+
+  try {
+    const snapshots = await runQueries(true);
+    const meetings = mergeSnapshots(snapshots);
     logger.info('Meetings retrieved from Firestore', { userEmail: normalizedEmail, count: meetings.length });
     return meetings;
   } catch (error) {
-    logger.error('Error getting meetings from Firestore', error instanceof Error ? error : new Error(String(error)));
+    const isPermissionError =
+      (error && typeof error === 'object' && 'code' in error && (error as { code?: string }).code === 'permission-denied') ||
+      (error instanceof Error && error.message?.includes('permission'));
+    if (isPermissionError) {
+      try {
+        const snapshots = await runQueries(false);
+        const meetings = mergeSnapshots(snapshots);
+        logger.info('Meetings retrieved from Firestore (fallback fields)', {
+          userEmail: normalizedEmail,
+          count: meetings.length,
+        });
+        return meetings;
+      } catch (fallbackError) {
+        logger.error('Error getting meetings from Firestore (fallback)', fallbackError instanceof Error ? fallbackError : new Error(String(fallbackError)));
+        throw fallbackError;
+      }
+    }
+    logger.error('Error getting meetings from Firestore', error instanceof Error ? error.message : String(error));
     throw error;
   }
 }
 
 /**
- * Get pending meeting requests for a user
+ * Get pending meeting requests for a user (participant).
+ * Tries participantEmailLower first; on permission error falls back to participantEmail.
  */
 export async function getPendingMeetingRequests(userEmail: string): Promise<Meeting[]> {
-  try {
-    const normalizedEmail = normalizeEmail(userEmail);
-    const db = getFirebaseFirestore();
-    const meetingsRef = collection(db, MEETINGS_COLLECTION);
+  const normalizedEmail = normalizeEmail(userEmail);
+  const db = getFirebaseFirestore();
+  const meetingsRef = collection(db, MEETINGS_COLLECTION);
 
+  const runQuery = (useLower: boolean) => {
+    const partField = useLower ? 'participantEmailLower' : 'participantEmail';
     const q = query(
       meetingsRef,
-      where('participantEmail', '==', normalizedEmail),
+      where(partField, '==', normalizedEmail),
       where('status', '==', 'pending'),
       orderBy('createdAt', 'desc')
     );
-    
-    const querySnapshot = await getDocs(q);
+    return getDocs(q);
+  };
+
+  const toMeetings = (snapshot: Awaited<ReturnType<typeof runQuery>>) => {
     const meetings: Meeting[] = [];
-    
-    querySnapshot.forEach((doc) => {
-      meetings.push({ id: doc.id, ...doc.data() } as Meeting);
-    });
-    
+    snapshot.forEach((docSnap) => meetings.push({ id: docSnap.id, ...docSnap.data() } as Meeting));
+    meetings.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return meetings;
+  };
+
+  try {
+    const snapshot = await runQuery(true);
+    const meetings = toMeetings(snapshot);
     logger.info('Pending meeting requests retrieved', { userEmail: normalizedEmail, count: meetings.length });
     return meetings;
   } catch (error) {
+    const isPermissionError =
+      (error && typeof error === 'object' && 'code' in error && (error as { code?: string }).code === 'permission-denied') ||
+      (error instanceof Error && error.message?.includes('permission'));
+    if (isPermissionError) {
+      try {
+        const snapshot = await runQuery(false);
+        const meetings = toMeetings(snapshot);
+        logger.info('Pending meeting requests retrieved (fallback)', { userEmail: normalizedEmail, count: meetings.length });
+        return meetings;
+      } catch (fallbackError) {
+        logger.error('Error getting pending meetings (fallback)', fallbackError instanceof Error ? fallbackError : new Error(String(fallbackError)));
+        throw fallbackError;
+      }
+    }
     logger.error('Error getting pending meetings', error instanceof Error ? error : new Error(String(error)));
     throw error;
   }
@@ -351,7 +422,7 @@ export async function getUpcomingMeetings(userEmail: string): Promise<Meeting[]>
 }
 
 /**
- * Subscribe to meeting updates
+ * Subscribe to meeting updates.
  */
 export function subscribeToUserMeetings(
   userEmail: string,
@@ -363,21 +434,20 @@ export function subscribeToUserMeetings(
     const db = getFirebaseFirestore();
     const meetingsRef = collection(db, MEETINGS_COLLECTION);
 
-    const q1 = query(meetingsRef, where('organizerEmail', '==', normalizedEmail));
-    const q2 = query(meetingsRef, where('participantEmail', '==', normalizedEmail));
-    
+    const q1 = query(meetingsRef, where('organizerEmailLower', '==', normalizedEmail));
+    const q2 = query(meetingsRef, where('participantEmailLower', '==', normalizedEmail));
     const meetings: Map<string, Meeting> = new Map();
-    let unsubscribeCount = 0;
-    
+    let updateCount = 0;
+
     const updateMeetings = () => {
-      unsubscribeCount++;
-      if (unsubscribeCount >= 2) {
+      updateCount++;
+      if (updateCount >= 2) {
         const allMeetings = Array.from(meetings.values());
         allMeetings.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
         onMeetingsUpdate(allMeetings);
       }
     };
-    
+
     const unsubscribe1 = onSnapshot(
       q1,
       (querySnapshot) => {
@@ -391,7 +461,7 @@ export function subscribeToUserMeetings(
         if (onError) onError(error as Error);
       }
     );
-    
+
     const unsubscribe2 = onSnapshot(
       q2,
       (querySnapshot) => {
@@ -405,7 +475,7 @@ export function subscribeToUserMeetings(
         if (onError) onError(error as Error);
       }
     );
-    
+
     return () => {
       unsubscribe1();
       unsubscribe2();

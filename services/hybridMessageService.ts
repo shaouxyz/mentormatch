@@ -322,4 +322,29 @@ async function getLocalUserConversations(userEmail: string): Promise<Conversatio
     .sort((a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime());
 }
 
+/**
+ * Mark messages as read (Firebase + local cache so list and tab badge update).
+ */
+export async function hybridMarkMessagesAsRead(conversationId: string, userEmail: string): Promise<void> {
+  const normalized = normalizeEmailForCompare(userEmail);
+  if (isFirebaseConfigured()) {
+    try {
+      await markFirebaseMessagesAsRead(conversationId, userEmail);
+    } catch (e) {
+      logger.warn('Firebase mark as read failed', { conversationId, error: e instanceof Error ? e.message : String(e) });
+    }
+  }
+  const conversationsData = await AsyncStorage.getItem(STORAGE_KEYS.CONVERSATIONS);
+  if (!conversationsData) return;
+  const conversations: Conversation[] = JSON.parse(conversationsData);
+  const idx = conversations.findIndex((c) => c.id === conversationId);
+  if (idx === -1) return;
+  if (!conversations[idx].unreadCount) conversations[idx].unreadCount = {};
+  const key = Object.keys(conversations[idx].unreadCount).find((k) => normalizeEmailForCompare(k) === normalized);
+  if (key !== undefined) {
+    conversations[idx].unreadCount[key] = 0;
+    await AsyncStorage.setItem(STORAGE_KEYS.CONVERSATIONS, JSON.stringify(conversations));
+  }
+}
+
 export { subscribeToMessages, generateConversationId };

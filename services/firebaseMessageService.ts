@@ -279,18 +279,19 @@ export async function getUserConversations(userEmail: string): Promise<Conversat
 }
 
 /**
- * Mark messages as read
+ * Mark messages as read (uses normalized email so key matches unreadCount from sendMessage).
  */
 export async function markMessagesAsRead(conversationId: string, userEmail: string): Promise<void> {
   try {
+    const normalized = normalizeEmail(userEmail);
     const db = getFirebaseFirestore();
     const conversationRef = doc(db, CONVERSATIONS_COLLECTION, conversationId);
     
     await updateDoc(conversationRef, {
-      [`unreadCount.${userEmail}`]: 0,
+      [`unreadCount.${normalized}`]: 0,
     });
     
-    logger.info('Messages marked as read', { conversationId, userEmail });
+    logger.info('Messages marked as read', { conversationId, userEmail: normalized });
   } catch (error) {
     logger.error('Error marking messages as read', error instanceof Error ? error : new Error(String(error)));
     throw error;

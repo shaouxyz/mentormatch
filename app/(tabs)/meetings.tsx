@@ -109,13 +109,18 @@ export default function MeetingsScreen() {
         return !(organizer === normalizedUserEmail && participant === normalizedUserEmail);
       });
       
-      // Upcoming: Accepted meetings in the future (scheduled meetings, sorted by date)
+      // Upcoming: Accepted meetings that haven't ended yet (end time > now)
       const now = new Date();
+      const getMeetingEndTime = (m: Meeting) => {
+        const start = new Date(m.date).getTime();
+        const durationMs = (m.duration ?? 0) * 60 * 1000;
+        return new Date(start + durationMs);
+      };
       const upcoming = visibleMeetings
         .filter((m) => {
           if (m.status !== 'accepted') return false;
-          const meetingDate = new Date(m.date);
-          return meetingDate >= now;
+          const endTime = getMeetingEndTime(m);
+          return endTime > now;
         })
         .sort((a, b) => {
           const dateA = new Date(a.date).getTime();
@@ -151,18 +156,15 @@ export default function MeetingsScreen() {
         });
       
       // Processed: Accepted/declined/cancelled meetings (excluding upcoming accepted ones)
-      // This shows historical meetings that are not upcoming
+      // Accepted: only when meeting end time is in the past
       const processed = visibleMeetings
         .filter(m => {
-          // Include declined/cancelled, and accepted meetings that are in the past
           if (m.status === 'declined' || m.status === 'cancelled') {
             return true;
           }
           if (m.status === 'accepted') {
-            // Only include accepted meetings that are in the past
-            const meetingDate = new Date(m.date);
-            const now = new Date();
-            return meetingDate < now;
+            const endTime = getMeetingEndTime(m);
+            return endTime <= now;
           }
           return false;
         })

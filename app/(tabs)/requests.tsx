@@ -14,8 +14,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { logger } from '@/utils/logger';
 import { safeParseJSON, validateMentorshipRequestSchema } from '@/utils/schemaValidation';
 import { hybridGetAllRequestsForUser } from '@/services/hybridRequestService';
-import { hybridGetUserConversations } from '@/services/hybridMessageService';
-import { Conversation } from '@/types/types';
 import { Screen } from '@/components/Screen';
 
 interface MentorshipRequest {
@@ -33,27 +31,16 @@ interface MentorshipRequest {
 
 /**
  * Requests Tab Component
- * 
- * Manages mentorship requests and conversations with three tabs:
- * - Incoming: Requests received from others, conversations with unread messages
- * - Sent: Requests sent to others, conversations where you sent last message
- * - Processed: Accepted/declined requests, all conversations
- * 
- * Note: Meetings are now managed in a separate Meetings tab.
- * 
- * Features:
- * - Accept/decline functionality
- * - Request status tracking
- * - Conversation management
- * - Pull-to-refresh support
- * - Memoized render functions for performance
- * 
+ *
+ * Manages mentorship requests only (messages are in the Messages tab):
+ * - Incoming: Requests received from others (pending)
+ * - Sent: Requests sent to others (pending)
+ * - Processed: Accepted/declined requests
+ *
  * @component
  * @returns {JSX.Element} Requests screen with tabbed interface
  */
-type RequestItem = 
-  | { type: 'mentorship'; data: MentorshipRequest }
-  | { type: 'conversation'; data: Conversation };
+type RequestItem = { type: 'mentorship'; data: MentorshipRequest };
 
 const normalizeEmail = (email: string | undefined | null): string =>
   (email || '').trim().toLowerCase();
@@ -139,99 +126,23 @@ export default function RequestsScreen() {
       // Sort by respondedAt (most recent first)
       const processed = allRequests
         .filter(
-          (r) => 
+          (r) =>
             (r.status === 'accepted' || r.status === 'declined') &&
-            (r.mentorEmail === userEmail || r.requesterEmail === userEmail)
+            (normalizeEmail(r.mentorEmail) === normalizedUserEmail || normalizeEmail(r.requesterEmail) === normalizedUserEmail)
         )
         .sort((a, b) => {
           const dateA = new Date(a.respondedAt || a.createdAt).getTime();
           const dateB = new Date(b.respondedAt || b.createdAt).getTime();
-          return dateB - dateA; // Most recent first
+          return dateB - dateA;
         });
 
-        // Load conversations and organize them
-        let allConversationsRaw: Conversation[] = [];
-        try {
-          allConversationsRaw = await hybridGetUserConversations(userEmail);
-          logger.info('Conversations loaded for requests tab', { count: allConversationsRaw.length });
-        } catch (error) {
-          logger.warn('Failed to load conversations for requests tab', {
-            error: error instanceof Error ? error.message : String(error),
-          });
-          allConversationsRaw = [];
-        }
-        const allConversations = dedupeById(allConversationsRaw);
-        
-        // Organize conversations:
-        // Incoming: Conversations with unread messages (you need to respond)
-        // Sent: Conversations with no unread messages (you sent last message or waiting)
-        // Processed: All conversations (sorted by most recent)
-        const incomingConversations = allConversations
-          .filter(c => {
-            const unreadCount = c.unreadCount?.[userEmail] || 0;
-            return unreadCount > 0;
-          })
-          .map(c => ({ type: 'conversation' as const, data: c }));
-        
-        // Sent: Conversations with no unread (likely you sent last message)
-        const sentConversations = allConversations
-          .filter(c => {
-            const unreadCount = c.unreadCount?.[userEmail] || 0;
-            return unreadCount === 0 && c.lastMessage; // No unread and has messages
-          })
-          .map(c => ({ type: 'conversation' as const, data: c }));
-        
-        const processedConversations = allConversations
-          .sort((a, b) => {
-            const dateA = new Date(a.lastMessageAt || a.updatedAt || a.createdAt).getTime();
-            const dateB = new Date(b.lastMessageAt || b.updatedAt || b.createdAt).getTime();
-            return dateB - dateA; // Most recent first
-          })
-          .map(c => ({ type: 'conversation' as const, data: c }));
-        
-        // Combine all items
-        const combinedIncoming = [
-          ...incoming.map(r => ({ type: 'mentorship' as const, data: r })),
-          ...incomingConversations,
-        ].sort((a, b) => {
-          const dateA = a.type === 'conversation'
-            ? new Date(a.data.lastMessageAt || a.data.updatedAt || a.data.createdAt).getTime()
-            : new Date(a.data.createdAt).getTime();
-          const dateB = b.type === 'conversation'
-            ? new Date(b.data.lastMessageAt || b.data.updatedAt || b.data.createdAt).getTime()
-            : new Date(b.data.createdAt).getTime();
-          return dateB - dateA;
-        });
-        
-        const combinedOutgoing = [
-          ...outgoing.map(r => ({ type: 'mentorship' as const, data: r })),
-          ...sentConversations,
-        ].sort((a, b) => {
-          const dateA = a.type === 'conversation'
-            ? new Date(a.data.lastMessageAt || a.data.updatedAt || a.data.createdAt).getTime()
-            : new Date(a.data.createdAt).getTime();
-          const dateB = b.type === 'conversation'
-            ? new Date(b.data.lastMessageAt || b.data.updatedAt || b.data.createdAt).getTime()
-            : new Date(b.data.createdAt).getTime();
-          return dateB - dateA;
-        });
-        
-        const combinedProcessed = [
-          ...processed.map(r => ({ type: 'mentorship' as const, data: r })),
-          ...processedConversations,
-        ].sort((a, b) => {
-          const dateA = a.type === 'conversation'
-            ? new Date(a.data.lastMessageAt || a.data.updatedAt || a.data.createdAt).getTime()
-            : new Date(a.data.respondedAt || a.data.updatedAt || a.data.createdAt).getTime();
-          const dateB = b.type === 'conversation'
-            ? new Date(b.data.lastMessageAt || b.data.updatedAt || b.data.createdAt).getTime()
-            : new Date(b.data.respondedAt || b.data.updatedAt || b.data.createdAt).getTime();
-          return dateB - dateA;
-        });
-        
-        setIncomingRequests(combinedIncoming);
-        setOutgoingRequests(combinedOutgoing);
-        setProcessedRequests(combinedProcessed);
+      const incomingItems: RequestItem[] = incoming.map((r) => ({ type: 'mentorship', data: r }));
+      const outgoingItems: RequestItem[] = outgoing.map((r) => ({ type: 'mentorship', data: r }));
+      const processedItems: RequestItem[] = processed.map((r) => ({ type: 'mentorship', data: r }));
+
+      setIncomingRequests(incomingItems);
+      setOutgoingRequests(outgoingItems);
+      setProcessedRequests(processedItems);
     } catch (error) {
       logger.error('Error loading requests', error instanceof Error ? error : new Error(String(error)));
     } finally {
@@ -293,72 +204,7 @@ export default function RequestsScreen() {
     return date.toLocaleDateString();
   }, []);
 
-  const getOtherParticipant = useCallback((conversation: Conversation) => {
-    const otherEmail = conversation.participants.find(p => p !== userEmail);
-    return {
-      email: otherEmail || '',
-      name: otherEmail ? conversation.participantNames[otherEmail] : 'Unknown',
-    };
-  }, [userEmail]);
-
-  const renderConversationItem = useCallback(({ item }: { item: Conversation }) => {
-    const otherParticipant = getOtherParticipant(item);
-    const unreadCount = item.unreadCount?.[userEmail] || 0;
-    
-    return (
-      <TouchableOpacity
-        style={styles.conversationCard}
-        onPress={() => router.push({
-          pathname: '/messages/chat',
-          params: {
-            conversationId: item.id,
-            participantEmail: otherParticipant.email,
-            participantName: otherParticipant.name,
-          },
-        })}
-        accessibilityLabel={`Conversation with ${otherParticipant.name}`}
-        accessibilityHint="Tap to open chat"
-      >
-        <View style={styles.requestHeader}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {otherParticipant.name.charAt(0).toUpperCase()}
-            </Text>
-          </View>
-          <View style={styles.requestInfo}>
-            <Text style={styles.requestName}>{otherParticipant.name}</Text>
-            <Text style={styles.requestEmail}>{otherParticipant.email}</Text>
-            <Text style={styles.requestDate}>
-              {formatTime(item.lastMessageAt || item.updatedAt)}
-            </Text>
-          </View>
-        </View>
-
-        {item.lastMessage && (
-          <View style={styles.noteContainer}>
-            <Text style={styles.noteText} numberOfLines={2}>
-              {item.lastMessage}
-            </Text>
-          </View>
-        )}
-
-        {unreadCount > 0 && (
-          <View style={styles.statusContainer}>
-            <View style={styles.unreadBadge}>
-              <Ionicons name="mail-unread" size={16} color="#fff" />
-              <Text style={styles.unreadCount}>{unreadCount} unread</Text>
-            </View>
-          </View>
-        )}
-      </TouchableOpacity>
-    );
-  }, [userEmail, getOtherParticipant, formatTime, router]);
-
   const renderIncomingRequest = useCallback(({ item }: { item: RequestItem }) => {
-    if (item.type === 'conversation') {
-      return renderConversationItem({ item: item.data });
-    }
-    // It's a MentorshipRequest
     const request = item.data;
     return (
       <View style={styles.requestCard}>
@@ -413,13 +259,9 @@ export default function RequestsScreen() {
         </View>
       </View>
     );
-  }, [handleAccept, handleDecline, renderConversationItem, router]);
+  }, [handleAccept, handleDecline, router]);
 
   const renderOutgoingRequest = useCallback(({ item }: { item: RequestItem }) => {
-    if (item.type === 'conversation') {
-      return renderConversationItem({ item: item.data });
-    }
-    // It's a MentorshipRequest
     const request = item.data;
       return (
         <View style={styles.requestCard}>
@@ -481,13 +323,9 @@ export default function RequestsScreen() {
           )}
         </View>
       );
-  }, [renderConversationItem, router]);
+  }, [router]);
 
   const renderProcessedRequest = useCallback(({ item }: { item: RequestItem }) => {
-    if (item.type === 'conversation') {
-      return renderConversationItem({ item: item.data });
-    }
-    // It's a MentorshipRequest
     const request = item.data;
     // Determine if this was an incoming or outgoing request
     let otherPersonName = '';
@@ -697,15 +535,7 @@ export default function RequestsScreen() {
       <FlatList
         data={displayRequests}
         renderItem={getRenderFunction()}
-        keyExtractor={(item, index) => {
-          if (item.type === 'mentorship') {
-            return `mentorship-${item.data.id}`;
-          } else if (item.type === 'conversation') {
-            return `conversation-${item.data.id}`;
-          }
-          // Fallback to index if type is unknown
-          return `item-${index}`;
-        }}
+        keyExtractor={(item) => `mentorship-${item.data.id}`}
         contentContainerStyle={[styles.list, { paddingTop: 20 }]}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />

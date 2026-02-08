@@ -1,6 +1,7 @@
 import { Stack } from 'expo-router';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { UnreadMessagesProvider } from '@/contexts/UnreadMessagesContext';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 /**
@@ -19,6 +20,7 @@ export default function RootLayout() {
     <ErrorBoundary>
       <SafeAreaProvider>
         <AuthProvider>
+          <UnreadMessagesProvider>
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="index" />
             <Stack.Screen name="signup" />
@@ -35,6 +37,7 @@ export default function RootLayout() {
           <Stack.Screen name="meeting/add-to-calendar" />
             <Stack.Screen name="messages/chat" />
           </Stack>
+          </UnreadMessagesProvider>
         </AuthProvider>
       </SafeAreaProvider>
     </ErrorBoundary>

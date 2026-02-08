@@ -193,7 +193,7 @@ export async function hybridGetUserMeetings(userEmail: string): Promise<Meeting[
   try {
     const normalizedEmail = normalizeEmail(userEmail);
     if (isFirebaseConfigured()) {
-      const meetings = await getUserMeetings(normalizedEmail);
+      const meetings = await getUserMeetings(userEmail);
 
       await saveLocalMeetings(meetings);
 
