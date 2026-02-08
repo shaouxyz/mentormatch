@@ -53,6 +53,16 @@ export async function hybridSignUp(email: string, password: string): Promise<any
 }
 
 /**
+ * Ensure returned user has a valid email (Firebase/user object can have email null on iOS in some cases).
+ */
+function ensureUserHasEmail(user: any, fallbackEmail: string): any {
+  if (!user) return user;
+  const email = (user.email || fallbackEmail || '').trim().toLowerCase();
+  if (!email) return user;
+  return { ...user, email };
+}
+
+/**
  * Sign in a user (hybrid: Firebase first, then local fallback)
  */
 export async function hybridSignIn(email: string, password: string): Promise<any> {
@@ -69,31 +79,32 @@ export async function hybridSignIn(email: string, password: string): Promise<any
         });
         
         // Ensure user exists locally for offline support (don't fail login if local step fails)
-        const firebaseEmail = firebaseUser.user?.email ?? email;
+        // Always prefer the email the user typed (email param); Firebase user.email can be null on iOS in some cases
+        const resolvedEmail = (firebaseUser.user?.email || email || '').trim().toLowerCase();
         const firebaseUid = firebaseUser.user?.uid ?? '';
         try {
           const localUser = await authenticateLocalUser(email, password);
           logger.info('User also authenticated locally', { email });
-          return localUser;
+          return ensureUserHasEmail(localUser, resolvedEmail);
         } catch (localError) {
           try {
             const localUser = await createLocalUser(email, password);
             logger.info('Local user created from Firebase auth', { email });
-            return localUser;
+            return ensureUserHasEmail(localUser, resolvedEmail);
           } catch (createError: any) {
             // e.g. "User with this email already exists" - try to use existing local user
             const existingUser = await getUserByEmail(email);
             if (existingUser) {
               const authenticated = await authenticateLocalUser(email, password).catch(() => null);
-              if (authenticated) return authenticated;
+              if (authenticated) return ensureUserHasEmail(authenticated, resolvedEmail);
             }
             // Firebase auth succeeded; local sync failed. Return a minimal user so login continues.
             logger.warn('Firebase sign-in succeeded but local user sync failed; continuing with Firebase user', {
-              email: firebaseEmail,
+              email: resolvedEmail,
               localError: createError instanceof Error ? createError.message : String(createError),
             });
             return {
-              email: firebaseEmail,
+              email: resolvedEmail,
               id: firebaseUid || Date.now().toString(),
               createdAt: new Date().toISOString(),
             };

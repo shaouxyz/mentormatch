@@ -42,11 +42,19 @@ import { safeParseJSON, validateProfileSchema } from '@/utils/schemaValidation';
  * @component
  * @returns {JSX.Element} Login form with email and password inputs
  */
+/** Debug info shown on login screen to diagnose failures on device (e.g. EAS build) */
+type LoginDebugInfo = {
+  firebaseConfigured: boolean;
+  errorCode: string | null;
+  errorMessage: string | null;
+};
+
 export default function LoginScreen() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loginDebug, setLoginDebug] = useState<LoginDebugInfo | null>(null);
 
   useEffect(() => {
     // Initialize test accounts silently in background
@@ -136,9 +144,16 @@ export default function LoginScreen() {
       }
 
       // Authenticate user with hybrid service (local + Firebase if configured)
-      const user = await hybridSignIn(sanitizedEmail, password);
-      
-      if (!user || !user.email) {
+      const rawUser = await hybridSignIn(sanitizedEmail, password);
+      if (!rawUser) {
+        throw new Error('Authentication succeeded but user object is invalid');
+      }
+      // On iOS the returned user can have email null; use the email they typed so login continues
+      const user = {
+        ...rawUser,
+        email: (rawUser.email || sanitizedEmail || '').trim().toLowerCase() || sanitizedEmail,
+      };
+      if (!user.email) {
         throw new Error('Authentication succeeded but user object is invalid');
       }
       
@@ -334,7 +349,7 @@ export default function LoginScreen() {
       // Handle authentication failure
       const sanitizedEmail = sanitizeEmail(email);
       
-      // Log detailed error information for debugging (always extract a string so logs never show undefined)
+      // Store debug info so user can see on device why login failed (no console in EAS build)
       let errorMessage: string;
       if (error === null || error === undefined) {
         errorMessage = 'Error object is null or undefined';
@@ -353,6 +368,12 @@ export default function LoginScreen() {
       
       const firebaseErrorCode = (error as any)?.firebaseErrorCode;
       const firebaseError = (error as any)?.firebaseError;
+
+      setLoginDebug({
+        firebaseConfigured: isFirebaseConfigured(),
+        errorCode: firebaseErrorCode ?? null,
+        errorMessage: errorMessage ?? null,
+      });
       
       logger.error('Login failed', {
         email: sanitizedEmail,
@@ -510,6 +531,24 @@ export default function LoginScreen() {
               Don't have an account? Sign Up
             </Text>
           </TouchableOpacity>
+
+          {/* Debug: visible on device so we can see why login fails (e.g. EAS build, no console) */}
+          <View style={styles.debugBlock}>
+            <Text style={styles.debugLabel}>Debug (for login issues):</Text>
+            <Text style={styles.debugText}>
+              Firebase: {isFirebaseConfigured() ? 'yes' : 'no'}
+            </Text>
+            {loginDebug && (
+              <>
+                <Text style={styles.debugText}>
+                  Last error code: {loginDebug.errorCode ?? 'none'}
+                </Text>
+                <Text style={styles.debugText} numberOfLines={3}>
+                  Last error msg: {loginDebug.errorMessage ?? 'none'}
+                </Text>
+              </>
+            )}
+          </View>
         </View>
       </View>
     </KeyboardAvoidingView>
@@ -589,5 +628,24 @@ const styles = StyleSheet.create({
   linkText: {
     color: '#2563eb',
     fontSize: 16,
+  },
+  debugBlock: {
+    marginTop: 24,
+    padding: 12,
+    backgroundColor: '#f1f5f9',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  debugLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748b',
+    marginBottom: 4,
+  },
+  debugText: {
+    fontSize: 11,
+    color: '#475569',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
 });

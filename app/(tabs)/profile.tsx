@@ -27,6 +27,8 @@ interface Profile {
   interestYears: number;
   email: string;
   phoneNumber: string;
+  caspaRole?: string;
+  ltmNumber?: string;
 }
 
 /**
@@ -258,6 +260,30 @@ export default function ProfileScreen() {
               </View>
             </View>
           </View>
+
+          {profile.caspaRole && (
+            <View style={styles.infoCard}>
+              <View style={styles.infoRow}>
+                <Ionicons name="ribbon-outline" size={20} color="#8b5cf6" />
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>CASPA Role</Text>
+                  <Text style={styles.infoValue}>{profile.caspaRole}</Text>
+                </View>
+              </View>
+            </View>
+          )}
+
+          {profile.ltmNumber && (
+            <View style={styles.infoCard}>
+              <View style={styles.infoRow}>
+                <Ionicons name="id-card-outline" size={20} color="#8b5cf6" />
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>LTM Number</Text>
+                  <Text style={styles.infoValue}>{profile.ltmNumber}</Text>
+                </View>
+              </View>
+            </View>
+          )}
         </View>
 
         <View style={styles.section}>
