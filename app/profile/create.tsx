@@ -30,6 +30,8 @@ interface ProfileData {
   email: string;
   phoneNumber: string;
   location: string;
+  caspaRole: string;
+  ltmNumber: string;
 }
 
 /**
@@ -57,6 +59,8 @@ export default function CreateProfileScreen() {
     email: '',
     phoneNumber: '',
     location: '',
+    caspaRole: '',
+    ltmNumber: '',
   });
 
   useEffect(() => {
@@ -96,6 +100,8 @@ export default function CreateProfileScreen() {
         email: sanitizeEmail(profile.email),
         phoneNumber: sanitizePhoneNumber(profile.phoneNumber),
         location: profile.location ? sanitizeTextField(profile.location) : undefined,
+        caspaRole: profile.caspaRole ? sanitizeTextField(profile.caspaRole) : undefined,
+        ltmNumber: profile.ltmNumber ? sanitizeTextField(profile.ltmNumber) : undefined,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };

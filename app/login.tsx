@@ -23,8 +23,9 @@ import { startSession } from '@/utils/sessionManager';
 import { hybridSignIn } from '@/services/hybridAuthService';
 import { hybridGetProfile } from '@/services/hybridProfileService';
 import { clearAllUserData, unsuspendAccount } from '@/services/accountService';
-import { getCurrentFirebaseUser } from '@/services/firebaseAuthService';
+import { getCurrentFirebaseUser, firebaseSendPasswordReset } from '@/services/firebaseAuthService';
 import { createFirebaseProfile } from '@/services/firebaseProfileService';
+import { initializeFirebase, isFirebaseConfigured } from '@/config/firebase.config';
 import { Profile } from '@/types/types';
 import { safeParseJSON, validateProfileSchema } from '@/utils/schemaValidation';
 
@@ -63,6 +64,9 @@ export default function LoginScreen() {
     setLoading(true);
 
     try {
+      // Ensure Firebase is initialized before login (needed on iOS EAS build if init was delayed)
+      initializeFirebase();
+
       // Sanitize email input
       const sanitizedEmail = sanitizeEmail(email);
       
@@ -70,7 +74,7 @@ export default function LoginScreen() {
       if (await isRateLimited(sanitizedEmail)) {
         Alert.alert(
           'Too Many Attempts',
-          `Too many login attempts. Please try again later.`,
+          `Too many login attempts. Use "Forgot password?" below to reset your password and try again.`,
           [{ text: 'OK' }]
         );
         setLoading(false);
@@ -365,30 +369,29 @@ export default function LoginScreen() {
       
       // Create user-friendly error message
       let userMessage = ERROR_MESSAGES.INVALID_PASSWORD;
-      
-      // Check if error message contains specific information
-      if (errorMessage.includes('User not found') || errorMessage.includes('does not exist')) {
+
+      // If Firebase isn't configured (e.g. EAS build without env vars), local-only login fails for cloud users
+      if (!isFirebaseConfigured()) {
+        userMessage =
+          'This app build doesn\'t have cloud login. Sign up on this device first, or install a version built with Firebase (set env in EAS).';
+      } else if (errorMessage.includes('User not found') || errorMessage.includes('does not exist')) {
         userMessage = 'Email not found. Please sign up first or check your email address.';
+      } else if (errorMessage.includes('Invalid email or password') || errorMessage.includes('Forgot password')) {
+        userMessage = errorMessage;
       } else if (errorMessage.includes('password') && (errorMessage.includes('incorrect') || errorMessage.includes('wrong'))) {
         userMessage = 'Incorrect password. Please check your password and try again.';
       }
-      
+
       // Add Firebase-specific error context if available
       if (firebaseErrorCode) {
         if (firebaseErrorCode === 'auth/user-not-found') {
           userMessage = 'Email not found. Please sign up first or check your email address.';
         } else if (firebaseErrorCode === 'auth/wrong-password') {
-          userMessage = 'Incorrect password. Please check your password and try again.';
+          userMessage = 'Incorrect password. Use "Forgot password?" below to reset.';
         } else if (firebaseErrorCode === 'auth/invalid-credential') {
-          // Invalid credential could mean user not found OR wrong password
-          // Check error message for more context
-          if (errorMessage.includes('User not found') || errorMessage.includes('does not exist')) {
-            userMessage = 'Email not found. Please sign up first or check your email address.';
-          } else {
-            userMessage = 'Invalid email or password. Please check your credentials.';
-          }
+          userMessage = 'Invalid email or password. Use "Forgot password?" below if you\'re not sure.';
         } else if (firebaseErrorCode === 'auth/network-request-failed') {
-          userMessage = 'Network error. Please check your internet connection and try again.';
+          userMessage = 'Network error. Check your internet connection and try again.';
         } else if (firebaseErrorCode === 'auth/too-many-requests') {
           userMessage = 'Too many login attempts. Please try again later.';
         } else {
@@ -403,7 +406,7 @@ export default function LoginScreen() {
           { email }
         );
       } else {
-        ErrorHandler.handleError(error, 'Too many failed attempts. Please try again later.', { email });
+        ErrorHandler.handleError(error, 'Too many failed attempts. Use "Forgot password?" below to reset your password and try again.', { email });
       }
     } finally {
       setLoading(false);
@@ -450,6 +453,38 @@ export default function LoginScreen() {
               accessibilityLabel="Password input"
               accessibilityHint="Enter your password to log in"
             />
+            {isFirebaseConfigured() && (
+              <TouchableOpacity
+                style={styles.forgotPasswordButton}
+                onPress={async () => {
+                  const emailToUse = sanitizeEmail(email).trim() || '';
+                  if (!emailToUse) {
+                    Alert.alert(
+                      'Reset password',
+                      'Enter your email above, then tap Forgot password? to receive a reset link.',
+                      [{ text: 'OK' }]
+                    );
+                    return;
+                  }
+                  try {
+                    await firebaseSendPasswordReset(emailToUse);
+                    await resetRateLimit(emailToUse);
+                    Alert.alert(
+                      'Check your email',
+                      `If an account exists for ${emailToUse}, you will receive a link to reset your password. You can try logging in again after you set a new password.`,
+                      [{ text: 'OK' }]
+                    );
+                  } catch (err) {
+                    const msg = err instanceof Error ? err.message : String(err);
+                    Alert.alert('Reset failed', msg || 'Could not send reset email. Try again or contact support.');
+                  }
+                }}
+                accessibilityLabel="Forgot password"
+                accessibilityHint="Send password reset email to your address"
+              >
+                <Text style={styles.forgotPasswordText}>Forgot password?</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           <TouchableOpacity
@@ -509,6 +544,14 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     marginBottom: 20,
+  },
+  forgotPasswordButton: {
+    alignSelf: 'flex-end',
+    marginTop: 8,
+  },
+  forgotPasswordText: {
+    fontSize: 14,
+    color: '#2563eb',
   },
   label: {
     fontSize: 16,

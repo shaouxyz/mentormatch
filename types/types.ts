@@ -10,6 +10,10 @@ export interface Profile {
   email: string;
   phoneNumber: string;
   location?: string;
+  /** CASPA role: BOA, BOD, BOV, VP, President, LTM, Former BOA/BOD/BOV/VP/President, None of Above */
+  caspaRole?: string;
+  /** LTM number */
+  ltmNumber?: string;
   createdAt?: string;
   updatedAt?: string;
   /** If true, user has suspended their account and cannot use the app until restored */

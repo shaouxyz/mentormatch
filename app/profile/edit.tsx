@@ -30,6 +30,8 @@ interface ProfileData {
   email: string;
   phoneNumber: string;
   location: string;
+  caspaRole: string;
+  ltmNumber: string;
 }
 
 /**
@@ -56,6 +58,8 @@ export default function EditProfileScreen() {
     email: '',
     phoneNumber: '',
     location: '',
+    caspaRole: '',
+    ltmNumber: '',
   });
 
   useEffect(() => {
@@ -81,6 +85,8 @@ export default function EditProfileScreen() {
             email: parsed.email || '',
             phoneNumber: parsed.phoneNumber || '',
             location: parsed.location || '',
+            caspaRole: parsed.caspaRole || '',
+            ltmNumber: parsed.ltmNumber || '',
           });
         }
       }
@@ -110,6 +116,8 @@ export default function EditProfileScreen() {
         email: sanitizeEmail(profile.email),
         phoneNumber: sanitizePhoneNumber(profile.phoneNumber),
         location: profile.location ? sanitizeTextField(profile.location) : undefined,
+        caspaRole: profile.caspaRole ? sanitizeTextField(profile.caspaRole) : undefined,
+        ltmNumber: profile.ltmNumber ? sanitizeTextField(profile.ltmNumber) : undefined,
         updatedAt: new Date().toISOString(),
       };
 

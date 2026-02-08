@@ -14,6 +14,20 @@ export const MAX_EMAIL_LENGTH = 254; // RFC 5321
 export const MAX_PHONE_LENGTH = 20;
 export const MAX_NOTE_LENGTH = 1000;
 export const MAX_YEARS = 100; // Reasonable upper limit for years of experience
+export const MAX_LTM_NUMBER_LENGTH = 50;
+
+/** CASPA Role options for profile */
+export const CASPA_ROLE_OPTIONS = [
+  'BOA',
+  'BOD',
+  'BOV',
+  'VP',
+  'President',
+  'LTM',
+  'Former BOA/BOD/BOV/VP/President',
+  'Family and Friends',
+  'None of Above',
+] as const;
 export const MIN_PASSWORD_LENGTH = 6;
 
 // Performance & Pagination

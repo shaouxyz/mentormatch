@@ -15,6 +15,9 @@ export interface ProfileValidationData {
   interestYears: string;
   email: string;
   phoneNumber: string;
+  location?: string;
+  caspaRole?: string;
+  ltmNumber?: string;
 }
 
 /**

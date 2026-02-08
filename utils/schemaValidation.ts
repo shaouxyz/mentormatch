@@ -11,6 +11,9 @@ export interface ProfileSchema {
   interestYears: number;
   email: string;
   phoneNumber: string;
+  location?: string;
+  caspaRole?: string;
+  ltmNumber?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -72,6 +75,15 @@ export function validateProfileSchema(data: unknown): data is ProfileSchema {
 
   if (typeof profile.interestYears !== 'number' || profile.interestYears < 0) {
     logger.warn('Profile validation failed: invalid interestYears');
+    return false;
+  }
+
+  if ('caspaRole' in profile && profile.caspaRole != null && typeof profile.caspaRole !== 'string') {
+    logger.warn('Profile validation failed: invalid caspaRole');
+    return false;
+  }
+  if ('ltmNumber' in profile && profile.ltmNumber != null && typeof profile.ltmNumber !== 'string') {
+    logger.warn('Profile validation failed: invalid ltmNumber');
     return false;
   }
 

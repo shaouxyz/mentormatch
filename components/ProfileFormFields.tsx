@@ -1,9 +1,10 @@
 // Reusable Profile Form Fields Component
 // Reduces code duplication between create and edit profile screens
 
-import React from 'react';
-import { View, Text, TextInput, StyleSheet } from 'react-native';
-import { MAX_NAME_LENGTH, MAX_EXPERTISE_LENGTH, MAX_INTEREST_LENGTH, MAX_LOCATION_LENGTH, MAX_YEARS } from '../utils/constants';
+import React, { useState } from 'react';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, Modal, ScrollView, Pressable } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { MAX_NAME_LENGTH, MAX_EXPERTISE_LENGTH, MAX_INTEREST_LENGTH, MAX_LOCATION_LENGTH, MAX_YEARS, CASPA_ROLE_OPTIONS, MAX_LTM_NUMBER_LENGTH } from '../utils/constants';
 import { sanitizeString, sanitizeTextField, sanitizeEmail, sanitizePhoneNumber, sanitizeNumber } from '../utils/security';
 
 interface ProfileFormData {
@@ -15,6 +16,8 @@ interface ProfileFormData {
   email: string;
   phoneNumber: string;
   location: string;
+  caspaRole: string;
+  ltmNumber: string;
 }
 
 interface ProfileFormFieldsProps {
@@ -37,8 +40,15 @@ interface ProfileFormFieldsProps {
  * @returns {JSX.Element} Profile form fields
  */
 export const ProfileFormFields: React.FC<ProfileFormFieldsProps> = React.memo(({ profile, onProfileChange }) => {
+  const [caspaRoleMenuVisible, setCaspaRoleMenuVisible] = useState(false);
+
   const updateField = (field: keyof ProfileFormData, value: string) => {
     onProfileChange({ ...profile, [field]: value });
+  };
+
+  const selectCaspaRole = (option: string) => {
+    updateField('caspaRole', option);
+    setCaspaRoleMenuVisible(false);
   };
 
   return (
@@ -154,6 +164,78 @@ export const ProfileFormFields: React.FC<ProfileFormFieldsProps> = React.memo(({
       </View>
 
       <View style={styles.inputContainer}>
+        <Text style={styles.label}>CASPA Role</Text>
+        <TouchableOpacity
+          style={styles.dropdownTrigger}
+          onPress={() => setCaspaRoleMenuVisible(true)}
+          accessibilityLabel="CASPA Role selector"
+          accessibilityHint="Tap to open dropdown and select your CASPA role"
+        >
+          <Text style={profile.caspaRole ? styles.pickerValue : styles.pickerPlaceholder} numberOfLines={1}>
+            {profile.caspaRole || 'Select CASPA Role'}
+          </Text>
+          <Ionicons name="chevron-down" size={20} color="#64748b" />
+        </TouchableOpacity>
+
+        <Modal
+          visible={caspaRoleMenuVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setCaspaRoleMenuVisible(false)}
+        >
+          <Pressable style={styles.dropdownBackdrop} onPress={() => setCaspaRoleMenuVisible(false)}>
+            <View style={styles.dropdownMenu} onStartShouldSetResponder={() => true}>
+              <Text style={styles.dropdownTitle}>CASPA Role</Text>
+              <ScrollView style={styles.dropdownScroll} keyboardShouldPersistTaps="handled">
+                {CASPA_ROLE_OPTIONS.map((option) => (
+                  <TouchableOpacity
+                    key={option}
+                    style={[styles.dropdownOption, profile.caspaRole === option && styles.dropdownOptionSelected]}
+                    onPress={() => selectCaspaRole(option)}
+                    accessibilityLabel={`CASPA Role ${option}`}
+                    accessibilityRole="button"
+                  >
+                    <Text style={[styles.dropdownOptionText, profile.caspaRole === option && styles.dropdownOptionTextSelected]}>
+                      {option}
+                    </Text>
+                    {profile.caspaRole === option && (
+                      <Ionicons name="checkmark" size={20} color="#2563eb" />
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+              <TouchableOpacity
+                style={styles.dropdownCancel}
+                onPress={() => setCaspaRoleMenuVisible(false)}
+                accessibilityLabel="Cancel"
+                accessibilityRole="button"
+              >
+                <Text style={styles.dropdownCancelText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Modal>
+      </View>
+
+      <View style={styles.inputContainer}>
+        <Text style={styles.label}>LTM Number</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Enter LTM number"
+          value={profile.ltmNumber}
+          onChangeText={(text) => {
+            const sanitized = sanitizeTextField(text);
+            if (sanitized.length <= MAX_LTM_NUMBER_LENGTH) {
+              updateField('ltmNumber', sanitized);
+            }
+          }}
+          maxLength={MAX_LTM_NUMBER_LENGTH}
+          accessibilityLabel="LTM Number input"
+          accessibilityHint="Enter your LTM number"
+        />
+      </View>
+
+      <View style={styles.inputContainer}>
         <Text style={styles.label}>Email *</Text>
         <TextInput
           style={styles.input}
@@ -208,5 +290,83 @@ const styles = StyleSheet.create({
     padding: 16,
     fontSize: 16,
     backgroundColor: '#f8fafc',
+  },
+  dropdownTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    backgroundColor: '#f8fafc',
+    minHeight: 52,
+  },
+  pickerValue: {
+    fontSize: 16,
+    color: '#1e293b',
+    flex: 1,
+  },
+  pickerPlaceholder: {
+    fontSize: 16,
+    color: '#94a3b8',
+    flex: 1,
+  },
+  dropdownBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  dropdownMenu: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    maxHeight: '70%',
+    overflow: 'hidden',
+  },
+  dropdownTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1e293b',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+  },
+  dropdownScroll: {
+    maxHeight: 320,
+  },
+  dropdownOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#e2e8f0',
+  },
+  dropdownOptionSelected: {
+    backgroundColor: '#f1f5f9',
+  },
+  dropdownOptionText: {
+    fontSize: 16,
+    color: '#1e293b',
+    flex: 1,
+  },
+  dropdownOptionTextSelected: {
+    fontWeight: '600',
+    color: '#2563eb',
+  },
+  dropdownCancel: {
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: '#e2e8f0',
+  },
+  dropdownCancelText: {
+    fontSize: 16,
+    color: '#64748b',
   },
 });

@@ -6,6 +6,7 @@
     "runtimeVersion": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
+    "icon": "./assets/mentormatch-icon-1.png",
     "splash": {
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
@@ -15,6 +16,7 @@
     ],
     "ios": {
       "appleTeamId": "VGVDQ76R5T",
+      "icon": "./assets/mentormatch-icon-1.png",
       "supportsTablet": true,
       "bundleIdentifier": "com.xyz.mentormatch",
       "infoPlist": {
@@ -25,6 +27,7 @@
       "package": "com.xyz.mentormatch",
       "versionCode": 1,
       "adaptiveIcon": {
+        "foregroundImage": "./assets/mentormatch-icon-1.png",
         "backgroundColor": "#ffffff"
       },
       "permissions": []

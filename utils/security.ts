@@ -149,10 +149,11 @@ export function sanitizeTextField(input: string): string {
 }
 
 /**
- * Sanitize email input
+ * Sanitize email input (trim + strip dangerous chars + lowercase).
+ * Trimming ensures login/signup use the same key so " user@x.com " matches "user@x.com".
  */
 export function sanitizeEmail(email: string): string {
-  return sanitizeString(email).toLowerCase();
+  return sanitizeString(email.trim()).toLowerCase();
 }
 
 /**

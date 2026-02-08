@@ -68,17 +68,36 @@ export async function hybridSignIn(email: string, password: string): Promise<any
           firebaseEmail: firebaseUser.user?.email
         });
         
-        // Ensure user exists locally for offline support
+        // Ensure user exists locally for offline support (don't fail login if local step fails)
+        const firebaseEmail = firebaseUser.user?.email ?? email;
+        const firebaseUid = firebaseUser.user?.uid ?? '';
         try {
           const localUser = await authenticateLocalUser(email, password);
           logger.info('User also authenticated locally', { email });
           return localUser;
         } catch (localError) {
-          // If local auth fails, create local user with Firebase credentials
-          logger.info('Creating local user from Firebase authentication', { email });
-          const localUser = await createLocalUser(email, password);
-          logger.info('Local user created from Firebase auth', { email });
-          return localUser;
+          try {
+            const localUser = await createLocalUser(email, password);
+            logger.info('Local user created from Firebase auth', { email });
+            return localUser;
+          } catch (createError: any) {
+            // e.g. "User with this email already exists" - try to use existing local user
+            const existingUser = await getUserByEmail(email);
+            if (existingUser) {
+              const authenticated = await authenticateLocalUser(email, password).catch(() => null);
+              if (authenticated) return authenticated;
+            }
+            // Firebase auth succeeded; local sync failed. Return a minimal user so login continues.
+            logger.warn('Firebase sign-in succeeded but local user sync failed; continuing with Firebase user', {
+              email: firebaseEmail,
+              localError: createError instanceof Error ? createError.message : String(createError),
+            });
+            return {
+              email: firebaseEmail,
+              id: firebaseUid || Date.now().toString(),
+              createdAt: new Date().toISOString(),
+            };
+          }
         }
       } catch (firebaseError: any) {
         // Firebase authentication failed, try local fallback
@@ -108,10 +127,12 @@ export async function hybridSignIn(email: string, password: string): Promise<any
               firebaseErrorCode: errorCode,
               firebaseErrorMessage: errorMessage
             });
-            // User doesn't exist in either place - throw error
-            const notFoundError = new Error(
-              `User not found. Please sign up first or check your email address.`
-            );
+            // auth/invalid-credential = wrong password or user not found; don't say "user not found" only
+            const message =
+              errorCode === 'auth/invalid-credential'
+                ? 'Invalid email or password. Use Forgot password? below if you\'re not sure.'
+                : 'User not found. Please sign up first or check your email address.';
+            const notFoundError = new Error(message);
             (notFoundError as any).firebaseErrorCode = errorCode;
             (notFoundError as any).firebaseError = errorMessage;
             throw notFoundError;

@@ -16,6 +16,7 @@
         "buildType": "apk"
       },
       "distribution": "internal",
+      "environment": "preview",
       "env": {
         "NPM_CONFIG_LEGACY_PEER_DEPS": "true"
       }
@@ -24,6 +25,7 @@
       "android": {
         "buildType": "apk"
       },
+      "environment": "production",
       "env": {
         "NPM_CONFIG_LEGACY_PEER_DEPS": "true"
       }
