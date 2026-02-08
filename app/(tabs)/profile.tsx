@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
@@ -48,7 +48,6 @@ export default function ProfileScreen() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [accountExpanded, setAccountExpanded] = useState(false);
-  const hasLoadedRef = useRef(false);
   const isMountedRef = useRef(true);
 
   useEffect(() => {
@@ -58,61 +57,56 @@ export default function ProfileScreen() {
     };
   }, []);
 
-  useEffect(() => {
-    // Only load once on initial mount - no dependencies to prevent re-runs
-    if (hasLoadedRef.current) return;
-    hasLoadedRef.current = true;
+  const loadProfile = useCallback(async () => {
+    try {
+      setLoading(true);
+      const profileData = await AsyncStorage.getItem('profile');
+      if (!isMountedRef.current) return;
 
-    const loadProfile = async () => {
-      try {
-        const profileData = await AsyncStorage.getItem('profile');
-        if (!isMountedRef.current) return;
-        
-        if (profileData) {
-          const parsedProfile = safeParseJSON(
-            profileData,
-            validateProfileSchema,
-            null
-          );
-          if (parsedProfile) {
-            if (isFirebaseConfigured()) {
-              try {
-                const remote = await hybridGetProfile(parsedProfile.email);
-                if (remote?.suspended) {
-                  await clearAllUserData();
-                  if (isMountedRef.current) {
-                    setProfile(null);
-                    setLoading(false);
-                  }
-                  router.replace('/');
-                  Alert.alert('Account suspended', 'Your account has been suspended. Contact support if you need access.');
-                  return;
+      if (profileData) {
+        const parsedProfile = safeParseJSON(
+          profileData,
+          validateProfileSchema,
+          null
+        );
+        if (parsedProfile) {
+          if (isFirebaseConfigured()) {
+            try {
+              const remote = await hybridGetProfile(parsedProfile.email);
+              if (remote?.suspended) {
+                await clearAllUserData();
+                if (isMountedRef.current) {
+                  setProfile(null);
+                  setLoading(false);
                 }
-              } catch (_) {
-                // Ignore fetch errors; use local profile
+                router.replace('/');
+                Alert.alert('Account suspended', 'Your account has been suspended. Contact support if you need access.');
+                return;
               }
+            } catch (_) {
+              // Ignore fetch errors; use local profile
             }
-            setProfile(parsedProfile);
-          } else {
-            setProfile(null);
           }
+          if (isMountedRef.current) setProfile(parsedProfile);
         } else {
-          setProfile(null);
+          if (isMountedRef.current) setProfile(null);
         }
-            } catch (error) {
-              logger.error('Error loading profile', error instanceof Error ? error : new Error(String(error)));
-              if (isMountedRef.current) {
-                setProfile(null);
-              }
-            } finally {
-        if (isMountedRef.current) {
-          setLoading(false);
-        }
+      } else {
+        if (isMountedRef.current) setProfile(null);
       }
-    };
+    } catch (error) {
+      logger.error('Error loading profile', error instanceof Error ? error : new Error(String(error)));
+      if (isMountedRef.current) setProfile(null);
+    } finally {
+      if (isMountedRef.current) setLoading(false);
+    }
+  }, [router]);
 
-    loadProfile();
-  }, []); // Empty dependency array - only run once
+  useFocusEffect(
+    useCallback(() => {
+      loadProfile();
+    }, [loadProfile])
+  );
 
   const handleNavigateToRequests = useCallback(() => {
     router.push('/(tabs)/requests');
