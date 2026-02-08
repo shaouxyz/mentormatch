@@ -519,8 +519,8 @@ export default function MeetingResponseScreen() {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Meeting Request</Text>
         <TouchableOpacity
-          onPress={() => openAddToCalendar(meeting.status === 'cancelled' && calendarAdded ? 'remove' : meeting.status === 'accepted' && calendarAdded && calendarEventId ? 'modify' : 'add')}
-          accessibilityLabel={meeting.status === 'cancelled' && calendarAdded ? 'Remove from calendar' : meeting.status === 'accepted' && calendarAdded && calendarEventId ? 'Modify calendar' : 'Add to calendar'}
+          onPress={() => openAddToCalendar(meeting.status === 'cancelled' && calendarAdded ? 'remove' : meeting.status === 'accepted' && calendarAdded && (calendarEventId || Platform.OS === 'android') ? 'modify' : 'add')}
+          accessibilityLabel={meeting.status === 'cancelled' && calendarAdded ? 'Remove from calendar' : meeting.status === 'accepted' && calendarAdded && (calendarEventId || Platform.OS === 'android') ? 'Modify calendar' : 'Add to calendar'}
           accessibilityHint="Tap to open calendar options"
         >
           <Ionicons name="calendar-outline" size={24} color="#2563eb" />
@@ -613,7 +613,7 @@ export default function MeetingResponseScreen() {
               <Ionicons name="calendar-outline" size={20} color="#dc2626" />
               <Text style={styles.removeFromCalendarButtonText}>Remove from Calendar</Text>
             </TouchableOpacity>
-          ) : meeting.status === 'accepted' && calendarAdded && calendarEventId ? (
+          ) : meeting.status === 'accepted' && calendarAdded && (calendarEventId || Platform.OS === 'android') ? (
             <TouchableOpacity
               style={styles.addToCalendarButton}
               onPress={() => openAddToCalendar('modify')}
@@ -804,7 +804,9 @@ export default function MeetingResponseScreen() {
               {meeting.status === 'cancelled' && (
                 <View style={[styles.statusBadge, styles.statusBadgeCancelled]}>
                   <Ionicons name="ban" size={20} color="#6b7280" />
-                  <Text style={styles.statusTextCancelled}>Cancelled</Text>
+                  <Text style={styles.statusTextCancelled}>
+                    {calendarAdded ? 'Cancelled' : 'Cancelled and Removed from Calendar'}
+                  </Text>
                 </View>
               )}
               

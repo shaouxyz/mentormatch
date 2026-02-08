@@ -474,19 +474,10 @@ export default function RequestsScreen() {
           accessibilityHint={`Tap to view incoming requests. ${incomingRequests.length} requests`}
           accessibilityState={{ selected: activeTab === 'incoming' }}
         >
-          <Ionicons
-            name="mail"
-            size={20}
-            color={activeTab === 'incoming' ? '#2563eb' : '#64748b'}
-          />
-          <Text
-            style={[
-              styles.tabText,
-              activeTab === 'incoming' && styles.activeTabText,
-            ]}
-          >
-            Incoming ({incomingRequests.length})
-          </Text>
+          <View style={styles.tabContent}>
+            <Text style={[styles.tabLabel, activeTab === 'incoming' && styles.activeTabText]}>Incoming</Text>
+            <Text style={[styles.tabCount, activeTab === 'incoming' && styles.activeTabText]}>({incomingRequests.length})</Text>
+          </View>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'outgoing' && styles.activeTab]}
@@ -495,19 +486,10 @@ export default function RequestsScreen() {
           accessibilityHint={`Tap to view sent requests. ${outgoingRequests.length} requests`}
           accessibilityState={{ selected: activeTab === 'outgoing' }}
         >
-          <Ionicons
-            name="send"
-            size={20}
-            color={activeTab === 'outgoing' ? '#2563eb' : '#64748b'}
-          />
-          <Text
-            style={[
-              styles.tabText,
-              activeTab === 'outgoing' && styles.activeTabText,
-            ]}
-          >
-            Sent ({outgoingRequests.length})
-          </Text>
+          <View style={styles.tabContent}>
+            <Text style={[styles.tabLabel, activeTab === 'outgoing' && styles.activeTabText]}>Sent</Text>
+            <Text style={[styles.tabCount, activeTab === 'outgoing' && styles.activeTabText]}>({outgoingRequests.length})</Text>
+          </View>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'processed' && styles.activeTab]}
@@ -516,19 +498,10 @@ export default function RequestsScreen() {
           accessibilityHint={`Tap to view processed requests. ${processedRequests.length} requests`}
           accessibilityState={{ selected: activeTab === 'processed' }}
         >
-          <Ionicons
-            name="archive"
-            size={20}
-            color={activeTab === 'processed' ? '#2563eb' : '#64748b'}
-          />
-          <Text
-            style={[
-              styles.tabText,
-              activeTab === 'processed' && styles.activeTabText,
-            ]}
-          >
-            Processed ({processedRequests.length})
-          </Text>
+          <View style={styles.tabContent}>
+            <Text style={[styles.tabLabel, activeTab === 'processed' && styles.activeTabText]}>Processed</Text>
+            <Text style={[styles.tabCount, activeTab === 'processed' && styles.activeTabText]}>({processedRequests.length})</Text>
+          </View>
         </TouchableOpacity>
       </View>
 
@@ -600,21 +573,30 @@ const styles = StyleSheet.create({
   },
   tab: {
     flex: 1,
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
-    gap: 8,
+    paddingVertical: 12,
     borderBottomWidth: 2,
     borderBottomColor: 'transparent',
   },
   activeTab: {
     borderBottomColor: '#2563eb',
   },
-  tabText: {
-    fontSize: 16,
+  tabContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tabLabel: {
+    fontSize: 12,
     fontWeight: '600',
     color: '#64748b',
+    textAlign: 'center',
+  },
+  tabCount: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748b',
+    textAlign: 'center',
   },
   activeTabText: {
     color: '#2563eb',

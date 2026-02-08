@@ -93,6 +93,24 @@ export default function AddToCalendarScreen() {
     }
   };
 
+  /** Finds an event with the same title in writable calendars (wide range). Used when we know the meeting was added but have no stored event id (e.g. Android). */
+  const findMeetingEventIdInCalendar = async (): Promise<string | null> => {
+    if (!meeting) return null;
+    try {
+      const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
+      const writableIds = calendars.filter((cal) => cal.allowsModifications).map((cal) => cal.id);
+      if (writableIds.length === 0) return null;
+      const now = Date.now();
+      const rangeStart = new Date(now - 60 * 24 * 60 * 60 * 1000); // 60 days ago
+      const rangeEnd = new Date(now + 365 * 24 * 60 * 60 * 1000); // 365 days ahead
+      const events = await Calendar.getEventsAsync(writableIds, rangeStart, rangeEnd);
+      const match = events.find((e) => e.title === meeting.title);
+      return match?.id ?? null;
+    } catch {
+      return null;
+    }
+  };
+
   /** Opens the calendar app to the given event (or time). Returns true if opened successfully. */
   const openPhoneCalendarToEvent = async (eventId: string, eventStartMillis?: number): Promise<boolean> => {
     const idStr = String(eventId);
@@ -133,23 +151,30 @@ export default function AddToCalendarScreen() {
     const eventIdKey = `meetingCalendarEventId:${meeting.id}`;
     const existingEventId = await AsyncStorage.getItem(eventIdKey);
     setAddingToPhoneCalendar(true);
+    let deletedFromDevice = false;
     try {
-      if (existingEventId) {
+      if (existingEventId && existingEventId.trim()) {
         const hasPermission = await requestCalendarPermissions();
         if (!hasPermission) {
           setAddingToPhoneCalendar(false);
           return;
         }
         try {
-          await Calendar.deleteEventAsync(existingEventId);
+          await Calendar.deleteEventAsync(existingEventId.trim());
+          deletedFromDevice = true;
         } catch (e) {
-          logger.warn('deleteEventAsync failed (event may already be deleted)', { eventId: existingEventId });
+          logger.warn('deleteEventAsync failed', { eventId: existingEventId, error: e instanceof Error ? e.message : String(e) });
         }
       }
       await AsyncStorage.multiRemove([storageKey, eventIdKey]);
       setAddingToPhoneCalendar(false);
-      Alert.alert('Removed', existingEventId ? 'Meeting removed from your phone calendar.' : 'Removed from app. If you had added this event on your device, delete it from your calendar app.', [{ text: 'OK', onPress: () => router.back() }]);
-      logger.info('Meeting removed from calendar', { meetingId: meeting.id });
+      const message = deletedFromDevice
+        ? 'Meeting removed from your phone calendar.'
+        : existingEventId
+          ? 'Removed from app. The event may still be in your calendar; delete it from your calendar app if needed.'
+          : 'Removed from app. If you had added this event on your device, delete it from your calendar app.';
+      Alert.alert('Removed', message, [{ text: 'OK', onPress: () => router.back() }]);
+      logger.info('Meeting removed from calendar', { meetingId: meeting.id, deletedFromDevice });
     } catch (error) {
       setAddingToPhoneCalendar(false);
       logger.error('Error removing from calendar', error instanceof Error ? error : new Error(String(error)));
@@ -159,11 +184,32 @@ export default function AddToCalendarScreen() {
 
   const modifyPhoneCalendar = async () => {
     if (!meeting) return;
+    const storageKey = `meetingCalendarAdded:${meeting.id}`;
     const eventIdKey = `meetingCalendarEventId:${meeting.id}`;
-    const existingEventId = await AsyncStorage.getItem(eventIdKey);
-    if (!existingEventId) {
-      await addToPhoneCalendar();
-      return;
+    let eventId = await AsyncStorage.getItem(eventIdKey);
+    if (!eventId || !eventId.trim()) {
+      setAddingToPhoneCalendar(true);
+      try {
+        const hasPermission = await requestCalendarPermissions();
+        if (!hasPermission) {
+          setAddingToPhoneCalendar(false);
+          return;
+        }
+        const foundId = await findMeetingEventIdInCalendar();
+        if (foundId) {
+          eventId = foundId;
+          await AsyncStorage.setItem(eventIdKey, eventId);
+          await AsyncStorage.setItem(storageKey, 'true');
+        }
+      } finally {
+        setAddingToPhoneCalendar(false);
+      }
+      if (!eventId) {
+        await addToPhoneCalendar();
+        return;
+      }
+    } else {
+      eventId = eventId.trim();
     }
     setAddingToPhoneCalendar(true);
     try {
@@ -183,10 +229,10 @@ export default function AddToCalendarScreen() {
         location: location || undefined,
         alarms: [{ relativeOffset: -15 }, { relativeOffset: -60 }],
       };
-      await Calendar.updateEventAsync(existingEventId, details);
+      await Calendar.updateEventAsync(eventId, details);
       setAddingToPhoneCalendar(false);
       const startMs = startDate.getTime();
-      await openPhoneCalendarToEvent(existingEventId, startMs);
+      await openPhoneCalendarToEvent(eventId, startMs);
       Alert.alert('Updated', 'Calendar event updated with the new date and time.');
       logger.info('Meeting calendar event updated', { meetingId: meeting.id });
     } catch (error) {

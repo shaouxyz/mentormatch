@@ -325,8 +325,8 @@ export default function MeetingsScreen() {
       <TouchableOpacity
         style={styles.meetingCard}
         onPress={() => {
-          // For pending incoming, Accept/Decline are shown inline; only navigate for accepted or when viewing.
-          if (item.status === 'accepted' || (item.status === 'pending' && !isReceiver)) {
+          // Navigate to detail for accepted, cancelled, declined, or pending (when not receiver). Pending + receiver: Accept/Decline inline.
+          if (item.status === 'accepted' || item.status === 'cancelled' || item.status === 'declined' || (item.status === 'pending' && !isReceiver)) {
             router.push({
               pathname: '/meeting/respond',
               params: { meetingId: item.id },
@@ -337,9 +337,7 @@ export default function MeetingsScreen() {
         accessibilityHint={
           item.status === 'pending' && isReceiver
             ? "Use Accept or Decline to respond"
-            : item.status === 'accepted'
-            ? "Tap to view meeting details"
-            : "Tap to view meeting"
+            : "Tap to view meeting details"
         }
       >
         <View style={styles.meetingHeader}>
@@ -513,9 +511,10 @@ export default function MeetingsScreen() {
           accessibilityHint={`Tap to view upcoming meetings. ${upcomingMeetings.length} meetings`}
           accessibilityState={{ selected: activeTab === 'upcoming' }}
         >
-          <Text style={[styles.tabText, activeTab === 'upcoming' && styles.activeTabText]}>
-            Upcoming ({upcomingMeetings.length})
-          </Text>
+          <View style={styles.tabContent}>
+            <Text style={[styles.tabLabel, activeTab === 'upcoming' && styles.activeTabText]}>Upcoming</Text>
+            <Text style={[styles.tabCount, activeTab === 'upcoming' && styles.activeTabText]}>({upcomingMeetings.length})</Text>
+          </View>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'incoming' && styles.activeTab]}
@@ -524,9 +523,10 @@ export default function MeetingsScreen() {
           accessibilityHint={`Tap to view incoming meeting requests. ${incomingMeetings.length} requests`}
           accessibilityState={{ selected: activeTab === 'incoming' }}
         >
-          <Text style={[styles.tabText, activeTab === 'incoming' && styles.activeTabText]}>
-            Incoming ({incomingMeetings.length})
-          </Text>
+          <View style={styles.tabContent}>
+            <Text style={[styles.tabLabel, activeTab === 'incoming' && styles.activeTabText]}>Incoming</Text>
+            <Text style={[styles.tabCount, activeTab === 'incoming' && styles.activeTabText]}>({incomingMeetings.length})</Text>
+          </View>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'sent' && styles.activeTab]}
@@ -535,9 +535,10 @@ export default function MeetingsScreen() {
           accessibilityHint={`Tap to view sent meeting requests. ${sentMeetings.length} requests`}
           accessibilityState={{ selected: activeTab === 'sent' }}
         >
-          <Text style={[styles.tabText, activeTab === 'sent' && styles.activeTabText]}>
-            Sent ({sentMeetings.length})
-          </Text>
+          <View style={styles.tabContent}>
+            <Text style={[styles.tabLabel, activeTab === 'sent' && styles.activeTabText]}>Sent</Text>
+            <Text style={[styles.tabCount, activeTab === 'sent' && styles.activeTabText]}>({sentMeetings.length})</Text>
+          </View>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'processed' && styles.activeTab]}
@@ -546,9 +547,10 @@ export default function MeetingsScreen() {
           accessibilityHint={`Tap to view processed meetings. ${processedMeetings.length} meetings`}
           accessibilityState={{ selected: activeTab === 'processed' }}
         >
-          <Text style={[styles.tabText, activeTab === 'processed' && styles.activeTabText]}>
-            Processed ({processedMeetings.length})
-          </Text>
+          <View style={styles.tabContent}>
+            <Text style={[styles.tabLabel, activeTab === 'processed' && styles.activeTabText]}>Processed</Text>
+            <Text style={[styles.tabCount, activeTab === 'processed' && styles.activeTabText]}>({processedMeetings.length})</Text>
+          </View>
         </TouchableOpacity>
       </View>
 
@@ -616,14 +618,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 12,
-    gap: 4,
     borderBottomWidth: 2,
     borderBottomColor: 'transparent',
   },
   activeTab: {
     borderBottomColor: '#2563eb',
   },
-  tabText: {
+  tabContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tabLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748b',
+    textAlign: 'center',
+  },
+  tabCount: {
     fontSize: 12,
     fontWeight: '600',
     color: '#64748b',
