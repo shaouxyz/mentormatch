@@ -157,28 +157,29 @@ export async function hybridGetMessages(conversationId: string): Promise<Message
  */
 export async function hybridGetUserConversations(userEmail: string): Promise<Conversation[]> {
   try {
+    const normalizedEmail = (userEmail || '').trim().toLowerCase();
     // Try Firebase first if configured
     if (isFirebaseConfigured()) {
       try {
-        const conversations = await getFirebaseUserConversations(userEmail);
+        const conversations = await getFirebaseUserConversations(normalizedEmail);
         
         // Cache locally
         for (const conversation of conversations) {
           await saveConversationLocally(conversation);
         }
         
-        logger.info('Conversations retrieved from Firebase', { userEmail, count: conversations.length });
+        logger.info('Conversations retrieved from Firebase', { userEmail: normalizedEmail, count: conversations.length });
         return conversations;
       } catch (firebaseError) {
         logger.warn('Failed to get conversations from Firebase, using local', {
-          userEmail,
+          userEmail: normalizedEmail,
           error: firebaseError instanceof Error ? firebaseError.message : String(firebaseError),
         });
       }
     }
     
     // Fallback to local storage
-    return await getLocalUserConversations(userEmail);
+    return await getLocalUserConversations(normalizedEmail);
   } catch (error) {
     logger.error('Error in hybrid get conversations', error instanceof Error ? error : new Error(String(error)));
     throw error;
@@ -306,14 +307,19 @@ async function getOrCreateLocalConversation(
   return conversation;
 }
 
+function normalizeEmailForCompare(email: string): string {
+  return (email || '').trim().toLowerCase();
+}
+
 async function getLocalUserConversations(userEmail: string): Promise<Conversation[]> {
   const conversationsData = await AsyncStorage.getItem(STORAGE_KEYS.CONVERSATIONS);
   if (!conversationsData) return [];
   
+  const normalized = normalizeEmailForCompare(userEmail);
   const allConversations: Conversation[] = JSON.parse(conversationsData);
   return allConversations
-    .filter(c => c.participants.includes(userEmail))
-    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    .filter(c => c.participants?.some((p: string) => normalizeEmailForCompare(p) === normalized))
+    .sort((a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime());
 }
 
 export { subscribeToMessages, generateConversationId };

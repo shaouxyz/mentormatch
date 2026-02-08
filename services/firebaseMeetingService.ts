@@ -25,6 +25,10 @@ import { logger } from '@/utils/logger';
 
 const MEETINGS_COLLECTION = 'meetings';
 
+function normalizeEmail(email: string | undefined | null): string {
+  return (email || '').trim().toLowerCase();
+}
+
 /**
  * Create a meeting request
  */
@@ -32,12 +36,15 @@ export async function createMeetingRequest(meeting: Omit<Meeting, 'id'>): Promis
   try {
     const db = getFirebaseFirestore();
     const meetingsRef = collection(db, MEETINGS_COLLECTION);
-    
-    // Prepare meeting data for Firestore
+
+    const organizerEmail = normalizeEmail(meeting.organizerEmail);
+    const participantEmail = normalizeEmail(meeting.participantEmail);
+
+    // Prepare meeting data for Firestore (normalized emails so queries match for all users)
     const meetingData: any = {
-      organizerEmail: meeting.organizerEmail,
+      organizerEmail,
       organizerName: meeting.organizerName,
-      participantEmail: meeting.participantEmail,
+      participantEmail,
       participantName: meeting.participantName,
       title: meeting.title,
       date: meeting.date,
@@ -70,6 +77,8 @@ export async function createMeetingRequest(meeting: Omit<Meeting, 'id'>): Promis
     const newMeeting: Meeting = {
       id: docRef.id,
       ...meeting,
+      organizerEmail,
+      participantEmail,
       status: 'pending',
       createdAt: meetingData.createdAt,
       updatedAt: meetingData.updatedAt,
@@ -154,11 +163,11 @@ export async function updateMeeting(meetingId: string, updates: Partial<Meeting>
       throw error;
     }
     
-    // Verify user has permission (organizer or participant)
+    // Verify user has permission (organizer or participant); compare normalized for cross-device casing
     const meetingData = meetingSnap.data() as Meeting;
-    const userEmail = authStatus.email;
-    const isOrganizer = meetingData.organizerEmail === userEmail;
-    const isParticipant = meetingData.participantEmail === userEmail;
+    const userEmail = authStatus.email ? normalizeEmail(authStatus.email) : '';
+    const isOrganizer = normalizeEmail(meetingData.organizerEmail) === userEmail;
+    const isParticipant = normalizeEmail(meetingData.participantEmail) === userEmail;
     
     logger.info('Meeting update permission check', {
       meetingId,
@@ -240,20 +249,21 @@ export async function deleteMeeting(meetingId: string): Promise<void> {
  */
 export async function getUserMeetings(userEmail: string): Promise<Meeting[]> {
   try {
+    const normalizedEmail = normalizeEmail(userEmail);
     const db = getFirebaseFirestore();
     const meetingsRef = collection(db, MEETINGS_COLLECTION);
-    
-    // Get meetings where user is organizer
+
+    // Get meetings where user is organizer (query with normalized email so we find all)
     const organizerQuery = query(
       meetingsRef,
-      where('organizerEmail', '==', userEmail),
+      where('organizerEmail', '==', normalizedEmail),
       orderBy('date', 'asc')
     );
-    
+
     // Get meetings where user is participant
     const participantQuery = query(
       meetingsRef,
-      where('participantEmail', '==', userEmail),
+      where('participantEmail', '==', normalizedEmail),
       orderBy('date', 'asc')
     );
     
@@ -279,7 +289,7 @@ export async function getUserMeetings(userEmail: string): Promise<Meeting[]> {
     // Sort by date
     meetings.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     
-    logger.info('Meetings retrieved from Firestore', { userEmail, count: meetings.length });
+    logger.info('Meetings retrieved from Firestore', { userEmail: normalizedEmail, count: meetings.length });
     return meetings;
   } catch (error) {
     logger.error('Error getting meetings from Firestore', error instanceof Error ? error : new Error(String(error)));
@@ -292,12 +302,13 @@ export async function getUserMeetings(userEmail: string): Promise<Meeting[]> {
  */
 export async function getPendingMeetingRequests(userEmail: string): Promise<Meeting[]> {
   try {
+    const normalizedEmail = normalizeEmail(userEmail);
     const db = getFirebaseFirestore();
     const meetingsRef = collection(db, MEETINGS_COLLECTION);
-    
+
     const q = query(
       meetingsRef,
-      where('participantEmail', '==', userEmail),
+      where('participantEmail', '==', normalizedEmail),
       where('status', '==', 'pending'),
       orderBy('createdAt', 'desc')
     );
@@ -309,7 +320,7 @@ export async function getPendingMeetingRequests(userEmail: string): Promise<Meet
       meetings.push({ id: doc.id, ...doc.data() } as Meeting);
     });
     
-    logger.info('Pending meeting requests retrieved', { userEmail, count: meetings.length });
+    logger.info('Pending meeting requests retrieved', { userEmail: normalizedEmail, count: meetings.length });
     return meetings;
   } catch (error) {
     logger.error('Error getting pending meetings', error instanceof Error ? error : new Error(String(error)));
@@ -348,12 +359,12 @@ export function subscribeToUserMeetings(
   onError?: (error: Error) => void
 ): () => void {
   try {
+    const normalizedEmail = normalizeEmail(userEmail);
     const db = getFirebaseFirestore();
     const meetingsRef = collection(db, MEETINGS_COLLECTION);
-    
-    // Subscribe to meetings where user is organizer or participant
-    const q1 = query(meetingsRef, where('organizerEmail', '==', userEmail));
-    const q2 = query(meetingsRef, where('participantEmail', '==', userEmail));
+
+    const q1 = query(meetingsRef, where('organizerEmail', '==', normalizedEmail));
+    const q2 = query(meetingsRef, where('participantEmail', '==', normalizedEmail));
     
     const meetings: Map<string, Meeting> = new Map();
     let unsubscribeCount = 0;

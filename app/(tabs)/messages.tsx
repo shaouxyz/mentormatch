@@ -126,10 +126,21 @@ export default function MessagesScreen() {
   };
 
   const getOtherParticipant = (conversation: Conversation) => {
-    const otherEmail = conversation.participants.find(p => p !== currentUserEmail);
+    const currentNorm = (currentUserEmail || '').trim().toLowerCase();
+    const otherEmail = conversation.participants?.find(
+      (p) => (p || '').trim().toLowerCase() !== currentNorm
+    );
+    const key = otherEmail || '';
+    const name =
+      key &&
+      (conversation.participantNames?.[key] ||
+        conversation.participantNames?.[key.toLowerCase()] ||
+        Object.entries(conversation.participantNames || {}).find(
+          ([k]) => (k || '').trim().toLowerCase() === key.toLowerCase()
+        )?.[1]);
     return {
-      email: otherEmail || '',
-      name: otherEmail ? conversation.participantNames[otherEmail] : 'Unknown',
+      email: key,
+      name: name || 'Unknown',
     };
   };
 
@@ -334,7 +345,16 @@ export default function MessagesScreen() {
 
   const renderConversation = ({ item }: { item: Conversation }) => {
     const otherParticipant = getOtherParticipant(item);
-    const unreadCount = item.unreadCount?.[currentUserEmail] || 0;
+    const currentNorm = (currentUserEmail || '').trim().toLowerCase();
+    const unreadCount =
+      item.unreadCount?.[currentUserEmail] ??
+      item.unreadCount?.[currentNorm] ??
+      (currentNorm && item.unreadCount
+        ? Object.entries(item.unreadCount).find(
+            ([k]) => (k || '').trim().toLowerCase() === currentNorm
+          )?.[1]
+        : undefined) ??
+      0;
     
     return (
       <TouchableOpacity

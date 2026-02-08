@@ -185,24 +185,29 @@ export async function hybridDeleteMeeting(meetingId: string): Promise<void> {
 /**
  * Get all meetings for a user (hybrid)
  */
+function normalizeEmail(email: string | undefined | null): string {
+  return (email || '').trim().toLowerCase();
+}
+
 export async function hybridGetUserMeetings(userEmail: string): Promise<Meeting[]> {
   try {
+    const normalizedEmail = normalizeEmail(userEmail);
     if (isFirebaseConfigured()) {
-      const meetings = await getUserMeetings(userEmail);
-      
-      // Cache locally
+      const meetings = await getUserMeetings(normalizedEmail);
+
       await saveLocalMeetings(meetings);
-      
-      logger.info('User meetings retrieved via Firebase', { userEmail, count: meetings.length });
+
+      logger.info('User meetings retrieved via Firebase', { userEmail: normalizedEmail, count: meetings.length });
       return meetings;
     } else {
-      // Local-only mode
       const localMeetings = await getLocalMeetings();
       const userMeetings = localMeetings.filter(
-        m => m.organizerEmail === userEmail || m.participantEmail === userEmail
+        (m) =>
+          normalizeEmail(m.organizerEmail) === normalizedEmail ||
+          normalizeEmail(m.participantEmail) === normalizedEmail
       );
       userMeetings.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-      logger.info('User meetings retrieved locally', { userEmail, count: userMeetings.length });
+      logger.info('User meetings retrieved locally', { userEmail: normalizedEmail, count: userMeetings.length });
       return userMeetings;
     }
   } catch (error) {

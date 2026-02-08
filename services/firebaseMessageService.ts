@@ -130,8 +130,9 @@ export async function sendMessage(
     const db = getFirebaseFirestore();
     const messagesRef = collection(db, MESSAGES_COLLECTION);
     
+    const cid = normalizeConversationId(conversationId);
     const message: Omit<Message, 'id'> = {
-      conversationId,
+      conversationId: cid,
       senderEmail: sender,
       senderName,
       receiverEmail: receiver,
@@ -144,7 +145,7 @@ export async function sendMessage(
     const docRef = await addDoc(messagesRef, message);
     
     // Update conversation with last message info
-    const conversationRef = doc(db, CONVERSATIONS_COLLECTION, conversationId);
+    const conversationRef = doc(db, CONVERSATIONS_COLLECTION, cid);
     const convData = (await getDoc(conversationRef)).data();
     const prevUnread = convData?.unreadCount?.[receiver] ?? 0;
     await updateDoc(conversationRef, {
@@ -261,8 +262,12 @@ export async function getUserConversations(userEmail: string): Promise<Conversat
     const querySnapshot = await getDocs(q);
     const conversations: Conversation[] = [];
     
-    querySnapshot.forEach((doc) => {
-      conversations.push(doc.data() as Conversation);
+    querySnapshot.forEach((docSnap) => {
+      const data = docSnap.data();
+      conversations.push({
+        ...data,
+        id: (data?.id as string) || docSnap.id,
+      } as Conversation);
     });
     
     logger.info('Conversations retrieved', { userEmail: normalizedEmail, count: conversations.length });
