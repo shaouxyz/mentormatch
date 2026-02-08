@@ -52,6 +52,7 @@ export default function TabsLayout() {
         tabBarActiveTintColor: '#2563eb',
         tabBarInactiveTintColor: '#64748b',
         headerShown: true,
+        headerTitleAlign: 'left',
         headerStyle: {
           backgroundColor: '#fff',
         },

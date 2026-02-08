@@ -4,7 +4,7 @@
  * Allows users to accept or decline meeting requests
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -17,7 +17,7 @@ import {
   Modal,
   Platform,
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -50,10 +50,28 @@ export default function MeetingResponseScreen() {
   const [responseNote, setResponseNote] = useState('');
   const [currentUserEmail, setCurrentUserEmail] = useState<string>('');
   const [isOrganizer, setIsOrganizer] = useState<boolean>(false);
+  const [calendarAdded, setCalendarAdded] = useState(false);
+  const [calendarEventId, setCalendarEventId] = useState<string | null>(null);
 
   useEffect(() => {
     loadMeeting();
   }, [meetingId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (meetingId && meeting) {
+        const refreshCalendarState = async () => {
+          const storageKey = `meetingCalendarAdded:${meetingId}`;
+          const eventIdKey = `meetingCalendarEventId:${meetingId}`;
+          const added = await AsyncStorage.getItem(storageKey);
+          const eventId = await AsyncStorage.getItem(eventIdKey);
+          setCalendarAdded(added === 'true');
+          setCalendarEventId(eventId || null);
+        };
+        refreshCalendarState();
+      }
+    }, [meetingId, meeting])
+  );
 
   const loadMeeting = async () => {
     try {
@@ -84,6 +102,13 @@ export default function MeetingResponseScreen() {
       setIsOrganizer(userIsOrganizer);
 
       setMeeting(meetingData);
+
+      const storageKey = `meetingCalendarAdded:${meetingData.id}`;
+      const eventIdKey = `meetingCalendarEventId:${meetingData.id}`;
+      const added = await AsyncStorage.getItem(storageKey);
+      const eventId = await AsyncStorage.getItem(eventIdKey);
+      setCalendarAdded(added === 'true');
+      setCalendarEventId(eventId || null);
     } catch (error) {
       logger.error('Error loading meeting', error instanceof Error ? error : new Error(String(error)));
       Alert.alert('Error', 'Failed to load meeting details');
@@ -235,10 +260,10 @@ export default function MeetingResponseScreen() {
     });
   };
 
-  const openAddToCalendar = () => {
+  const openAddToCalendar = (action?: 'add' | 'modify' | 'remove') => {
     router.push({
       pathname: '/meeting/add-to-calendar',
-      params: { meetingId },
+      params: { meetingId, action: action || 'add' },
     });
   };
 
@@ -494,9 +519,9 @@ export default function MeetingResponseScreen() {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Meeting Request</Text>
         <TouchableOpacity
-          onPress={openAddToCalendar}
-          accessibilityLabel="Add to calendar"
-          accessibilityHint="Tap to add this meeting to your calendar"
+          onPress={() => openAddToCalendar(meeting.status === 'cancelled' && calendarAdded ? 'remove' : meeting.status === 'accepted' && calendarAdded && calendarEventId ? 'modify' : 'add')}
+          accessibilityLabel={meeting.status === 'cancelled' && calendarAdded ? 'Remove from calendar' : meeting.status === 'accepted' && calendarAdded && calendarEventId ? 'Modify calendar' : 'Add to calendar'}
+          accessibilityHint="Tap to open calendar options"
         >
           <Ionicons name="calendar-outline" size={24} color="#2563eb" />
         </TouchableOpacity>
@@ -577,16 +602,38 @@ export default function MeetingResponseScreen() {
             </View>
           )}
 
-          {/* Add to Calendar Button */}
-          <TouchableOpacity
-            style={styles.addToCalendarButton}
-            onPress={openAddToCalendar}
-            accessibilityLabel="Add to calendar"
-            accessibilityHint="Tap to add this meeting to your phone calendar, Google Calendar, or Outlook"
-          >
-            <Ionicons name="calendar" size={20} color="#2563eb" />
-            <Text style={styles.addToCalendarButtonText}>Add to Calendar</Text>
-          </TouchableOpacity>
+          {/* Add / Modify / Remove from Calendar */}
+          {meeting.status === 'cancelled' && calendarAdded ? (
+            <TouchableOpacity
+              style={styles.removeFromCalendarButton}
+              onPress={() => openAddToCalendar('remove')}
+              accessibilityLabel="Remove from calendar"
+              accessibilityHint="Remove this meeting from your phone calendar"
+            >
+              <Ionicons name="calendar-outline" size={20} color="#dc2626" />
+              <Text style={styles.removeFromCalendarButtonText}>Remove from Calendar</Text>
+            </TouchableOpacity>
+          ) : meeting.status === 'accepted' && calendarAdded && calendarEventId ? (
+            <TouchableOpacity
+              style={styles.addToCalendarButton}
+              onPress={() => openAddToCalendar('modify')}
+              accessibilityLabel="Modify calendar"
+              accessibilityHint="Update the calendar event with the current meeting time"
+            >
+              <Ionicons name="calendar" size={20} color="#0d9488" />
+              <Text style={styles.addToCalendarButtonText}>Modify Calendar</Text>
+            </TouchableOpacity>
+          ) : meeting.status !== 'cancelled' ? (
+            <TouchableOpacity
+              style={styles.addToCalendarButton}
+              onPress={() => openAddToCalendar('add')}
+              accessibilityLabel="Add to calendar"
+              accessibilityHint="Tap to add this meeting to your phone calendar, Google Calendar, or Outlook"
+            >
+              <Ionicons name="calendar" size={20} color="#0d9488" />
+              <Text style={styles.addToCalendarButtonText}>Add to Calendar</Text>
+            </TouchableOpacity>
+          ) : null}
 
           {/* Reschedule (accepted meetings only) */}
           {meeting.status === 'accepted' && (
@@ -1063,6 +1110,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#0d9488',
+  },
+  removeFromCalendarButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fef2f2',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 20,
+    borderWidth: 1,
+    borderColor: '#dc2626',
+    gap: 8,
+  },
+  removeFromCalendarButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#dc2626',
   },
   responseCard: {
     backgroundColor: '#fff',

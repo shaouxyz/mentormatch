@@ -49,6 +49,7 @@ export default function MeetingsScreen() {
   const [loading, setLoading] = useState(true);
   const [userEmail, setUserEmail] = useState<string>('');
   const [respondingMeetingId, setRespondingMeetingId] = useState<string | null>(null);
+  const [calendarAddedMeetingIds, setCalendarAddedMeetingIds] = useState<Record<string, boolean>>({});
   const isLoadingRef = useRef(false);
   const hasLoadedRef = useRef(false);
 
@@ -191,6 +192,20 @@ export default function MeetingsScreen() {
           const dateB = new Date(b.respondedAt || b.updatedAt || b.createdAt).getTime();
           return dateB - dateA; // Most recent first
         });
+
+      const allKeys = await AsyncStorage.getAllKeys();
+      const addedKeys = allKeys.filter((k) => k.startsWith('meetingCalendarAdded:'));
+      const addedMap: Record<string, boolean> = {};
+      if (addedKeys.length > 0) {
+        const pairs = await AsyncStorage.multiGet(addedKeys);
+        pairs.forEach(([key, value]) => {
+          if (value === 'true' && key) {
+            const meetingId = key.replace('meetingCalendarAdded:', '');
+            addedMap[meetingId] = true;
+          }
+        });
+      }
+      setCalendarAddedMeetingIds(addedMap);
       
       setUpcomingMeetings(upcoming);
       setIncomingMeetings(incoming);
@@ -409,7 +424,9 @@ export default function MeetingsScreen() {
           {item.status === 'accepted' && !item.cancelRequestedBy && !item.rescheduleRequestedBy && (
             <View style={[styles.statusBadge, styles.statusBadgeAccepted]}>
               <Ionicons name="checkmark-circle" size={16} color="#10b981" />
-              <Text style={styles.statusTextAccepted}>Accepted</Text>
+              <Text style={styles.statusTextAccepted}>
+                {calendarAddedMeetingIds[item.id] ? 'Accepted and Added to Calendar' : 'Accepted'}
+              </Text>
             </View>
           )}
 
@@ -450,7 +467,7 @@ export default function MeetingsScreen() {
         )}
       </TouchableOpacity>
     );
-  }, [userEmail, router, handleMeetingResponse, respondingMeetingId]);
+  }, [userEmail, router, handleMeetingResponse, respondingMeetingId, calendarAddedMeetingIds]);
 
   const getDisplayMeetings = () => {
     switch (activeTab) {

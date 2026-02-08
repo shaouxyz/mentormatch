@@ -16,10 +16,13 @@ import { hybridGetMeeting } from '@/services/hybridMeetingService';
 import { Meeting } from '@/types/types';
 import { logger } from '@/utils/logger';
 
+type CalendarAction = 'add' | 'modify' | 'remove';
+
 export default function AddToCalendarScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const meetingId = params.meetingId as string;
+  const action: CalendarAction = (params.action as CalendarAction) || 'add';
 
   const [meeting, setMeeting] = useState<Meeting | null>(null);
   const [loading, setLoading] = useState(true);
@@ -122,6 +125,75 @@ export default function AddToCalendarScreen() {
       }
     }
     return opened;
+  };
+
+  const removeFromPhoneCalendar = async () => {
+    if (!meeting) return;
+    const storageKey = `meetingCalendarAdded:${meeting.id}`;
+    const eventIdKey = `meetingCalendarEventId:${meeting.id}`;
+    const existingEventId = await AsyncStorage.getItem(eventIdKey);
+    setAddingToPhoneCalendar(true);
+    try {
+      if (existingEventId) {
+        const hasPermission = await requestCalendarPermissions();
+        if (!hasPermission) {
+          setAddingToPhoneCalendar(false);
+          return;
+        }
+        try {
+          await Calendar.deleteEventAsync(existingEventId);
+        } catch (e) {
+          logger.warn('deleteEventAsync failed (event may already be deleted)', { eventId: existingEventId });
+        }
+      }
+      await AsyncStorage.multiRemove([storageKey, eventIdKey]);
+      setAddingToPhoneCalendar(false);
+      Alert.alert('Removed', existingEventId ? 'Meeting removed from your phone calendar.' : 'Removed from app. If you had added this event on your device, delete it from your calendar app.', [{ text: 'OK', onPress: () => router.back() }]);
+      logger.info('Meeting removed from calendar', { meetingId: meeting.id });
+    } catch (error) {
+      setAddingToPhoneCalendar(false);
+      logger.error('Error removing from calendar', error instanceof Error ? error : new Error(String(error)));
+      Alert.alert('Error', 'Failed to remove from calendar');
+    }
+  };
+
+  const modifyPhoneCalendar = async () => {
+    if (!meeting) return;
+    const eventIdKey = `meetingCalendarEventId:${meeting.id}`;
+    const existingEventId = await AsyncStorage.getItem(eventIdKey);
+    if (!existingEventId) {
+      await addToPhoneCalendar();
+      return;
+    }
+    setAddingToPhoneCalendar(true);
+    try {
+      const hasPermission = await requestCalendarPermissions();
+      if (!hasPermission) {
+        setAddingToPhoneCalendar(false);
+        return;
+      }
+      const startDate = meeting.time ? new Date(meeting.time) : new Date(meeting.date);
+      const endDate = new Date(startDate.getTime() + (meeting.duration || 30) * 60000);
+      const location = meeting.locationType === 'virtual' ? meeting.meetingLink : meeting.location;
+      const details: Omit<Partial<Calendar.Event>, 'id'> = {
+        title: meeting.title,
+        notes: meeting.description || '',
+        startDate,
+        endDate,
+        location: location || undefined,
+        alarms: [{ relativeOffset: -15 }, { relativeOffset: -60 }],
+      };
+      await Calendar.updateEventAsync(existingEventId, details);
+      setAddingToPhoneCalendar(false);
+      const startMs = startDate.getTime();
+      await openPhoneCalendarToEvent(existingEventId, startMs);
+      Alert.alert('Updated', 'Calendar event updated with the new date and time.');
+      logger.info('Meeting calendar event updated', { meetingId: meeting.id });
+    } catch (error) {
+      setAddingToPhoneCalendar(false);
+      logger.error('Error updating calendar event', error instanceof Error ? error : new Error(String(error)));
+      Alert.alert('Error', 'Failed to update calendar event');
+    }
   };
 
   const addToPhoneCalendar = async () => {
@@ -274,7 +346,9 @@ export default function AddToCalendarScreen() {
         <TouchableOpacity onPress={() => router.back()} accessibilityLabel="Go back">
           <Ionicons name="arrow-back" size={24} color="#1f2937" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Add to Calendar</Text>
+        <Text style={styles.headerTitle}>
+          {action === 'remove' ? 'Remove from Calendar' : action === 'modify' ? 'Modify Calendar' : 'Add to Calendar'}
+        </Text>
         <View style={{ width: 24 }} />
       </View>
 
@@ -296,34 +370,57 @@ export default function AddToCalendarScreen() {
             </Text>
           </View>
 
-          <TouchableOpacity
-            style={[styles.option, addingToPhoneCalendar && styles.optionDisabled]}
-            onPress={addToPhoneCalendar}
-            disabled={addingToPhoneCalendar}
-            accessibilityLabel="Add to phone calendar"
-            accessibilityHint="Adds this meeting to your device calendar without opening the calendar app"
-          >
-            {addingToPhoneCalendar ? (
-              <ActivityIndicator size="small" color="#2563eb" />
-            ) : (
-              <Ionicons name="calendar" size={20} color="#2563eb" />
-            )}
-            <View style={styles.optionTextWrap}>
-              <Text style={styles.optionText}>
-                {addingToPhoneCalendar ? 'Adding to calendar…' : 'Phone Calendar'}
-              </Text>
-            </View>
-          </TouchableOpacity>
+          {action === 'remove' ? (
+            <TouchableOpacity
+              style={[styles.option, addingToPhoneCalendar && styles.optionDisabled]}
+              onPress={removeFromPhoneCalendar}
+              disabled={addingToPhoneCalendar}
+              accessibilityLabel="Remove from phone calendar"
+              accessibilityHint="Removes this meeting from your device calendar"
+            >
+              {addingToPhoneCalendar ? (
+                <ActivityIndicator size="small" color="#dc2626" />
+              ) : (
+                <Ionicons name="calendar-outline" size={20} color="#dc2626" />
+              )}
+              <View style={styles.optionTextWrap}>
+                <Text style={[styles.optionText, styles.removeOptionText]}>
+                  {addingToPhoneCalendar ? 'Removing…' : 'Remove from Phone Calendar'}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          ) : (
+            <>
+              <TouchableOpacity
+                style={[styles.option, addingToPhoneCalendar && styles.optionDisabled]}
+                onPress={action === 'modify' ? modifyPhoneCalendar : addToPhoneCalendar}
+                disabled={addingToPhoneCalendar}
+                accessibilityLabel={action === 'modify' ? 'Update phone calendar' : 'Add to phone calendar'}
+                accessibilityHint={action === 'modify' ? 'Updates the calendar event with the new meeting time' : 'Adds this meeting to your device calendar'}
+              >
+                {addingToPhoneCalendar ? (
+                  <ActivityIndicator size="small" color="#2563eb" />
+                ) : (
+                  <Ionicons name="calendar" size={20} color="#2563eb" />
+                )}
+                <View style={styles.optionTextWrap}>
+                  <Text style={styles.optionText}>
+                    {addingToPhoneCalendar ? (action === 'modify' ? 'Updating…' : 'Adding to calendar…') : action === 'modify' ? 'Update Phone Calendar' : 'Phone Calendar'}
+                  </Text>
+                </View>
+              </TouchableOpacity>
 
-          <TouchableOpacity style={styles.option} onPress={exportToGoogleCalendar} accessibilityLabel="Add to Google Calendar">
-            <Ionicons name="logo-google" size={20} color="#2563eb" />
-            <Text style={styles.optionText}>Google Calendar</Text>
-          </TouchableOpacity>
+              <TouchableOpacity style={styles.option} onPress={exportToGoogleCalendar} accessibilityLabel="Add to Google Calendar">
+                <Ionicons name="logo-google" size={20} color="#2563eb" />
+                <Text style={styles.optionText}>Google Calendar</Text>
+              </TouchableOpacity>
 
-          <TouchableOpacity style={styles.option} onPress={exportToOutlook} accessibilityLabel="Add to Outlook Calendar">
-            <Ionicons name="mail" size={20} color="#2563eb" />
-            <Text style={styles.optionText}>Outlook/Hotmail</Text>
-          </TouchableOpacity>
+              <TouchableOpacity style={styles.option} onPress={exportToOutlook} accessibilityLabel="Add to Outlook Calendar">
+                <Ionicons name="mail" size={20} color="#2563eb" />
+                <Text style={styles.optionText}>Outlook/Hotmail</Text>
+              </TouchableOpacity>
+            </>
+          )}
 
           <TouchableOpacity style={[styles.option, styles.cancel]} onPress={() => router.back()} accessibilityLabel="Cancel">
             <Ionicons name="close" size={20} color="#6b7280" />
@@ -407,6 +504,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#2563eb',
+  },
+  removeOptionText: {
+    color: '#dc2626',
   },
   cancel: {
     backgroundColor: '#f8fafc',
