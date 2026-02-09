@@ -85,7 +85,144 @@ eas build --platform ios --profile production
 
 ---
 
-## Part 3: Apple App Store
+## Part 3: Apple App Store — iOS release step-by-step
+
+Use this order for a full iOS release from zero to “Submit for Review.”
+
+---
+
+### Step 1: Prerequisites (one-time)
+
+1. **Apple Developer Program**  
+   - Enroll at [developer.apple.com](https://developer.apple.com) ($99/year) if you haven’t.
+
+2. **App ID in Apple Developer Portal**  
+   - [developer.apple.com/account](https://developer.apple.com/account) → **Certificates, Identifiers & Profiles** → **Identifiers** → **+** → **App IDs** → **App** → Description: e.g. MentorMatch, Bundle ID: **Explicit** → `com.xyz.mentormatch` (must match `app.json` → `ios.bundleIdentifier`). Register.
+
+3. **EAS logged in**  
+   - In project folder: `eas whoami`. If not logged in: `eas login`.
+
+4. **Confirm app.json**  
+   - `ios.bundleIdentifier`: `com.xyz.mentormatch`  
+   - `ios.appleTeamId`: `VGVDQ76R5T`  
+   - `version`: e.g. `1.0.0` (this is the user-facing version).
+
+---
+
+### Step 2: Bump version (for a new release)
+
+In **`app.json`**:
+
+- Set **`version`** to the release you’re shipping, e.g. `"1.0.0"` or `"1.0.1"`.
+- Save the file.
+
+---
+
+### Step 3: Build the iOS app for App Store
+
+In the project root:
+
+```bash
+eas build --platform ios --profile production
+```
+
+- When asked for credentials, choose **remote** and let EAS manage certificates.
+- Wait for the build to finish on [expo.dev](https://expo.dev) → your project → **Builds**.
+- Note the build ID or keep the tab open; you’ll use this build for submit.
+
+---
+
+### Step 4: App Store Connect — create app (first time only)
+
+1. Go to [App Store Connect](https://appstoreconnect.apple.com).
+2. **My Apps** → **+** → **New App**.
+3. Fill in:
+   - **Platform**: iOS  
+   - **Name**: MentorMatch  
+   - **Primary Language**: e.g. English (U.S.)  
+   - **Bundle ID**: choose **com.xyz.mentormatch** (must match `app.json`).  
+   - **SKU**: e.g. `mentormatch-ios` (internal, can be anything).  
+   - **User Access**: Full Access (or as needed).
+4. Create.
+
+---
+
+### Step 5: App Store Connect — app information & pricing
+
+In your app → **App Information**:
+
+- **Privacy Policy URL**: required. You must use a **public URL** that opens in a browser. See **Privacy Policy URL** below for options.
+- **Category**: e.g. Education or Social Networking.
+- **Subcategory** (optional).
+
+In **Pricing and Availability**:
+
+- Set **Free** or a price tier.
+
+---
+
+### Step 6: Upload the build (EAS Submit)
+
+After the production iOS build has **finished**:
+
+```bash
+eas submit --platform ios --profile production --latest
+```
+
+- EAS will use the **latest** production iOS build.
+- When prompted: sign in with **Apple ID** and use an **app-specific password** if required (generate at [appleid.apple.com](https://appleid.apple.com) → Sign-In and Security → App-Specific Passwords).
+- Choose the **App Store Connect app** (e.g. MentorMatch) and, if asked, the **Apple ID / team**.
+- Submit. The build will appear in App Store Connect under **TestFlight** and will be available to attach to a version.
+
+---
+
+### Step 7: Create a version and attach the build
+
+1. In App Store Connect → your app → **App Store** tab.
+2. Under **iOS App**, click **+ Version** or the version number (e.g. **1.0.0**).
+3. **Build**: click **+** and select the build you just submitted (from EAS). If it’s not listed, wait a few minutes and refresh.
+4. **What’s New in This Version**: add release notes (e.g. “Initial release” or bullet list of changes).
+5. Save.
+
+---
+
+### Step 8: App Store listing (screenshots & metadata)
+
+- **Screenshots**: at least one per required device (e.g. 6.7" iPhone, 6.5", 5.5"). Capture from Simulator or a real device.
+- **Description**: app description (what the app does).
+- **Keywords**: comma-separated (no spaces after commas); used for search.
+- **Support URL**: required (e.g. your support page or contact).
+- **Marketing URL** (optional).
+
+---
+
+### Step 9: App Privacy & Age Rating
+
+1. **App Privacy** (required):  
+   - **App Privacy** in the left sidebar → **Get Started** → answer the data collection questionnaire (what data you collect and how it’s used). Save and publish.
+
+2. **Age Rating**:  
+   - In the version page, open **Age Rating** → answer the questionnaire. Save.
+
+---
+
+### Step 10: Submit for Review
+
+1. In the version page, complete any remaining required fields (all should show a green check or “Complete”).
+2. **Review notes** (optional): e.g. test account (email/password) if the app has login.
+3. Click **Add for Review** (if not already added), then **Submit to App Review**.
+4. Confirm. Status will change to **Waiting for Review**; review usually takes **24–48 hours**.
+
+---
+
+### Step 11: After approval
+
+- Apple will notify you; status becomes **Ready for Sale**.
+- The app will go live on the App Store according to your **Pricing and Availability** and release setting (manual or automatic).
+
+---
+
+## Part 3 (reference): Apple App Store details
 
 ### 3.1 App Store Connect (first time only)
 
@@ -137,6 +274,30 @@ eas submit --platform ios --profile production --latest
 - **Age Rating** questionnaire.
 - **Review notes** if needed (e.g. test account for login).
 - Click **Submit for Review**. Review usually takes 24–48 hours.
+
+---
+
+## Privacy Policy URL (App Store & Play Store)
+
+Apple and Google require a **public URL** to your privacy policy (a page that opens in a browser).
+
+### Option 1: You already have a website
+- Put your privacy policy on your site (e.g. `https://yoursite.com/privacy`) and use that URL in App Store Connect and Play Console.
+
+### Option 2: Use the HTML file in this repo
+- The project includes **`docs/privacy-policy.html`** (a single-page privacy policy). Host it somewhere public and use that URL.
+
+**Ways to get a URL for `privacy-policy.html`:**
+- **GitHub Pages**: Create a repo (e.g. `mentormatch-legal`), add `privacy-policy.html` as `index.html` in the root or in a `privacy` folder, enable GitHub Pages in repo Settings → Pages. URL will be like `https://yourusername.github.io/mentormatch-legal/` or `.../mentormatch-legal/privacy/`.
+- **Netlify / Vercel**: Drag-and-drop the `docs` folder or connect the repo; use the generated URL (e.g. `https://your-site.netlify.app/privacy-policy.html`).
+- **Google Sites / Notion**: Create a page, paste the content (or link to the file), publish, and use the page URL.
+- **Your own domain**: Upload `privacy-policy.html` to your web host and use e.g. `https://yourdomain.com/privacy`.
+
+### What to enter in App Store Connect
+1. In your app → **App Information** (or the version page).
+2. Find **Privacy Policy URL**.
+3. Enter the **full URL** (e.g. `https://yourusername.github.io/mentormatch-legal/` or your custom URL). It must start with `https://` and open in a browser.
+4. Save.
 
 ---
 
