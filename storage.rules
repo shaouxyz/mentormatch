@@ -1,0 +1,12 @@
+rules_version = '2';
+// Cloud Storage for Firebase - Security Rules
+// MentorMatch uses Firestore and Auth only; Storage is not used by the app.
+// These rules deny all client access to the bucket so it is secure after Test Mode expires.
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Deny all read/write from client. Use Firebase Admin SDK from a trusted server if you need Storage later.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

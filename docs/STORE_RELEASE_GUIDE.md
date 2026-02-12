@@ -10,6 +10,7 @@ This guide walks you through submitting the app to **Google Play** and **Apple A
 - [ ] App is working and tested (preview builds).
 - [ ] **EAS CLI** logged in: `eas whoami` (log in with `eas login` if needed).
 - [ ] **Production builds** use the right config (see below).
+- [ ] **Firebase in production**: If your app uses Firebase Auth/Firestore, set **EAS Secrets** for production (and preview) so login works in store builds. See **Firebase config for EAS builds** below.
 
 ### Google Play
 - [ ] **Google Play Developer account** ($25 one-time): [play.google.com/console](https://play.google.com/console).
@@ -82,6 +83,15 @@ eas build --platform ios --profile production
 
 - Complete any remaining **App content** items (e.g. target audience, news app declaration if needed).
 - **Send for review**. First review can take from a few hours to a few days.
+
+### 2.6 Upload production AAB to Internal testing (install on your device)
+
+To install the production build on your Android phone before (or without) publishing to the store:
+
+1. **Get the AAB**: [expo.dev](https://expo.dev) → your project → **Builds** → select the Android production build → **Download** (`.aab`).
+2. **Play Console** → your app **MentorMatch** → **Testing** → **Internal testing**.
+3. **Create new release** → upload the `.aab` → add **Release name** (e.g. `1.0.0 (1)`) and **Release notes** → **Save** → **Review release** → **Start rollout to Internal testing**.
+4. In **Testers**, create a list, add your Google account email, then copy the **opt-in link**. On your phone, open that link, accept as tester, then install from the Play Store.
 
 ---
 
@@ -274,6 +284,33 @@ eas submit --platform ios --profile production --latest
 - **Age Rating** questionnaire.
 - **Review notes** if needed (e.g. test account for login).
 - Click **Submit for Review**. Review usually takes 24–48 hours.
+
+---
+
+## Firebase config for EAS builds (production / preview login)
+
+EAS builds run on Expo servers and **do not** see your local `.env` (it is gitignored). If Firebase env vars are missing, production and preview builds get placeholder config and **Firebase Auth does not work** (login fails even with correct credentials).
+
+**Fix:** Add your Firebase config as **EAS Secrets** so every EAS build (preview and production) gets the real values.
+
+1. **Get the values** from your local `.env` (or [Firebase Console](https://console.firebase.google.com) → Project Settings → General → Your apps → web app config):
+   - `EXPO_PUBLIC_FIREBASE_API_KEY`
+   - `EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN`
+   - `EXPO_PUBLIC_FIREBASE_PROJECT_ID`
+   - `EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET`
+   - `EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
+   - `EXPO_PUBLIC_FIREBASE_APP_ID`
+
+2. **Add EAS Secrets**: [expo.dev](https://expo.dev) → your project → **Secrets** (or **Project settings** → **Secrets**). Add each variable above with the same name and value as in `.env`.
+
+3. **Rebuild** production (and preview if needed):
+   ```bash
+   eas build --platform android --profile production
+   eas build --platform ios --profile production
+   ```
+   New builds will have Firebase configured and login will work.
+
+4. **Redeploy**: Upload the new AAB to Play Console (Internal testing or Production) and the new IPA to TestFlight/App Store as needed.
 
 ---
 
