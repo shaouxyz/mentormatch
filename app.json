@@ -11,11 +11,10 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "appleTeamId": "VGVDQ76R5T",
+      "buildNumber": "2",
       "icon": "./assets/mentormatch-icon-1.png",
       "supportsTablet": true,
       "bundleIdentifier": "com.xyz.mentormatch",
@@ -25,7 +24,7 @@
     },
     "android": {
       "package": "com.xyz.mentormatch",
-      "versionCode": 1,
+      "versionCode": 2,
       "adaptiveIcon": {
         "foregroundImage": "./assets/mentormatch-icon-1.png",
         "backgroundColor": "#ffffff"
@@ -33,11 +32,7 @@
       "permissions": []
     },
     "scheme": "mentormatch",
-    "plugins": [
-      "expo-router",
-      "expo-font",
-      "@react-native-community/datetimepicker"
-    ],
+    "plugins": ["expo-router", "expo-font", "@react-native-community/datetimepicker"],
     "updates": {
       "enabled": true,
       "url": "https://u.expo.dev/a027433a-a98a-499c-8e19-e4581565b366"
