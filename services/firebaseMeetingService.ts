@@ -325,10 +325,12 @@ export async function getUserMeetings(userEmail: string): Promise<Meeting[]> {
     logger.info('Meetings retrieved from Firestore', { userEmail: normalizedEmail, count: meetings.length });
     return meetings;
   } catch (error) {
+    const err = error instanceof Error ? error : new Error(String(error));
+    const code = error && typeof error === 'object' && 'code' in error ? (error as { code?: string }).code : undefined;
     const isPermissionError =
-      (error && typeof error === 'object' && 'code' in error && (error as { code?: string }).code === 'permission-denied') ||
-      (error instanceof Error && error.message?.includes('permission'));
-    if (isPermissionError) {
+      code === 'permission-denied' || (error instanceof Error && error.message?.includes('permission'));
+    const isIndexError = code === 'failed-precondition' || (err.message?.includes('index') ?? false);
+    if (isPermissionError || isIndexError) {
       try {
         const snapshots = await runQueries(false);
         const meetings = mergeSnapshots(snapshots);
@@ -338,11 +340,12 @@ export async function getUserMeetings(userEmail: string): Promise<Meeting[]> {
         });
         return meetings;
       } catch (fallbackError) {
-        logger.error('Error getting meetings from Firestore (fallback)', fallbackError instanceof Error ? fallbackError : new Error(String(fallbackError)));
+        const fallbackErr = fallbackError instanceof Error ? fallbackError : new Error(String(fallbackError));
+        logger.error('Error getting meetings from Firestore (fallback)', fallbackErr);
         throw fallbackError;
       }
     }
-    logger.error('Error getting meetings from Firestore', error instanceof Error ? error.message : String(error));
+    logger.error('Error getting meetings from Firestore', err, { code });
     throw error;
   }
 }
@@ -380,21 +383,24 @@ export async function getPendingMeetingRequests(userEmail: string): Promise<Meet
     logger.info('Pending meeting requests retrieved', { userEmail: normalizedEmail, count: meetings.length });
     return meetings;
   } catch (error) {
+    const err = error instanceof Error ? error : new Error(String(error));
+    const code = error && typeof error === 'object' && 'code' in error ? (error as { code?: string }).code : undefined;
     const isPermissionError =
-      (error && typeof error === 'object' && 'code' in error && (error as { code?: string }).code === 'permission-denied') ||
-      (error instanceof Error && error.message?.includes('permission'));
-    if (isPermissionError) {
+      code === 'permission-denied' || (error instanceof Error && error.message?.includes('permission'));
+    const isIndexError = code === 'failed-precondition' || (err.message?.includes('index') ?? false);
+    if (isPermissionError || isIndexError) {
       try {
         const snapshot = await runQuery(false);
         const meetings = toMeetings(snapshot);
         logger.info('Pending meeting requests retrieved (fallback)', { userEmail: normalizedEmail, count: meetings.length });
         return meetings;
       } catch (fallbackError) {
-        logger.error('Error getting pending meetings (fallback)', fallbackError instanceof Error ? fallbackError : new Error(String(fallbackError)));
+        const fallbackErr = fallbackError instanceof Error ? fallbackError : new Error(String(fallbackError));
+        logger.error('Error getting pending meetings (fallback)', fallbackErr);
         throw fallbackError;
       }
     }
-    logger.error('Error getting pending meetings', error instanceof Error ? error : new Error(String(error)));
+    logger.error('Error getting pending meetings', err, { code });
     throw error;
   }
 }

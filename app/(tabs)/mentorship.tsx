@@ -324,7 +324,7 @@ export default function MentorshipScreen() {
                     }}
                     accessibilityLabel="Schedule meeting"
                   >
-                    <Ionicons name="calendar" size={18} color="#10b981" />
+                    <Ionicons name="calendar" size={18} color="#2563eb" />
                     <Text style={styles.scheduleButtonText}>Schedule</Text>
                   </TouchableOpacity>
                 </View>
@@ -415,7 +415,7 @@ export default function MentorshipScreen() {
                     }}
                     accessibilityLabel="Schedule meeting"
                   >
-                    <Ionicons name="calendar" size={18} color="#10b981" />
+                    <Ionicons name="calendar" size={18} color="#2563eb" />
                     <Text style={styles.scheduleButtonText}>Schedule</Text>
                   </TouchableOpacity>
                 </View>
@@ -485,14 +485,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 10,
     paddingHorizontal: 16,
-    backgroundColor: '#d1fae5',
+    backgroundColor: '#eff6ff',
     borderRadius: 8,
     gap: 6,
   },
   scheduleButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#10b981',
+    color: '#2563eb',
   },
   connectionHeader: {
     flexDirection: 'row',

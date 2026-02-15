@@ -17,6 +17,7 @@ import { safeParseJSON, validateProfileSchema } from '@/utils/schemaValidation';
 import { areUsersMatched } from '@/utils/connectionUtils';
 import { hybridGetProfile } from '@/services/hybridProfileService';
 import { hybridGetAllRequestsForUser, hybridUpdateRequestStatus } from '@/services/hybridRequestService';
+import { generateConversationId } from '@/services/hybridMessageService';
 
 const normalizeEmail = (e: string | undefined | null) => (e || '').trim().toLowerCase();
 
@@ -498,6 +499,46 @@ export default function ViewProfileScreen() {
         {!isOwnProfile && (
           connectionRole === 'mentor' ? (
             <View style={styles.connectionBlock}>
+              <View style={styles.actionButtons}>
+                <TouchableOpacity
+                  style={styles.messageButton}
+                  onPress={async () => {
+                    const userData = await AsyncStorage.getItem('user');
+                    if (userData && profile) {
+                      const user = JSON.parse(userData);
+                      const conversationId = generateConversationId(user.email, profile.email);
+                      router.push({
+                        pathname: '/messages/chat',
+                        params: {
+                          conversationId,
+                          participantEmail: profile.email,
+                          participantName: profile.name,
+                        },
+                      });
+                    }
+                  }}
+                  accessibilityLabel="Send message"
+                >
+                  <Ionicons name="chatbubble" size={18} color="#2563eb" />
+                  <Text style={styles.messageButtonText}>Message</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.scheduleButton}
+                  onPress={() => {
+                    router.push({
+                      pathname: '/meeting/schedule',
+                      params: {
+                        participantEmail: profile.email,
+                        participantName: profile.name,
+                      },
+                    });
+                  }}
+                  accessibilityLabel="Schedule meeting"
+                >
+                  <Ionicons name="calendar" size={18} color="#2563eb" />
+                  <Text style={styles.scheduleButtonText}>Schedule</Text>
+                </TouchableOpacity>
+              </View>
               <View style={styles.alreadyConnectionLabel}>
                 <Ionicons name="checkmark-circle" size={20} color="#10b981" />
                 <Text style={styles.alreadyConnectionText}>Already your mentor</Text>
@@ -535,6 +576,46 @@ export default function ViewProfileScreen() {
             </View>
           ) : connectionRole === 'mentee' ? (
             <View style={styles.connectionBlock}>
+              <View style={styles.actionButtons}>
+                <TouchableOpacity
+                  style={styles.messageButton}
+                  onPress={async () => {
+                    const userData = await AsyncStorage.getItem('user');
+                    if (userData && profile) {
+                      const user = JSON.parse(userData);
+                      const conversationId = generateConversationId(user.email, profile.email);
+                      router.push({
+                        pathname: '/messages/chat',
+                        params: {
+                          conversationId,
+                          participantEmail: profile.email,
+                          participantName: profile.name,
+                        },
+                      });
+                    }
+                  }}
+                  accessibilityLabel="Send message"
+                >
+                  <Ionicons name="chatbubble" size={18} color="#2563eb" />
+                  <Text style={styles.messageButtonText}>Message</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.scheduleButton}
+                  onPress={() => {
+                    router.push({
+                      pathname: '/meeting/schedule',
+                      params: {
+                        participantEmail: profile.email,
+                        participantName: profile.name,
+                      },
+                    });
+                  }}
+                  accessibilityLabel="Schedule meeting"
+                >
+                  <Ionicons name="calendar" size={18} color="#2563eb" />
+                  <Text style={styles.scheduleButtonText}>Schedule</Text>
+                </TouchableOpacity>
+              </View>
               <View style={styles.alreadyConnectionLabel}>
                 <Ionicons name="checkmark-circle" size={20} color="#10b981" />
                 <Text style={styles.alreadyConnectionText}>Already your mentee</Text>
@@ -721,6 +802,43 @@ const styles = StyleSheet.create({
   connectionBlock: {
     marginTop: 24,
     marginBottom: 32,
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+  },
+  messageButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    backgroundColor: '#eff6ff',
+    borderRadius: 8,
+    gap: 6,
+  },
+  messageButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2563eb',
+  },
+  scheduleButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    backgroundColor: '#eff6ff',
+    borderRadius: 8,
+    gap: 6,
+  },
+  scheduleButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2563eb',
   },
   alreadyConnectionLabel: {
     flexDirection: 'row',

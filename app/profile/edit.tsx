@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -49,6 +49,7 @@ interface ProfileData {
 export default function EditProfileScreen() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const savingRef = useRef(false);
   const [profile, setProfile] = useState<ProfileData>({
     name: '',
     expertise: '',
@@ -96,6 +97,7 @@ export default function EditProfileScreen() {
   };
 
   const handleSave = async () => {
+    if (savingRef.current) return;
     // Validation using shared validation utility
     const validation = validateProfile(profile);
     if (!validation.isValid) {
@@ -103,6 +105,7 @@ export default function EditProfileScreen() {
       return;
     }
 
+    savingRef.current = true;
     setLoading(true);
 
     try {
@@ -139,6 +142,7 @@ export default function EditProfileScreen() {
     } catch (error) {
       ErrorHandler.handleStorageError(error, 'update profile');
     } finally {
+      savingRef.current = false;
       setLoading(false);
     }
   };
