@@ -57,15 +57,19 @@ export async function hybridCreateProfile(profile: Profile): Promise<void> {
             email: profile.email,
             hint: 'Make sure to sign up/sign in with Firebase Auth before creating profile'
           });
-        } else if (currentUser.email !== profile.email) {
-          logger.warn('Firebase user email does not match profile email', {
-            firebaseEmail: currentUser.email,
-            profileEmail: profile.email,
-            hint: 'Profile can only be created for the authenticated user'
-          });
         } else {
-          await createFirebaseProfile(profile);
-          logger.info('Profile synced to Firebase', { email: profile.email });
+          const authEmail = (currentUser.email ?? '').toLowerCase().trim();
+          const profileEmail = (profile.email ?? '').toLowerCase().trim();
+          if (authEmail !== profileEmail) {
+            logger.warn('Firebase user email does not match profile email', {
+              firebaseEmail: currentUser.email,
+              profileEmail: profile.email,
+              hint: 'Profile can only be created for the authenticated user'
+            });
+          } else {
+            await createFirebaseProfile(profile);
+            logger.info('Profile synced to Firebase', { email: profile.email });
+          }
         }
       } catch (firebaseError) {
         // Log but don't fail - local profile is already saved
@@ -135,15 +139,25 @@ export async function hybridUpdateProfile(email: string, updates: Partial<Profil
             email,
             hint: 'Make sure user is signed in with Firebase Auth before updating profile'
           });
-        } else if (currentUser.email !== email) {
-          logger.warn('Firebase user email does not match profile email for update', {
-            firebaseEmail: currentUser.email,
-            profileEmail: email,
-            hint: 'Profile can only be updated by the authenticated user'
-          });
         } else {
-          await updateFirebaseProfile(email, updates);
-          logger.info('Profile update synced to Firebase', { email });
+          const authEmail = (currentUser.email ?? '').toLowerCase().trim();
+          const profileEmail = (email ?? '').toLowerCase().trim();
+          if (authEmail !== profileEmail) {
+            logger.warn('Firebase user email does not match profile email for update', {
+              firebaseEmail: currentUser.email,
+              profileEmail: email,
+              hint: 'Profile can only be updated by the authenticated user'
+            });
+          } else {
+            const existing = await getFirebaseProfile(email);
+            if (!existing) {
+              await createFirebaseProfile(updatedProfile);
+              logger.info('Profile created in Firebase on update (was missing)', { email });
+            } else {
+              await updateFirebaseProfile(email, updates);
+              logger.info('Profile update synced to Firebase', { email });
+            }
+          }
         }
       } catch (firebaseError) {
         // Log but don't fail - local profile is already updated

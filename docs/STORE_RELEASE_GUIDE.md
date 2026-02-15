@@ -67,6 +67,14 @@ eas build --platform ios --profile production
 - **Graphics**: app icon 512×512, feature graphic 1024×500, and at least 2 **phone screenshots** (min 320px short side).
 - **Categorization**: category (e.g. Education or Social), contact email.
 
+#### Feature graphic *
+
+- **Dimensions:** 1024 × 500 px (width × height).
+- **Format:** JPEG or 24-bit PNG (no transparency).
+- **Max file size:** 1 MB.
+- **Tip:** Keep logo and key text in the center; edges may be cropped on some devices.
+- **Asset:** Use `assets/mentormatch-feature-graphic-1024x500.png` for Play Console → Store listing → Feature graphic.
+
 ### 2.3 Content rating
 
 - Use the in-console **Questionnaire** to get a rating (e.g. Everyone, Teen).
