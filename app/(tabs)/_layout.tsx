@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Tabs, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -73,50 +73,76 @@ function getMeetingsBadgeCount(meetings: Meeting[], userEmail: string): number {
  * Loads unread, requests, and meetings counts when tabs are focused for badge indicators.
  */
 export default function TabsLayout() {
-  const { totalUnread, setTotalUnread } = useUnreadMessages();
-  const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
-  const [meetingsBadgeCount, setMeetingsBadgeCount] = useState(0);
+  const {
+    totalUnread, setTotalUnread,
+    pendingRequestsCount, setPendingRequestsCount,
+    meetingsBadgeCount, setMeetingsBadgeCount,
+  } = useUnreadMessages();
 
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
+
       (async () => {
         try {
           const userData = await AsyncStorage.getItem('user');
           if (!userData || cancelled) return;
           const user = JSON.parse(userData);
-          const email = user?.email;
-          if (!email) return;
+          const raw = user?.email ?? null;
+          const email = raw ? normalizeEmail(raw) : null;
+          if (!email || cancelled) return;
 
-          const [conversations, requestsResult, meetings] = await Promise.all([
-            hybridGetUserConversations(email),
-            hybridGetAllRequestsForUser(email),
-            hybridGetUserMeetings(email).catch(() => [] as Meeting[]),
+          logger.info('Tab badges: loading data', { email });
+
+          const [unread, pending, meetings] = await Promise.all([
+            hybridGetUserConversations(email)
+              .then((conversations) => {
+                if (cancelled) return 0;
+                const count = getTotalUnread(conversations, email);
+                logger.info('Tab badges: conversations loaded', { conversations: conversations.length, unread: count });
+                return count;
+              })
+              .catch((e) => {
+                if (!cancelled) logger.warn('Tab badge: failed to load conversations', { error: e instanceof Error ? e.message : String(e) });
+                return 0;
+              }),
+            hybridGetAllRequestsForUser(email)
+              .then((result) => {
+                if (cancelled) return 0;
+                const count = getIncomingPendingCount(result.all, email);
+                logger.info('Tab badges: requests loaded', { total: result.all.length, pending: count });
+                return count;
+              })
+              .catch((e) => {
+                if (!cancelled) logger.warn('Tab badge: failed to load requests', { error: e instanceof Error ? e.message : String(e) });
+                return 0;
+              }),
+            hybridGetUserMeetings(email)
+              .then((meetingsList) => {
+                if (cancelled) return 0;
+                const count = getMeetingsBadgeCount(meetingsList, email);
+                logger.info('Tab badges: meetings loaded', { total: meetingsList.length, badge: count });
+                return count;
+              })
+              .catch((e) => {
+                if (!cancelled) logger.warn('Tab badge: failed to load meetings', { error: e instanceof Error ? e.message : String(e) });
+                return 0;
+              }),
           ]);
 
-          if (cancelled) return;
-
-          const total = getTotalUnread(conversations, email);
-          setTotalUnread(total);
-
-          const incomingPending = getIncomingPendingCount(requestsResult.all, email);
-          setPendingRequestsCount(incomingPending);
-
-          const meetingsCount = getMeetingsBadgeCount(meetings, email);
-          setMeetingsBadgeCount(meetingsCount);
-
-          logger.info('Tab badges refreshed', {
-            unread: total,
-            pendingRequests: incomingPending,
-            meetings: meetingsCount,
-          });
+          if (!cancelled) {
+            setTotalUnread(unread);
+            setPendingRequestsCount(pending);
+            setMeetingsBadgeCount(meetings);
+            logger.info('Tab badges refreshed', { unread, pendingRequests: pending, meetings });
+          }
         } catch (e) {
-          if (!cancelled)
-            logger.warn('Failed to load tab badges', { error: e instanceof Error ? e.message : String(e) });
+          if (!cancelled) logger.warn('Tab badges: unexpected error', { error: e instanceof Error ? e.message : String(e) });
         }
       })();
+
       return () => { cancelled = true; };
-    }, [setTotalUnread])
+    }, [setTotalUnread, setPendingRequestsCount, setMeetingsBadgeCount])
   );
 
   return (
@@ -160,7 +186,7 @@ export default function TabsLayout() {
         options={{
           title: 'Meetings',
           headerShown: false,
-          tabBarBadge: meetingsBadgeCount > 0 ? (meetingsBadgeCount > 99 ? '99+' : meetingsBadgeCount) : undefined,
+          tabBarBadge: meetingsBadgeCount > 0 ? (meetingsBadgeCount > 99 ? '99+' : String(meetingsBadgeCount)) : undefined,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="calendar" size={size} color={color} />
           ),
@@ -171,7 +197,7 @@ export default function TabsLayout() {
         options={{
           title: 'Messages',
           headerShown: false,
-          tabBarBadge: totalUnread > 0 ? (totalUnread > 99 ? '99+' : totalUnread) : null,
+          tabBarBadge: totalUnread > 0 ? (totalUnread > 99 ? '99+' : String(totalUnread)) : undefined,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="chatbubbles" size={size} color={color} />
           ),
@@ -182,7 +208,7 @@ export default function TabsLayout() {
         options={{
           title: 'Requests',
           headerShown: false,
-          tabBarBadge: pendingRequestsCount > 0 ? (pendingRequestsCount > 99 ? '99+' : pendingRequestsCount) : undefined,
+          tabBarBadge: pendingRequestsCount > 0 ? (pendingRequestsCount > 99 ? '99+' : String(pendingRequestsCount)) : undefined,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="mail" size={size} color={color} />
           ),

@@ -25,6 +25,9 @@ import { logger } from '@/utils/logger';
 
 const REQUESTS_COLLECTION = 'mentorshipRequests';
 
+const normalizeEmail = (email: string | undefined | null): string =>
+  (email || '').trim().toLowerCase();
+
 /**
  * Get Firestore requests collection reference
  */
@@ -121,21 +124,39 @@ export async function deleteFirebaseRequest(requestId: string): Promise<void> {
  */
 export async function getFirebaseRequestsBySender(userEmail: string): Promise<MentorshipRequest[]> {
   try {
+    const normalizedUserEmail = normalizeEmail(userEmail);
     const requestsCol = getRequestsCollection();
+    // Query both normalized and original email to handle case mismatches
     const q = query(
       requestsCol,
-      where('requesterEmail', '==', userEmail),
+      where('requesterEmail', '==', normalizedUserEmail),
       orderBy('createdAt', 'desc')
     );
+    const qOriginal = userEmail !== normalizedUserEmail
+      ? query(requestsCol, where('requesterEmail', '==', userEmail), orderBy('createdAt', 'desc'))
+      : null;
     
-    const querySnapshot = await getDocs(q);
-    
+    const seenIds = new Set<string>();
     const requests: MentorshipRequest[] = [];
-    querySnapshot.forEach((doc) => {
-      requests.push(doc.data() as MentorshipRequest);
+
+    const querySnapshot = await getDocs(q);
+    querySnapshot.forEach((docSnap) => {
+      const data = docSnap.data() as MentorshipRequest;
+      const id = data.id || docSnap.id;
+      if (!seenIds.has(id)) { seenIds.add(id); requests.push(data); }
     });
+
+    // Also query original-case email if different
+    if (qOriginal) {
+      const origSnapshot = await getDocs(qOriginal);
+      origSnapshot.forEach((docSnap) => {
+        const data = docSnap.data() as MentorshipRequest;
+        const id = data.id || docSnap.id;
+        if (!seenIds.has(id)) { seenIds.add(id); requests.push(data); }
+      });
+    }
     
-    logger.info('Requests by sender retrieved from Firestore', { userEmail, count: requests.length });
+    logger.info('Requests by sender retrieved from Firestore', { userEmail: normalizedUserEmail, count: requests.length });
     return requests;
   } catch (error) {
     logger.error('Error getting requests by sender from Firestore', error instanceof Error ? error : new Error(String(error)));
@@ -148,21 +169,38 @@ export async function getFirebaseRequestsBySender(userEmail: string): Promise<Me
  */
 export async function getFirebaseRequestsByMentor(mentorEmail: string): Promise<MentorshipRequest[]> {
   try {
+    const normalizedMentorEmail = normalizeEmail(mentorEmail);
     const requestsCol = getRequestsCollection();
+    // Query both normalized and original email to handle case mismatches
     const q = query(
       requestsCol,
-      where('mentorEmail', '==', mentorEmail),
+      where('mentorEmail', '==', normalizedMentorEmail),
       orderBy('createdAt', 'desc')
     );
+    const qOriginal = mentorEmail !== normalizedMentorEmail
+      ? query(requestsCol, where('mentorEmail', '==', mentorEmail), orderBy('createdAt', 'desc'))
+      : null;
     
-    const querySnapshot = await getDocs(q);
-    
+    const seenIds = new Set<string>();
     const requests: MentorshipRequest[] = [];
-    querySnapshot.forEach((doc) => {
-      requests.push(doc.data() as MentorshipRequest);
+
+    const querySnapshot = await getDocs(q);
+    querySnapshot.forEach((docSnap) => {
+      const data = docSnap.data() as MentorshipRequest;
+      const id = data.id || docSnap.id;
+      if (!seenIds.has(id)) { seenIds.add(id); requests.push(data); }
     });
+
+    if (qOriginal) {
+      const origSnapshot = await getDocs(qOriginal);
+      origSnapshot.forEach((docSnap) => {
+        const data = docSnap.data() as MentorshipRequest;
+        const id = data.id || docSnap.id;
+        if (!seenIds.has(id)) { seenIds.add(id); requests.push(data); }
+      });
+    }
     
-    logger.info('Requests by mentor retrieved from Firestore', { mentorEmail, count: requests.length });
+    logger.info('Requests by mentor retrieved from Firestore', { mentorEmail: normalizedMentorEmail, count: requests.length });
     return requests;
   } catch (error) {
     logger.error('Error getting requests by mentor from Firestore', error instanceof Error ? error : new Error(String(error)));
@@ -198,37 +236,33 @@ export async function getFirebaseRequestsByStatus(
   status: 'pending' | 'accepted' | 'declined'
 ): Promise<MentorshipRequest[]> {
   try {
+    const normalizedUserEmail = normalizeEmail(userEmail);
     const requestsCol = getRequestsCollection();
     
-    // Get requests where user is either sender or receiver
-    const sentQuery = query(
-      requestsCol,
-      where('requesterEmail', '==', userEmail),
-      where('status', '==', status),
-      orderBy('createdAt', 'desc')
-    );
+    // Build queries with normalized email (+ original if different)
+    const queries: ReturnType<typeof query>[] = [
+      query(requestsCol, where('requesterEmail', '==', normalizedUserEmail), where('status', '==', status), orderBy('createdAt', 'desc')),
+      query(requestsCol, where('mentorEmail', '==', normalizedUserEmail), where('status', '==', status), orderBy('createdAt', 'desc')),
+    ];
+    if (userEmail !== normalizedUserEmail) {
+      queries.push(
+        query(requestsCol, where('requesterEmail', '==', userEmail), where('status', '==', status), orderBy('createdAt', 'desc')),
+        query(requestsCol, where('mentorEmail', '==', userEmail), where('status', '==', status), orderBy('createdAt', 'desc')),
+      );
+    }
     
-    const receivedQuery = query(
-      requestsCol,
-      where('mentorEmail', '==', userEmail),
-      where('status', '==', status),
-      orderBy('createdAt', 'desc')
-    );
+    const snapshots = await Promise.all(queries.map((q) => getDocs(q)));
     
-    const [sentSnapshot, receivedSnapshot] = await Promise.all([
-      getDocs(sentQuery),
-      getDocs(receivedQuery),
-    ]);
-    
+    const seenIds = new Set<string>();
     const requests: MentorshipRequest[] = [];
     
-    sentSnapshot.forEach((doc) => {
-      requests.push(doc.data() as MentorshipRequest);
-    });
-    
-    receivedSnapshot.forEach((doc) => {
-      requests.push(doc.data() as MentorshipRequest);
-    });
+    for (const snap of snapshots) {
+      snap.forEach((docSnap) => {
+        const data = docSnap.data() as MentorshipRequest;
+        const id = data.id || docSnap.id;
+        if (!seenIds.has(id)) { seenIds.add(id); requests.push(data); }
+      });
+    }
     
     // Sort by createdAt descending
     requests.sort((a, b) => {

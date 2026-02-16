@@ -76,7 +76,10 @@ export interface Conversation {
   participantNames: { [email: string]: string };
   lastMessage?: string;
   lastMessageAt?: string;
+  lastMessageSenderEmail?: string;
   unreadCount: { [email: string]: number };
+  // Last time each participant read the conversation (ISO timestamp).
+  lastReadAt?: { [email: string]: string };
   createdAt: string;
   updatedAt: string;
 }

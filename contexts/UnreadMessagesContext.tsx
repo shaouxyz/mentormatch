@@ -1,16 +1,26 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode } from 'react';
 
 interface UnreadMessagesContextType {
   totalUnread: number;
   setTotalUnread: (n: number) => void;
+  pendingRequestsCount: number;
+  setPendingRequestsCount: (n: number) => void;
+  meetingsBadgeCount: number;
+  setMeetingsBadgeCount: (n: number) => void;
 }
 
 const UnreadMessagesContext = createContext<UnreadMessagesContextType | undefined>(undefined);
 
 export function UnreadMessagesProvider({ children }: { children: ReactNode }) {
   const [totalUnread, setTotalUnread] = useState(0);
+  const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
+  const [meetingsBadgeCount, setMeetingsBadgeCount] = useState(0);
   return (
-    <UnreadMessagesContext.Provider value={{ totalUnread, setTotalUnread }}>
+    <UnreadMessagesContext.Provider value={{
+      totalUnread, setTotalUnread,
+      pendingRequestsCount, setPendingRequestsCount,
+      meetingsBadgeCount, setMeetingsBadgeCount,
+    }}>
       {children}
     </UnreadMessagesContext.Provider>
   );

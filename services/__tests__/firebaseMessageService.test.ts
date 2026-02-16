@@ -20,6 +20,7 @@ jest.mock('firebase/firestore', () => ({
   onSnapshot: jest.fn(),
   Timestamp: jest.fn(),
   QueryConstraint: jest.fn(),
+  FieldPath: jest.fn().mockImplementation((...segments: string[]) => ({ _segments: segments })),
 }));
 
 jest.mock('../../config/firebase.config');
@@ -341,9 +342,14 @@ describe('Firebase Message Service', () => {
       await markMessagesAsRead('conv123', 'user1@example.com');
 
       expect(mockFirestore.doc).toHaveBeenCalledWith(mockDb, 'conversations', 'conv123');
-      expect(mockFirestore.updateDoc).toHaveBeenCalledWith(mockDocRef, {
-        'unreadCount.user1@example.com': 0,
-      });
+      // Uses FieldPath + alternating field/value syntax to avoid dot-notation issues with emails
+      expect(mockFirestore.updateDoc).toHaveBeenCalledWith(
+        mockDocRef,
+        expect.objectContaining({ _segments: ['unreadCount', 'user1@example.com'] }),
+        0,
+        expect.objectContaining({ _segments: ['lastReadAt', 'user1@example.com'] }),
+        expect.any(String),
+      );
     });
 
     it('should handle errors and throw', async () => {

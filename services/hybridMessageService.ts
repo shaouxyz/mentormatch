@@ -163,13 +163,15 @@ export async function hybridGetUserConversations(userEmail: string): Promise<Con
       try {
         const conversations = await getFirebaseUserConversations(normalizedEmail);
         
+        const enriched = await enrichConversationMetadata(conversations);
+
         // Cache locally
-        for (const conversation of conversations) {
+        for (const conversation of enriched) {
           await saveConversationLocally(conversation);
         }
         
-        logger.info('Conversations retrieved from Firebase', { userEmail: normalizedEmail, count: conversations.length });
-        return conversations;
+        logger.info('Conversations retrieved from Firebase', { userEmail: normalizedEmail, count: enriched.length });
+        return enriched;
       } catch (firebaseError) {
         logger.warn('Failed to get conversations from Firebase, using local', {
           userEmail: normalizedEmail,
@@ -179,7 +181,8 @@ export async function hybridGetUserConversations(userEmail: string): Promise<Con
     }
     
     // Fallback to local storage
-    return await getLocalUserConversations(normalizedEmail);
+    const local = await getLocalUserConversations(normalizedEmail);
+    return await enrichConversationMetadata(local);
   } catch (error) {
     logger.error('Error in hybrid get conversations', error instanceof Error ? error : new Error(String(error)));
     throw error;
@@ -215,6 +218,7 @@ async function saveMessageLocally(message: Message): Promise<void> {
     // Update existing conversation
     conversations[conversationIndex].lastMessage = message.text;
     conversations[conversationIndex].lastMessageAt = message.createdAt;
+    conversations[conversationIndex].lastMessageSenderEmail = message.senderEmail;
     conversations[conversationIndex].updatedAt = message.createdAt;
     
     // Increment unread count for receiver
@@ -234,9 +238,13 @@ async function saveMessageLocally(message: Message): Promise<void> {
       },
       lastMessage: message.text,
       lastMessageAt: message.createdAt,
+      lastMessageSenderEmail: message.senderEmail,
       unreadCount: {
         [message.senderEmail]: 0,
         [message.receiverEmail]: 1,
+      },
+      lastReadAt: {
+        [message.senderEmail]: message.createdAt,
       },
       createdAt: message.createdAt,
       updatedAt: message.createdAt,
@@ -271,6 +279,45 @@ async function getLocalMessages(conversationId: string): Promise<Message[]> {
     .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 }
 
+async function getLatestMessage(conversationId: string): Promise<Message | null> {
+  if (isFirebaseConfigured()) {
+    try {
+      const messages = await getFirebaseMessages(conversationId, 1);
+      if (messages.length > 0) return messages[messages.length - 1];
+    } catch {
+      // Fall back to local cache below
+    }
+  }
+  const localMessages = await getLocalMessages(conversationId);
+  if (localMessages.length === 0) return null;
+  return localMessages[localMessages.length - 1];
+}
+
+async function enrichConversationMetadata(conversations: Conversation[]): Promise<Conversation[]> {
+  return Promise.all(
+    conversations.map(async (conversation) => {
+      if (conversation.lastMessageSenderEmail && conversation.lastReadAt) return conversation;
+      const latest = await getLatestMessage(conversation.id);
+      if (!latest) return conversation;
+
+      const enriched: Conversation = { ...conversation };
+      if (!enriched.lastMessageSenderEmail) {
+        enriched.lastMessageSenderEmail = latest.senderEmail;
+      }
+      if (!enriched.lastMessageAt) {
+        enriched.lastMessageAt = latest.createdAt;
+      }
+      if (!enriched.lastReadAt) {
+        // Sender has implicitly read their own message; receiver remains unread until opening chat.
+        enriched.lastReadAt = {
+          [latest.senderEmail]: latest.createdAt,
+        };
+      }
+      return enriched;
+    })
+  );
+}
+
 async function getOrCreateLocalConversation(
   conversationId: string,
   user1Email: string,
@@ -284,6 +331,7 @@ async function getOrCreateLocalConversation(
   let conversation = conversations.find(c => c.id === conversationId);
   
   if (!conversation) {
+    const nowIso = new Date().toISOString();
     conversation = {
       id: conversationId,
       participants: [user1Email, user2Email],
@@ -295,8 +343,12 @@ async function getOrCreateLocalConversation(
         [user1Email]: 0,
         [user2Email]: 0,
       },
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      lastReadAt: {
+        [user1Email]: nowIso,
+        [user2Email]: nowIso,
+      },
+      createdAt: nowIso,
+      updatedAt: nowIso,
     };
     
     conversations.push(conversation);
@@ -340,11 +392,14 @@ export async function hybridMarkMessagesAsRead(conversationId: string, userEmail
   const idx = conversations.findIndex((c) => c.id === conversationId);
   if (idx === -1) return;
   if (!conversations[idx].unreadCount) conversations[idx].unreadCount = {};
+  if (!conversations[idx].lastReadAt) conversations[idx].lastReadAt = {};
   const key = Object.keys(conversations[idx].unreadCount).find((k) => normalizeEmailForCompare(k) === normalized);
   if (key !== undefined) {
     conversations[idx].unreadCount[key] = 0;
-    await AsyncStorage.setItem(STORAGE_KEYS.CONVERSATIONS, JSON.stringify(conversations));
   }
+  const readKey = Object.keys(conversations[idx].lastReadAt || {}).find((k) => normalizeEmailForCompare(k) === normalized) || userEmail;
+  conversations[idx].lastReadAt[readKey] = new Date().toISOString();
+  await AsyncStorage.setItem(STORAGE_KEYS.CONVERSATIONS, JSON.stringify(conversations));
 }
 
 export { subscribeToMessages, generateConversationId };

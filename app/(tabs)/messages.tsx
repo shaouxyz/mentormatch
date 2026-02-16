@@ -11,6 +11,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { hybridGetUserConversations } from '@/services/hybridMessageService';
+import { hybridGetProfile } from '@/services/hybridProfileService';
 import { useUnreadMessages } from '@/contexts/UnreadMessagesContext';
 import { getTotalUnread, getUnreadForUser } from '@/utils/unreadMessages';
 import { Conversation } from '@/types/types';
@@ -43,11 +44,42 @@ export default function MessagesScreen() {
       setCurrentUserEmail(user.email);
 
       const userConversations = await hybridGetUserConversations(user.email);
-      setConversations(userConversations);
       const email = user.email || '';
+      const norm = email.trim().toLowerCase();
+
+      // Resolve "Unknown" participant names from profiles
+      let updated = false;
+      for (const conv of userConversations) {
+        const otherEmail = conv.participants?.find(
+          (p) => (p || '').trim().toLowerCase() !== norm
+        );
+        if (!otherEmail) continue;
+        const names = conv.participantNames || {};
+        const existingName =
+          names[otherEmail] ||
+          names[otherEmail.toLowerCase()] ||
+          Object.entries(names).find(
+            ([k]) => (k || '').trim().toLowerCase() === otherEmail.trim().toLowerCase()
+          )?.[1];
+        if (!existingName || existingName === 'Unknown') {
+          try {
+            const profile = await hybridGetProfile(otherEmail);
+            if (profile?.name) {
+              if (!conv.participantNames) conv.participantNames = {};
+              conv.participantNames[otherEmail] = profile.name;
+              updated = true;
+              logger.info('Resolved unknown participant name', { email: otherEmail, name: profile.name });
+            }
+          } catch {
+            // Profile lookup failed; leave as-is
+          }
+        }
+      }
+
+      setConversations(userConversations);
       const total = getTotalUnread(userConversations, email);
       setTotalUnread(total);
-      logger.info('Conversations loaded', { count: userConversations.length, totalUnread: total });
+      logger.info('Conversations loaded', { count: userConversations.length, totalUnread: total, namesResolved: updated });
     } catch (error) {
       ErrorHandler.handleError(error, 'Failed to load conversations');
     } finally {

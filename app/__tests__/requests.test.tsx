@@ -212,7 +212,7 @@ describe('RequestsScreen', () => {
     });
   });
 
-  it('should navigate to respond screen when accept button is pressed', async () => {
+  it('should navigate to respond screen when "Please view to Accept or Decline" is pressed', async () => {
     const incomingRequest = createRequest({
       mentorEmail: 'user@example.com',
       status: 'pending',
@@ -223,31 +223,7 @@ describe('RequestsScreen', () => {
     const { getByText } = render(<RequestsScreen />);
 
     await waitFor(() => {
-      fireEvent.press(getByText('Accept'));
-    });
-
-    await waitFor(() => {
-      expect(mockRouter.push).toHaveBeenCalledWith({
-        pathname: '/request/respond',
-        params: expect.objectContaining({
-          request: expect.stringContaining('requester@example.com'),
-        }),
-      });
-    });
-  });
-
-  it('should navigate to respond screen when decline button is pressed', async () => {
-    const incomingRequest = createRequest({
-      mentorEmail: 'user@example.com',
-      status: 'pending',
-    });
-
-    setupMockRequests([incomingRequest]);
-
-    const { getByText } = render(<RequestsScreen />);
-
-    await waitFor(() => {
-      fireEvent.press(getByText('Decline'));
+      fireEvent.press(getByText('Please view to Accept or Decline'));
     });
 
     await waitFor(() => {

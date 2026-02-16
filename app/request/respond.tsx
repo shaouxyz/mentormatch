@@ -24,6 +24,7 @@ import { createInvitationCode } from '@/services/invitationCodeService';
 import { addInvitationCodeToInbox } from '@/services/inboxService';
 import { config } from '@/utils/config';
 import { hybridUpdateRequestStatus } from '@/services/hybridRequestService';
+import { hybridGetProfile } from '@/services/hybridProfileService';
 
 interface MentorshipRequest {
   id: string;
@@ -36,6 +37,18 @@ interface MentorshipRequest {
   responseNote?: string;
   createdAt: string;
   respondedAt?: string;
+}
+
+interface Profile {
+  name: string;
+  expertise: string;
+  interest: string;
+  expertiseYears: number;
+  interestYears: number;
+  email: string;
+  phoneNumber: string;
+  location?: string;
+  caspaRole?: string;
 }
 
 /**
@@ -55,6 +68,7 @@ export default function RespondRequestScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const [request, setRequest] = useState<MentorshipRequest | null>(null);
+  const [requesterProfile, setRequesterProfile] = useState<Profile | null>(null);
   const [responseNote, setResponseNote] = useState('');
   const [loading, setLoading] = useState(false);
   const [withdrawing, setWithdrawing] = useState(false);
@@ -122,6 +136,26 @@ export default function RespondRequestScreen() {
       }
     }
   }, [requestParam]); // Only depend on the actual request string
+
+  // Load the requester's profile so we can display their full info
+  useEffect(() => {
+    if (!request) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const profile = await hybridGetProfile(request.requesterEmail);
+        if (!cancelled && profile) {
+          setRequesterProfile(profile);
+        }
+      } catch (e) {
+        logger.warn('Could not load requester profile', {
+          email: request.requesterEmail,
+          error: e instanceof Error ? e.message : String(e),
+        });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [request?.requesterEmail]);
 
   const normalizeEmail = (e: string | undefined | null) => (e || '').trim().toLowerCase();
 
@@ -280,14 +314,78 @@ export default function RespondRequestScreen() {
           </View>
           <Text style={styles.requestName}>{request.requesterName}</Text>
           <Text style={styles.requestEmail}>{request.requesterEmail}</Text>
-
-          {request.note && (
-            <View style={styles.noteContainer}>
-              <Text style={styles.noteLabel}>Message:</Text>
-              <Text style={styles.noteText}>{request.note}</Text>
-            </View>
-          )}
         </View>
+
+        {/* Requester's profile details */}
+        {requesterProfile && (
+          <View style={styles.profileSection}>
+            {requesterProfile.expertise && (
+              <View style={styles.profileCard}>
+                <View style={styles.profileRow}>
+                  <Ionicons name="star" size={22} color="#f59e0b" />
+                  <View style={styles.profileRowContent}>
+                    <Text style={styles.profileRowLabel}>Expertise</Text>
+                    <Text style={styles.profileRowValue}>{requesterProfile.expertise}</Text>
+                    {requesterProfile.expertiseYears > 0 && (
+                      <Text style={styles.profileRowSub}>
+                        {requesterProfile.expertiseYears} {requesterProfile.expertiseYears === 1 ? 'year' : 'years'} of experience
+                      </Text>
+                    )}
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {requesterProfile.interest && (
+              <View style={styles.profileCard}>
+                <View style={styles.profileRow}>
+                  <Ionicons name="book" size={22} color="#3b82f6" />
+                  <View style={styles.profileRowContent}>
+                    <Text style={styles.profileRowLabel}>Interest</Text>
+                    <Text style={styles.profileRowValue}>{requesterProfile.interest}</Text>
+                    {requesterProfile.interestYears > 0 && (
+                      <Text style={styles.profileRowSub}>
+                        {requesterProfile.interestYears} {requesterProfile.interestYears === 1 ? 'year' : 'years'} of experience
+                      </Text>
+                    )}
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {requesterProfile.location && (
+              <View style={styles.profileCard}>
+                <View style={styles.profileRow}>
+                  <Ionicons name="location" size={22} color="#10b981" />
+                  <View style={styles.profileRowContent}>
+                    <Text style={styles.profileRowLabel}>Location</Text>
+                    <Text style={styles.profileRowValue}>{requesterProfile.location}</Text>
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {requesterProfile.caspaRole && (
+              <View style={styles.profileCard}>
+                <View style={styles.profileRow}>
+                  <Ionicons name="ribbon" size={22} color="#8b5cf6" />
+                  <View style={styles.profileRowContent}>
+                    <Text style={styles.profileRowLabel}>CASPA Role</Text>
+                    <Text style={styles.profileRowValue}>{requesterProfile.caspaRole}</Text>
+                  </View>
+                </View>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Requester's note / message */}
+        {request.note && (
+          <View style={styles.noteCard}>
+            <Text style={styles.noteLabel}>Their message:</Text>
+            <Text style={styles.noteText}>{request.note}</Text>
+          </View>
+        )}
 
         <View style={styles.form}>
           <Text style={styles.label}>
@@ -457,19 +555,58 @@ const styles = StyleSheet.create({
   requestEmail: {
     fontSize: 16,
     color: '#64748b',
-    marginBottom: 16,
+    marginBottom: 4,
   },
-  noteContainer: {
-    width: '100%',
-    backgroundColor: '#f8fafc',
+  profileSection: {
+    marginBottom: 16,
+    gap: 8,
+  },
+  profileCard: {
+    backgroundColor: '#fff',
     borderRadius: 12,
-    padding: 12,
-    marginTop: 8,
+    padding: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  profileRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  profileRowContent: {
+    flex: 1,
+  },
+  profileRowLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748b',
+    marginBottom: 2,
+  },
+  profileRowValue: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#1e293b',
+  },
+  profileRowSub: {
+    fontSize: 13,
+    color: '#94a3b8',
+    marginTop: 2,
+  },
+  noteCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
+    borderLeftWidth: 3,
+    borderLeftColor: '#2563eb',
   },
   noteLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#64748b',
+    color: '#2563eb',
     marginBottom: 4,
   },
   noteText: {

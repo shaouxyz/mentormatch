@@ -19,6 +19,7 @@ import {
   onSnapshot,
   Timestamp,
   QueryConstraint,
+  FieldPath,
 } from 'firebase/firestore';
 import { getFirebaseFirestore } from '@/config/firebase.config';
 import { getCurrentFirebaseUser } from '@/services/firebaseAuthService';
@@ -31,6 +32,18 @@ const MESSAGES_COLLECTION = 'messages';
 /** Normalize email for Firestore (Auth token uses lowercase) */
 function normalizeEmail(email: string): string {
   return (email || '').trim().toLowerCase();
+}
+
+function getMapValueByEmail(
+  map: Record<string, unknown> | undefined,
+  email: string
+): unknown {
+  if (!map || typeof map !== 'object') return undefined;
+  const norm = normalizeEmail(email);
+  for (const [key, val] of Object.entries(map)) {
+    if (normalizeEmail(key) === norm) return val;
+  }
+  return undefined;
 }
 
 /**
@@ -66,6 +79,7 @@ export async function createOrGetConversation(
     const conversationId = generateConversationId(u1, u2);
     const conversationRef = doc(db, CONVERSATIONS_COLLECTION, conversationId);
     
+    const nowIso = new Date().toISOString();
     const conversation: Conversation = {
       id: conversationId,
       participants: [u1, u2],
@@ -77,8 +91,13 @@ export async function createOrGetConversation(
         [u1]: 0,
         [u2]: 0,
       },
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      // Initialize lastReadAt to now so fallback unread logic starts from a known baseline.
+      lastReadAt: {
+        [u1]: nowIso,
+        [u2]: nowIso,
+      },
+      createdAt: nowIso,
+      updatedAt: nowIso,
     };
 
     let conversationSnap;
@@ -96,8 +115,50 @@ export async function createOrGetConversation(
     }
 
     if (conversationSnap.exists()) {
+      const existing = conversationSnap.data() as Conversation;
+
+      // Repair participantNames if any name was missing/empty and the caller now provides it.
+      // Case-insensitive lookup: stored keys may differ in casing from the normalized email.
+      const names = existing.participantNames || {};
+      const findName = (email: string): string => {
+        if (names[email]) return names[email];
+        const entry = Object.entries(names).find(
+          ([k]) => (k || '').trim().toLowerCase() === email.trim().toLowerCase()
+        );
+        return entry ? entry[1] : '';
+      };
+      const u1Existing = findName(u1);
+      const u2Existing = findName(u2);
+      const u1NeedsUpdate = user1Name && (!u1Existing || u1Existing === 'Unknown');
+      const u2NeedsUpdate = user2Name && (!u2Existing || u2Existing === 'Unknown');
+
+      if (u1NeedsUpdate || u2NeedsUpdate) {
+        try {
+          // Use FieldPath for each key since emails contain dots
+          const updates: [FieldPath, string][] = [];
+          if (u1NeedsUpdate) updates.push([new FieldPath('participantNames', u1), user1Name]);
+          if (u2NeedsUpdate) updates.push([new FieldPath('participantNames', u2), user2Name]);
+
+          if (updates.length === 1) {
+            await updateDoc(conversationRef, updates[0][0], updates[0][1]);
+          } else if (updates.length === 2) {
+            await updateDoc(conversationRef, updates[0][0], updates[0][1], updates[1][0], updates[1][1]);
+          }
+          // Update the in-memory object to return correct names
+          if (!existing.participantNames) existing.participantNames = {};
+          if (u1NeedsUpdate) existing.participantNames[u1] = user1Name;
+          if (u2NeedsUpdate) existing.participantNames[u2] = user2Name;
+          logger.info('Conversation participantNames repaired', { conversationId, u1NeedsUpdate, u2NeedsUpdate });
+        } catch (updateError) {
+          logger.warn('Failed to repair participantNames', {
+            conversationId,
+            error: updateError instanceof Error ? updateError.message : String(updateError),
+          });
+        }
+      }
+
       logger.info('Conversation found', { conversationId });
-      return conversationSnap.data() as Conversation;
+      return existing;
     }
     
     await setDoc(conversationRef, conversation);
@@ -144,16 +205,21 @@ export async function sendMessage(
     
     const docRef = await addDoc(messagesRef, message);
     
-    // Update conversation with last message info
+    // Update conversation with last message info.
+    // IMPORTANT: Use FieldPath for unreadCount keys because emails contain dots,
+    // and Firestore interprets dots in string keys as nested field paths.
     const conversationRef = doc(db, CONVERSATIONS_COLLECTION, cid);
     const convData = (await getDoc(conversationRef)).data();
-    const prevUnread = convData?.unreadCount?.[receiver] ?? 0;
-    await updateDoc(conversationRef, {
-      lastMessage: text,
-      lastMessageAt: message.createdAt,
-      [`unreadCount.${receiver}`]: prevUnread + 1,
-      updatedAt: message.createdAt,
-    });
+    const prevUnreadRaw = getMapValueByEmail(convData?.unreadCount as Record<string, unknown>, receiver);
+    const prevUnreadParsed = typeof prevUnreadRaw === 'number' ? prevUnreadRaw : parseInt(String(prevUnreadRaw ?? 0), 10);
+    const prevUnread = Number.isNaN(prevUnreadParsed) ? 0 : Math.max(0, prevUnreadParsed);
+    await updateDoc(conversationRef,
+      'lastMessage', text,
+      'lastMessageAt', message.createdAt,
+      'lastMessageSenderEmail', sender,
+      new FieldPath('unreadCount', receiver), prevUnread + 1,
+      'updatedAt', message.createdAt,
+    );
     
     const newMessage: Message = {
       id: docRef.id,
@@ -287,9 +353,13 @@ export async function markMessagesAsRead(conversationId: string, userEmail: stri
     const db = getFirebaseFirestore();
     const conversationRef = doc(db, CONVERSATIONS_COLLECTION, conversationId);
     
-    await updateDoc(conversationRef, {
-      [`unreadCount.${normalized}`]: 0,
-    });
+    // Use FieldPath because email keys contain dots (e.g. user@gmail.com),
+    // and dot-notation in updateDoc would be treated as nested field paths.
+    const nowIso = new Date().toISOString();
+    await updateDoc(conversationRef,
+      new FieldPath('unreadCount', normalized), 0,
+      new FieldPath('lastReadAt', normalized), nowIso,
+    );
     
     logger.info('Messages marked as read', { conversationId, userEmail: normalized });
   } catch (error) {

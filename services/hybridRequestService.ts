@@ -127,11 +127,12 @@ export async function hybridGetAllRequestsForUser(userEmail: string): Promise<{
       }
     }
     
-    // If Firebase didn't return data, use local
+    // If Firebase didn't return data, use local (case-insensitive match)
     if (sent.length === 0 && received.length === 0) {
+      const norm = (userEmail || '').trim().toLowerCase();
       const allLocalRequests = await getLocalAllRequests();
-      sent = allLocalRequests.filter(r => r.requesterEmail === userEmail);
-      received = allLocalRequests.filter(r => r.mentorEmail === userEmail);
+      sent = allLocalRequests.filter(r => (r.requesterEmail || '').trim().toLowerCase() === norm);
+      received = allLocalRequests.filter(r => (r.mentorEmail || '').trim().toLowerCase() === norm);
     }
     
     const all = [...sent, ...received];
@@ -186,10 +187,11 @@ export async function hybridGetRequestsByStatus(
       }
     }
     
-    // Fallback to local storage
+    // Fallback to local storage (case-insensitive match)
+    const norm = (userEmail || '').trim().toLowerCase();
     const allRequests = await getLocalAllRequests();
     return allRequests.filter(
-      r => (r.requesterEmail === userEmail || r.mentorEmail === userEmail) && r.status === status
+      r => ((r.requesterEmail || '').trim().toLowerCase() === norm || (r.mentorEmail || '').trim().toLowerCase() === norm) && r.status === status
     );
   } catch (error) {
     logger.error('Error in hybrid get requests by status', error instanceof Error ? error : new Error(String(error)));

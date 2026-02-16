@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { logger } from '@/utils/logger';
 import { safeParseJSON, validateMentorshipRequestSchema } from '@/utils/schemaValidation';
 import { hybridGetAllRequestsForUser } from '@/services/hybridRequestService';
+import { useUnreadMessages } from '@/contexts/UnreadMessagesContext';
 import { Screen } from '@/components/Screen';
 
 interface MentorshipRequest {
@@ -56,6 +57,7 @@ function dedupeById<T extends { id: string }>(items: T[]): T[] {
 
 export default function RequestsScreen() {
   const router = useRouter();
+  const { setPendingRequestsCount } = useUnreadMessages();
   const [incomingRequests, setIncomingRequests] = useState<RequestItem[]>([]);
   const [outgoingRequests, setOutgoingRequests] = useState<RequestItem[]>([]);
   const [processedRequests, setProcessedRequests] = useState<RequestItem[]>([]);
@@ -143,6 +145,8 @@ export default function RequestsScreen() {
       setIncomingRequests(incomingItems);
       setOutgoingRequests(outgoingItems);
       setProcessedRequests(processedItems);
+      // Update shared badge count so the tab badge reflects latest data
+      setPendingRequestsCount(incomingItems.length);
     } catch (error) {
       logger.error('Error loading requests', error instanceof Error ? error : new Error(String(error)));
     } finally {
@@ -172,20 +176,6 @@ export default function RequestsScreen() {
     setRefreshing(false);
   };
 
-  const handleAccept = async (request: MentorshipRequest) => {
-    router.push({
-      pathname: '/request/respond',
-      params: { request: JSON.stringify(request) },
-    });
-  };
-
-  const handleDecline = async (request: MentorshipRequest) => {
-    router.push({
-      pathname: '/request/respond',
-      params: { request: JSON.stringify(request) },
-    });
-  };
-
   const formatTime = useCallback((dateString?: string) => {
     if (!dateString) return '';
     
@@ -211,9 +201,9 @@ export default function RequestsScreen() {
         <Text style={styles.mentorRequestLabel}>Mentorship request</Text>
         <TouchableOpacity
           style={styles.requestHeader}
-          onPress={() => router.push({ pathname: '/profile/view', params: { email: request.requesterEmail } })}
-          accessibilityLabel={`View ${request.requesterName}'s profile`}
-          accessibilityHint="Tap to open requester's profile"
+          onPress={() => router.push({ pathname: '/request/respond', params: { request: JSON.stringify(request) } })}
+          accessibilityLabel={`View request from ${request.requesterName}`}
+          accessibilityHint="Tap to view request and accept or decline"
         >
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>
@@ -237,29 +227,18 @@ export default function RequestsScreen() {
           </View>
         )}
 
-        <View style={styles.actions}>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.acceptButton]}
-            onPress={() => handleAccept(request)}
-            accessibilityLabel={`Accept request from ${request.requesterName}`}
-            accessibilityHint="Tap to accept this mentorship request"
-          >
-            <Ionicons name="checkmark-circle" size={20} color="#fff" />
-            <Text style={styles.acceptButtonText}>Accept</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.declineButton]}
-            onPress={() => handleDecline(request)}
-            accessibilityLabel={`Decline request from ${request.requesterName}`}
-            accessibilityHint="Tap to decline this mentorship request"
-          >
-            <Ionicons name="close-circle" size={20} color="#fff" />
-            <Text style={styles.declineButtonText}>Decline</Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity
+          style={styles.viewToRespondPrompt}
+          onPress={() => router.push({ pathname: '/request/respond', params: { request: JSON.stringify(request) } })}
+          accessibilityLabel="View request to accept or decline"
+          accessibilityHint="Tap to open request and accept or decline"
+        >
+          <Text style={styles.viewToRespondPromptText}>Please view to Accept or Decline</Text>
+          <Ionicons name="chevron-forward" size={18} color="#2563eb" />
+        </TouchableOpacity>
       </View>
     );
-  }, [handleAccept, handleDecline, router]);
+  }, [router]);
 
   const renderOutgoingRequest = useCallback(({ item }: { item: RequestItem }) => {
     const request = item.data;
@@ -678,35 +657,6 @@ const styles = StyleSheet.create({
     color: '#1e293b',
     lineHeight: 20,
   },
-  actions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  actionButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 12,
-    gap: 8,
-  },
-  acceptButton: {
-    backgroundColor: '#10b981',
-  },
-  declineButton: {
-    backgroundColor: '#ef4444',
-  },
-  acceptButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  declineButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
   statusContainer: {
     marginTop: 12,
   },
@@ -759,6 +709,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#1e293b',
     lineHeight: 20,
+  },
+  viewToRespondPrompt: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: '#eff6ff',
+    borderRadius: 12,
+    gap: 6,
+  },
+  viewToRespondPromptText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#2563eb',
   },
   emptyState: {
     flex: 1,
