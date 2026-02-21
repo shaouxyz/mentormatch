@@ -17,7 +17,7 @@ import { SUCCESS_MESSAGES } from '@/utils/constants';
 import { ErrorHandler } from '@/utils/errorHandler';
 import { validateProfileSchema, safeParseJSON } from '@/utils/schemaValidation';
 import { logger } from '@/utils/logger';
-import { sanitizeTextField, sanitizeEmail, sanitizePhoneNumber } from '@/utils/security';
+import { sanitizeTextField, sanitizeEmail } from '@/utils/security';
 import { ProfileFormFields } from '@/components/ProfileFormFields';
 import { hybridUpdateProfile } from '@/services/hybridProfileService';
 
@@ -28,7 +28,6 @@ interface ProfileData {
   expertiseYears: string;
   interestYears: string;
   email: string;
-  phoneNumber: string;
   location: string;
   caspaRole: string;
   ltmNumber: string;
@@ -57,7 +56,6 @@ export default function EditProfileScreen() {
     expertiseYears: '',
     interestYears: '',
     email: '',
-    phoneNumber: '',
     location: '',
     caspaRole: '',
     ltmNumber: '',
@@ -84,7 +82,6 @@ export default function EditProfileScreen() {
             expertiseYears: parsed.expertiseYears?.toString() || '',
             interestYears: parsed.interestYears?.toString() || '',
             email: parsed.email || '',
-            phoneNumber: parsed.phoneNumber || '',
             location: parsed.location || '',
             caspaRole: parsed.caspaRole || '',
             ltmNumber: parsed.ltmNumber || '',
@@ -117,7 +114,6 @@ export default function EditProfileScreen() {
         expertiseYears: Number(profile.expertiseYears),
         interestYears: Number(profile.interestYears),
         email: sanitizeEmail(profile.email),
-        phoneNumber: sanitizePhoneNumber(profile.phoneNumber),
         location: profile.location ? sanitizeTextField(profile.location) : undefined,
         caspaRole: profile.caspaRole ? sanitizeTextField(profile.caspaRole) : undefined,
         ltmNumber: profile.ltmNumber ? sanitizeTextField(profile.ltmNumber) : undefined,

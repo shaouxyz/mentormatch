@@ -240,11 +240,16 @@ export async function hybridGetAllProfiles(): Promise<Profile[]> {
     if (isFirebaseConfigured()) {
       try {
         const firebaseProfiles = await getAllFirebaseProfiles();
-        firebaseProfiles.forEach((profile) => {
+        firebaseProfiles
+          .filter((profile) => !profile.suspended)
+          .forEach((profile) => {
           profiles.push(profile);
           emailSet.add(profile.email);
         });
-        logger.info('Retrieved profiles from Firebase', { count: firebaseProfiles.length });
+        logger.info('Retrieved profiles from Firebase', {
+          totalCount: firebaseProfiles.length,
+          visibleCount: profiles.length,
+        });
         // Overwrite local cache so deleted accounts don't reappear when Firebase is used later
         await AsyncStorage.setItem('allProfiles', JSON.stringify(profiles));
         return profiles;
@@ -258,7 +263,9 @@ export async function hybridGetAllProfiles(): Promise<Profile[]> {
     const allProfilesData = await AsyncStorage.getItem('allProfiles');
     if (allProfilesData) {
       const localProfiles: Profile[] = JSON.parse(allProfilesData);
-      localProfiles.forEach((profile) => {
+      localProfiles
+        .filter((profile) => !profile.suspended)
+        .forEach((profile) => {
         if (!emailSet.has(profile.email)) {
           profiles.push(profile);
           emailSet.add(profile.email);

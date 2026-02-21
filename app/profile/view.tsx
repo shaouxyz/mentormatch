@@ -28,10 +28,10 @@ interface Profile {
   expertiseYears: number;
   interestYears: number;
   email: string;
-  phoneNumber: string;
   location?: string;
   caspaRole?: string;
   ltmNumber?: string;
+  suspended?: boolean;
 }
 
 /**
@@ -147,6 +147,12 @@ export default function ViewProfileScreen() {
             null
           );
           if (parsed) {
+            if (parsed.suspended) {
+              setProfile(null);
+              setLoading(false);
+              isLoadingRef.current = false;
+              return;
+            }
             setProfile(parsed);
             
             // Check if it's own profile or if users are matched
@@ -183,6 +189,12 @@ export default function ViewProfileScreen() {
           try {
             const foundProfile = await hybridGetProfile(email);
             if (foundProfile) {
+              if (foundProfile.suspended) {
+                setProfile(null);
+                setLoading(false);
+                isLoadingRef.current = false;
+                return;
+              }
               setProfile(foundProfile);
               
               // Check if it's own profile or if users are matched
@@ -229,6 +241,12 @@ export default function ViewProfileScreen() {
             ) || [];
             const foundProfile = allProfiles.find((p) => p.email === email);
             if (foundProfile) {
+              if (foundProfile.suspended) {
+                setProfile(null);
+                setLoading(false);
+                isLoadingRef.current = false;
+                return;
+              }
               setProfile(foundProfile);
               
               // Check if it's own profile or if users are matched
@@ -267,6 +285,12 @@ export default function ViewProfileScreen() {
               null
             );
             if (testProfile) {
+              if (testProfile.suspended) {
+                setProfile(null);
+                setLoading(false);
+                isLoadingRef.current = false;
+                return;
+              }
               setProfile(testProfile);
               
               // Check if it's own profile or if users are matched
@@ -314,12 +338,6 @@ export default function ViewProfileScreen() {
   const handleEmail = () => {
     if (profile?.email) {
       Linking.openURL(`mailto:${profile.email}`);
-    }
-  };
-
-  const handlePhone = () => {
-    if (profile?.phoneNumber) {
-      Linking.openURL(`tel:${profile.phoneNumber}`);
     }
   };
 
@@ -397,21 +415,6 @@ export default function ViewProfileScreen() {
                 </View>
               </TouchableOpacity>
 
-              <TouchableOpacity 
-                style={styles.infoCard} 
-                onPress={handlePhone}
-                accessibilityLabel={`Phone ${profile.phoneNumber}`}
-                accessibilityHint="Tap to open phone app to call"
-              >
-                <View style={styles.infoRow}>
-                  <Ionicons name="call" size={24} color="#2563eb" />
-                  <View style={styles.infoContent}>
-                    <Text style={styles.infoLabel}>Phone</Text>
-                    <Text style={styles.infoValue}>{profile.phoneNumber}</Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={20} color="#cbd5e1" />
-                </View>
-              </TouchableOpacity>
             </>
           ) : (
             <View style={styles.infoCard}>

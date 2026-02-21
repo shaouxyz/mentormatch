@@ -58,7 +58,6 @@ describe('Profile Location Field', () => {
       fireEvent.changeText(getByPlaceholderText('e.g., Data Science, Business Strategy, Photography'), 'Machine Learning');
       fireEvent.changeText(getByPlaceholderText('Enter years of interest experience'), '2');
       fireEvent.changeText(getByPlaceholderText('e.g., San Francisco, CA or New York City'), 'San Francisco, CA');
-      fireEvent.changeText(getByPlaceholderText('Enter your phone number'), '555-1234');
 
       // Submit
       fireEvent.press(getByText('Save Profile'));
@@ -100,7 +99,6 @@ describe('Profile Location Field', () => {
       fireEvent.changeText(getByPlaceholderText('Enter years of expertise experience'), '3');
       fireEvent.changeText(getByPlaceholderText('e.g., Data Science, Business Strategy, Photography'), 'Sales');
       fireEvent.changeText(getByPlaceholderText('Enter years of interest experience'), '1');
-      fireEvent.changeText(getByPlaceholderText('Enter your phone number'), '555-5678');
 
       // Submit
       fireEvent.press(getByText('Save Profile'));
@@ -142,7 +140,6 @@ describe('Profile Location Field', () => {
       fireEvent.changeText(getByPlaceholderText('e.g., Data Science, Business Strategy, Photography'), 'Design');
       fireEvent.changeText(getByPlaceholderText('Enter years of interest experience'), '2');
       fireEvent.changeText(getByPlaceholderText('e.g., San Francisco, CA or New York City'), 'New York City');
-      fireEvent.changeText(getByPlaceholderText('Enter your phone number'), '555-9999');
 
       // Submit
       fireEvent.press(getByText('Save Profile'));
@@ -178,7 +175,6 @@ describe('Profile Location Field', () => {
       fireEvent.changeText(getByPlaceholderText('e.g., Data Science, Business Strategy, Photography'), 'Design');
       fireEvent.changeText(getByPlaceholderText('Enter years of interest experience'), '2');
       fireEvent.changeText(getByPlaceholderText('e.g., San Francisco, CA or New York City'), '<script>alert("xss")</script>Boston');
-      fireEvent.changeText(getByPlaceholderText('Enter your phone number'), '555-9999');
 
       // Submit
       fireEvent.press(getByText('Save Profile'));

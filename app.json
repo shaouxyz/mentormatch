@@ -14,7 +14,7 @@
     "assetBundlePatterns": ["**/*"],
     "ios": {
       "appleTeamId": "VGVDQ76R5T",
-      "buildNumber": "5",
+      "buildNumber": "6",
       "icon": "./assets/mentormatch-icon-1.png",
       "supportsTablet": true,
       "bundleIdentifier": "com.xyz.mentormatch",
@@ -24,7 +24,7 @@
     },
     "android": {
       "package": "com.xyz.mentormatch",
-      "versionCode": 5,
+      "versionCode": 6,
       "adaptiveIcon": {
         "foregroundImage": "./assets/mentormatch-icon-1.png",
         "backgroundColor": "#ffffff"

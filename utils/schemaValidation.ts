@@ -10,7 +10,7 @@ export interface ProfileSchema {
   expertiseYears: number;
   interestYears: number;
   email: string;
-  phoneNumber: string;
+  phoneNumber?: string;
   location?: string;
   caspaRole?: string;
   ltmNumber?: string;
@@ -50,7 +50,7 @@ export function validateProfileSchema(data: unknown): data is ProfileSchema {
 
   const profile = data as Record<string, unknown>;
 
-  const requiredFields = ['name', 'expertise', 'interest', 'expertiseYears', 'interestYears', 'email', 'phoneNumber'];
+  const requiredFields = ['name', 'expertise', 'interest', 'expertiseYears', 'interestYears', 'email'];
   for (const field of requiredFields) {
     if (!(field in profile)) {
       logger.warn(`Profile validation failed: missing field ${field}`);
@@ -75,6 +75,11 @@ export function validateProfileSchema(data: unknown): data is ProfileSchema {
 
   if (typeof profile.interestYears !== 'number' || profile.interestYears < 0) {
     logger.warn('Profile validation failed: invalid interestYears');
+    return false;
+  }
+
+  if ('phoneNumber' in profile && profile.phoneNumber != null && typeof profile.phoneNumber !== 'string') {
+    logger.warn('Profile validation failed: invalid phoneNumber');
     return false;
   }
 

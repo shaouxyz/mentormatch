@@ -8,7 +8,7 @@ export interface Profile {
   expertiseYears: number;
   interestYears: number;
   email: string;
-  phoneNumber: string;
+  phoneNumber?: string;
   location?: string;
   /** CASPA role: BOA, BOD, BOV, VP, President, LTM, Former BOA/BOD/BOV/VP/President, None of Above */
   caspaRole?: string;

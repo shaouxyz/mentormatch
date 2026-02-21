@@ -20,6 +20,11 @@ jest.mock('@/utils/connectionUtils', () => ({
   areUsersMatched: jest.fn(),
 }));
 
+jest.mock('@/services/hybridRequestService', () => ({
+  hybridGetAllRequestsForUser: jest.fn().mockResolvedValue({ all: [] }),
+  hybridUpdateRequestStatus: jest.fn(),
+}));
+
 describe('ViewProfileScreen', () => {
   const mockProfile = {
     name: 'John Doe',
@@ -28,7 +33,6 @@ describe('ViewProfileScreen', () => {
     expertiseYears: 5,
     interestYears: 2,
     email: 'john@example.com',
-    phoneNumber: '+1234567890',
     location: 'New York',
   };
 
@@ -75,7 +79,6 @@ describe('ViewProfileScreen', () => {
       expect(getByText('John Doe')).toBeTruthy();
       // Contact info should be hidden
       expect(queryByText('john@example.com')).toBeNull();
-      expect(queryByText('+1234567890')).toBeNull();
       // Privacy message should be shown
       expect(getByText('Connect to view contact details')).toBeTruthy();
     });
@@ -92,7 +95,6 @@ describe('ViewProfileScreen', () => {
       expect(getByText('John Doe')).toBeTruthy();
       // Contact info should be visible
       expect(getByText('john@example.com')).toBeTruthy();
-      expect(getByText('+1234567890')).toBeTruthy();
     });
   });
 
@@ -106,7 +108,6 @@ describe('ViewProfileScreen', () => {
       expect(getByText('John Doe')).toBeTruthy();
       // Contact info should always be visible for own profile
       expect(getByText('john@example.com')).toBeTruthy();
-      expect(getByText('+1234567890')).toBeTruthy();
     });
 
     // areUsersMatched should not be called for own profile
@@ -222,20 +223,6 @@ describe('ViewProfileScreen', () => {
     }, { timeout: 3000 });
   });
 
-  it('should handle phone link when phone button pressed', async () => {
-    const Linking = require('react-native').Linking;
-    jest.spyOn(Linking, 'openURL').mockResolvedValueOnce(undefined);
-
-    mockParams.profile = JSON.stringify(mockProfile);
-    await AsyncStorage.setItem('user', JSON.stringify({ email: 'john@example.com' }));
-
-    const { getByLabelText } = render(<ViewProfileScreen />);
-
-    await waitFor(() => {
-      const phoneButton = getByLabelText(`Phone ${mockProfile.phoneNumber}`);
-      expect(phoneButton).toBeTruthy();
-    });
-  });
 
   it('should display location when available', async () => {
     mockParams.profile = JSON.stringify(mockProfile);
@@ -514,24 +501,6 @@ describe('ViewProfileScreen', () => {
     // If email doesn't exist, the button wouldn't be rendered, so handleEmail wouldn't be called
   });
 
-  it('should handle handlePhone when profile.phoneNumber is falsy', async () => {
-    // Test that handlePhone doesn't crash when phoneNumber is missing
-    // We'll test this by checking the component renders correctly
-    // The handlePhone function checks if profile?.phoneNumber exists before calling Linking.openURL
-    mockParams.profile = JSON.stringify(mockProfile);
-    await AsyncStorage.setItem('user', JSON.stringify({ email: 'other@example.com' }));
-    (connectionUtils.areUsersMatched as jest.Mock).mockResolvedValue(false);
-
-    const { getByText } = render(<ViewProfileScreen />);
-
-    await waitFor(() => {
-      expect(getByText('John Doe')).toBeTruthy();
-    });
-
-    // The handlePhone function checks profile?.phoneNumber before calling Linking.openURL
-    // This is tested implicitly - if phoneNumber exists, the button is rendered
-    // If phoneNumber doesn't exist, the button wouldn't be rendered, so handlePhone wouldn't be called
-  });
 
   it('should skip reload when params unchanged', async () => {
     mockParams.profile = JSON.stringify(mockProfile);
@@ -589,8 +558,8 @@ describe('ViewProfileScreen', () => {
     hybridProfileService.hybridGetProfile = originalGetProfile;
   });
 
-  // Test Case 26.13.2: Contact Information Display Logic (lines 183, 248-249, 254-255)
-  it('should display contact info for matched users (lines 160, 183, 248-249, 254-255)', async () => {
+  // Test Case 26.13.2: Contact Information Display Logic
+  it('should display contact info for matched users', async () => {
     await AsyncStorage.setItem('user', JSON.stringify({ email: 'user@example.com' }));
     await AsyncStorage.setItem('allProfiles', JSON.stringify([mockProfile]));
     
@@ -604,7 +573,6 @@ describe('ViewProfileScreen', () => {
     await waitFor(() => {
       // Contact info should be visible for matched users (line 183 branch)
       expect(getByText(mockProfile.email)).toBeTruthy();
-      expect(getByText(mockProfile.phoneNumber)).toBeTruthy();
     }, { timeout: 3000 });
   });
 
@@ -622,11 +590,10 @@ describe('ViewProfileScreen', () => {
     await waitFor(() => {
       // Contact info should NOT be visible for unmatched users
       expect(queryByText(mockProfile.email)).toBeNull();
-      expect(queryByText(mockProfile.phoneNumber)).toBeNull();
     }, { timeout: 3000 });
   });
 
-  it('should display contact info for own profile (lines 248-249, 254-255)', async () => {
+  it('should display contact info for own profile', async () => {
     // Test viewing own profile - contact info should always be visible
     mockParams.profile = JSON.stringify(mockProfile);
     await AsyncStorage.setItem('user', JSON.stringify({ email: mockProfile.email }));
@@ -636,7 +603,6 @@ describe('ViewProfileScreen', () => {
     await waitFor(() => {
       // Contact info should be visible for own profile (lines 248-249, 254-255)
       expect(getByText(mockProfile.email)).toBeTruthy();
-      expect(getByText(mockProfile.phoneNumber)).toBeTruthy();
     }, { timeout: 3000 });
 
     // areUsersMatched should not be called for own profile
@@ -650,12 +616,6 @@ describe('ViewProfileScreen', () => {
       expect(Linking.openURL).toHaveBeenCalledWith(`mailto:${mockProfile.email}`);
     });
 
-    // Test handlePhone function (lines 254-255)
-    const phoneButton = getByLabelText(`Phone ${mockProfile.phoneNumber}`);
-    fireEvent.press(phoneButton);
-    await waitFor(() => {
-      expect(Linking.openURL).toHaveBeenCalledWith(`tel:${mockProfile.phoneNumber}`);
-    });
   });
 
   it('should handle action button presses (line 295)', async () => {

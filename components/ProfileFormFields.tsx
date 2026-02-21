@@ -5,7 +5,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, Modal, ScrollView, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { MAX_NAME_LENGTH, MAX_EXPERTISE_LENGTH, MAX_INTEREST_LENGTH, MAX_LOCATION_LENGTH, MAX_YEARS, CASPA_ROLE_OPTIONS, MAX_LTM_NUMBER_LENGTH } from '../utils/constants';
-import { sanitizeString, sanitizeTextField, sanitizeEmail, sanitizePhoneNumber, sanitizeNumber } from '../utils/security';
+import { sanitizeString, sanitizeTextField, sanitizeEmail, sanitizeNumber } from '../utils/security';
 
 interface ProfileFormData {
   name: string;
@@ -14,7 +14,6 @@ interface ProfileFormData {
   expertiseYears: string;
   interestYears: string;
   email: string;
-  phoneNumber: string;
   location: string;
   caspaRole: string;
   ltmNumber: string;
@@ -252,21 +251,6 @@ export const ProfileFormFields: React.FC<ProfileFormFieldsProps> = React.memo(({
         />
       </View>
 
-      <View style={styles.inputContainer}>
-        <Text style={styles.label}>Phone Number *</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter your phone number"
-          value={profile.phoneNumber}
-          onChangeText={(text) => {
-            const sanitized = sanitizePhoneNumber(text);
-            updateField('phoneNumber', sanitized);
-          }}
-          keyboardType="phone-pad"
-          accessibilityLabel="Phone number input"
-          accessibilityHint="Enter your phone number"
-        />
-      </View>
     </>
   );
 });

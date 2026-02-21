@@ -362,6 +362,38 @@ For **first-time submit** you may need to:
 - **Android**: In Play Console, create the app and at least one internal or production release so the app exists; then upload the AAB (EAS Submit can upload to an existing app if configured).
 - **iOS**: Ensure the app and version exist in App Store Connect and the build is uploaded (via EAS Submit or Transporter).
 
+### Android: Fix “Service account is missing the necessary permissions” (EAS Submit from terminal)
+
+If `eas submit --platform android --profile production --latest` fails with:
+
+> The service account is missing the necessary permissions to submit the app to Google Play Store.
+
+do the following (same idea as [Expo’s guide](https://expo.fyi/creating-google-service-account) and [fastlane#16164](https://github.com/fastlane/fastlane/issues/16164)):
+
+1. **Get the service account email**
+   - It’s in the JSON key you use for EAS Submit (e.g. from Expo dashboard → Project → Credentials → Android → your app → Google Service Account Key), or from the key file: `"client_email": "something@your-project.iam.gserviceaccount.com"`.
+
+2. **Invite the service account in Google Play Console**
+   - Open [Google Play Console](https://play.google.com/console) → your app (**MentorMatch**).
+   - Go to **Setup** → **API access** (or **Users and permissions** in the left menu).
+   - If you see “Link” next to your Google Cloud project, click it so Play Console is linked to the project that contains the service account.
+   - Click **Invite new users** (or **Add user**).
+   - **Email**: paste the service account email (e.g. `xxx@yyy.iam.gserviceaccount.com`).
+   - **Permissions**: open the **App permissions** tab (not only “Account permissions”).
+   - Select your app (**MentorMatch**) and grant a role that can release, e.g.:
+     - **Release to production, exclude devices, and use Play App Signing**, or
+     - **Admin (all permissions)** if you prefer.
+   - Save / send invite.
+
+3. **Accept (if required)**
+   - Some setups send an email to the service account; you can’t “accept” as that inbox isn’t used. Instead, in Play Console → **Users and permissions**, find the invited user and ensure its status is **Accepted** or **Invitation accepted**. If the invitation stays pending, re-invite and ensure the **same** Google Cloud project is linked in **API access**.
+
+4. **Retry from terminal**
+   ```bash
+   eas submit --platform android --profile production --latest
+   ```
+   When prompted, use the same Google Service Account JSON key (or the one stored in EAS Credentials).
+
 ---
 
 ## Checklist summary
@@ -379,6 +411,7 @@ For **first-time submit** you may need to:
 
 ## Troubleshooting
 
+- **Android “Service account is missing the necessary permissions”**: Grant the service account app-level permissions in Play Console (see **Android: Fix “Service account is missing the necessary permissions”** above).
 - **Android “You need to use a different version code”**: Bump `versionCode` in `app.json` → `android.versionCode`.
 - **iOS “No valid signing identity”**: In EAS, use **remote** credentials and let EAS manage the distribution certificate and provisioning profile; or run `eas credentials --platform ios` to fix.
 - **iOS “Bundle ID doesn’t match”**: Ensure `app.json` → `ios.bundleIdentifier` matches the App ID in App Store Connect and Developer Portal.

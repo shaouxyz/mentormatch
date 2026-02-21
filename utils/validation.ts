@@ -1,6 +1,6 @@
 // Validation Utilities
 
-import { ERROR_MESSAGES, MAX_NAME_LENGTH, MAX_EXPERTISE_LENGTH, MAX_INTEREST_LENGTH, MAX_YEARS, EMAIL_REGEX, PHONE_REGEX } from './constants';
+import { ERROR_MESSAGES, MAX_NAME_LENGTH, MAX_EXPERTISE_LENGTH, MAX_INTEREST_LENGTH, MAX_YEARS, EMAIL_REGEX } from './constants';
 
 export interface ValidationResult {
   isValid: boolean;
@@ -14,7 +14,6 @@ export interface ProfileValidationData {
   expertiseYears: string;
   interestYears: string;
   email: string;
-  phoneNumber: string;
   location?: string;
   caspaRole?: string;
   ltmNumber?: string;
@@ -72,14 +71,6 @@ export function validateProfile(data: ProfileValidationData): ValidationResult {
   }
   if (!EMAIL_REGEX.test(data.email.trim())) {
     return { isValid: false, error: ERROR_MESSAGES.INVALID_EMAIL };
-  }
-
-  // Phone validation
-  if (!data.phoneNumber.trim()) {
-    return { isValid: false, error: ERROR_MESSAGES.PHONE_REQUIRED };
-  }
-  if (!PHONE_REGEX.test(data.phoneNumber.trim())) {
-    return { isValid: false, error: ERROR_MESSAGES.INVALID_PHONE };
   }
 
   return { isValid: true };

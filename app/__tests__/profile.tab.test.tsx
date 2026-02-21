@@ -30,6 +30,10 @@ const mockRouter = {
 
 jest.mock('expo-router', () => ({
   useRouter: () => mockRouter,
+  useFocusEffect: (callback: () => void | (() => void)) => {
+    const React = require('react');
+    React.useEffect(() => callback(), [callback]);
+  },
 }));
 
 const mockEndSession = sessionManager.endSession as jest.Mock;
@@ -70,7 +74,6 @@ describe('ProfileScreen', () => {
     await waitFor(() => {
       expect(getByText('Test User')).toBeTruthy();
       expect(getByText('test@example.com')).toBeTruthy();
-      expect(getByText('123-456-7890')).toBeTruthy();
       expect(getByText('Software Development')).toBeTruthy();
       expect(getByText('Data Science')).toBeTruthy();
       expect(getByText('5 years of experience')).toBeTruthy();

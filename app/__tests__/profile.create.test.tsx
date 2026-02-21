@@ -37,7 +37,6 @@ describe('CreateProfileScreen', () => {
     expect(getByPlaceholderText('e.g., Data Science, Business Strategy, Photography')).toBeTruthy();
     expect(getByPlaceholderText('Enter years of interest experience')).toBeTruthy();
     expect(getByPlaceholderText('Enter your email')).toBeTruthy();
-    expect(getByPlaceholderText('Enter your phone number')).toBeTruthy();
     expect(getByText('Save Profile')).toBeTruthy();
   });
 
@@ -50,7 +49,6 @@ describe('CreateProfileScreen', () => {
     fireEvent.changeText(getByPlaceholderText('e.g., Data Science, Business Strategy, Photography'), 'Data Science');
     fireEvent.changeText(getByPlaceholderText('Enter years of interest experience'), '2');
     fireEvent.changeText(getByPlaceholderText('Enter your email'), 'test@example.com');
-    fireEvent.changeText(getByPlaceholderText('Enter your phone number'), '+1234567890');
     fireEvent.press(getByText('Save Profile'));
 
     await waitFor(() => {
@@ -67,7 +65,6 @@ describe('CreateProfileScreen', () => {
     fireEvent.changeText(getByPlaceholderText('e.g., Data Science, Business Strategy, Photography'), 'Data Science');
     fireEvent.changeText(getByPlaceholderText('Enter years of interest experience'), '2');
     fireEvent.changeText(getByPlaceholderText('Enter your email'), 'test@example.com');
-    fireEvent.changeText(getByPlaceholderText('Enter your phone number'), '+1234567890');
     fireEvent.press(getByText('Save Profile'));
 
     await waitFor(() => {
@@ -84,7 +81,6 @@ describe('CreateProfileScreen', () => {
     // Skip interest
     fireEvent.changeText(getByPlaceholderText('Enter years of interest experience'), '2');
     fireEvent.changeText(getByPlaceholderText('Enter your email'), 'test@example.com');
-    fireEvent.changeText(getByPlaceholderText('Enter your phone number'), '+1234567890');
     fireEvent.press(getByText('Save Profile'));
 
     await waitFor(() => {
@@ -101,7 +97,6 @@ describe('CreateProfileScreen', () => {
     fireEvent.changeText(getByPlaceholderText('e.g., Data Science, Business Strategy, Photography'), 'Data Science');
     fireEvent.changeText(getByPlaceholderText('Enter years of interest experience'), '2');
     fireEvent.changeText(getByPlaceholderText('Enter your email'), 'test@example.com');
-    fireEvent.changeText(getByPlaceholderText('Enter your phone number'), '+1234567890');
     fireEvent.press(getByText('Save Profile'));
 
     await waitFor(() => {
@@ -118,7 +113,6 @@ describe('CreateProfileScreen', () => {
     fireEvent.changeText(getByPlaceholderText('e.g., Data Science, Business Strategy, Photography'), 'Data Science');
     fireEvent.changeText(getByPlaceholderText('Enter years of interest experience'), '2');
     fireEvent.changeText(getByPlaceholderText('Enter your email'), 'test@example.com');
-    fireEvent.changeText(getByPlaceholderText('Enter your phone number'), '+1234567890');
     fireEvent.press(getByText('Save Profile'));
 
     await waitFor(() => {
@@ -135,7 +129,6 @@ describe('CreateProfileScreen', () => {
     fireEvent.changeText(getByPlaceholderText('e.g., Data Science, Business Strategy, Photography'), 'Data Science');
     fireEvent.changeText(getByPlaceholderText('Enter years of interest experience'), 'xyz'); // Invalid
     fireEvent.changeText(getByPlaceholderText('Enter your email'), 'test@example.com');
-    fireEvent.changeText(getByPlaceholderText('Enter your phone number'), '+1234567890');
     fireEvent.press(getByText('Save Profile'));
 
     await waitFor(() => {
@@ -152,7 +145,6 @@ describe('CreateProfileScreen', () => {
     fireEvent.changeText(getByPlaceholderText('e.g., Data Science, Business Strategy, Photography'), 'Data Science');
     fireEvent.changeText(getByPlaceholderText('Enter years of interest experience'), '2');
     // Skip email
-    fireEvent.changeText(getByPlaceholderText('Enter your phone number'), '+1234567890');
     fireEvent.press(getByText('Save Profile'));
 
     await waitFor(() => {
@@ -160,39 +152,6 @@ describe('CreateProfileScreen', () => {
     });
   });
 
-  it('should show error when phone number is empty', async () => {
-    const { getByText, getByPlaceholderText, getAllByPlaceholderText } = render(<CreateProfileScreen />);
-
-    fireEvent.changeText(getByPlaceholderText('Enter your full name'), 'John Doe');
-    fireEvent.changeText(getByPlaceholderText('e.g., Software Development, Marketing, Design'), 'Software Development');
-    fireEvent.changeText(getByPlaceholderText('Enter years of expertise experience'), '5');
-    fireEvent.changeText(getByPlaceholderText('e.g., Data Science, Business Strategy, Photography'), 'Data Science');
-    fireEvent.changeText(getByPlaceholderText('Enter years of interest experience'), '2');
-    fireEvent.changeText(getByPlaceholderText('Enter your email'), 'test@example.com');
-    // Skip phone
-    fireEvent.press(getByText('Save Profile'));
-
-    await waitFor(() => {
-      expect(Alert.alert).toHaveBeenCalledWith('Error', 'Please enter your phone number');
-    });
-  });
-
-  it('should show error when phone number is empty', async () => {
-    const { getByText, getByPlaceholderText } = render(<CreateProfileScreen />);
-
-    fireEvent.changeText(getByPlaceholderText('Enter your full name'), 'John Doe');
-    fireEvent.changeText(getByPlaceholderText('e.g., Software Development, Marketing, Design'), 'Software Development');
-    fireEvent.changeText(getByPlaceholderText('Enter years of expertise experience'), '5');
-    fireEvent.changeText(getByPlaceholderText('e.g., Data Science, Business Strategy, Photography'), 'Data Science');
-    fireEvent.changeText(getByPlaceholderText('Enter years of interest experience'), '2');
-    fireEvent.changeText(getByPlaceholderText('Enter your email'), 'test@example.com');
-    fireEvent.changeText(getByPlaceholderText('Enter your phone number'), ''); // Empty
-    fireEvent.press(getByText('Save Profile'));
-
-    await waitFor(() => {
-      expect(Alert.alert).toHaveBeenCalledWith('Error', 'Please enter your phone number');
-    });
-  });
 
   it('should successfully create profile with valid data', async () => {
     const { getByText, getByPlaceholderText, getAllByPlaceholderText } = render(<CreateProfileScreen />);
@@ -203,7 +162,6 @@ describe('CreateProfileScreen', () => {
     fireEvent.changeText(getByPlaceholderText('e.g., Data Science, Business Strategy, Photography'), 'Data Science');
     fireEvent.changeText(getByPlaceholderText('Enter years of interest experience'), '2'); // Interest years
     fireEvent.changeText(getByPlaceholderText('Enter your email'), 'john@example.com');
-    fireEvent.changeText(getByPlaceholderText('Enter your phone number'), '+1234567890');
     fireEvent.press(getByText('Save Profile'));
 
     await waitFor(() => {
@@ -231,7 +189,6 @@ describe('CreateProfileScreen', () => {
     expect(parsed.expertiseYears).toBe(5);
     expect(parsed.interestYears).toBe(2);
     expect(parsed.email).toBe('john@example.com');
-    expect(parsed.phoneNumber).toBe('+1234567890');
     expect(parsed.createdAt).toBeTruthy();
     expect(parsed.updatedAt).toBeTruthy();
   });
@@ -245,7 +202,6 @@ describe('CreateProfileScreen', () => {
     fireEvent.changeText(getByPlaceholderText('e.g., Data Science, Business Strategy, Photography'), 'Learning');
     fireEvent.changeText(getByPlaceholderText('Enter years of interest experience'), '0');
     fireEvent.changeText(getByPlaceholderText('Enter your email'), 'new@example.com');
-    fireEvent.changeText(getByPlaceholderText('Enter your phone number'), '+1234567890');
     fireEvent.press(getByText('Save Profile'));
 
     await waitFor(() => {
@@ -267,7 +223,6 @@ describe('CreateProfileScreen', () => {
     fireEvent.changeText(getByPlaceholderText('e.g., Data Science, Business Strategy, Photography'), 'Data Science');
     fireEvent.changeText(getByPlaceholderText('Enter years of interest experience'), '2');
     fireEvent.changeText(getByPlaceholderText('Enter your email'), 'john@example.com');
-    fireEvent.changeText(getByPlaceholderText('Enter your phone number'), '+1234567890');
     fireEvent.press(getByText('Save Profile'));
 
     await waitFor(() => {
@@ -290,7 +245,6 @@ describe('CreateProfileScreen', () => {
     fireEvent.changeText(getByPlaceholderText('e.g., Data Science, Business Strategy, Photography'), 'Data Science');
     fireEvent.changeText(getByPlaceholderText('Enter years of interest experience'), '2');
     fireEvent.changeText(getByPlaceholderText('Enter your email'), 'john@example.com');
-    fireEvent.changeText(getByPlaceholderText('Enter your phone number'), '+1234567890');
     fireEvent.press(getByText('Save Profile'));
 
     await waitFor(() => {
@@ -314,7 +268,6 @@ describe('CreateProfileScreen', () => {
     fireEvent.changeText(getByPlaceholderText('e.g., Data Science, Business Strategy, Photography'), 'Data Science');
     fireEvent.changeText(getByPlaceholderText('Enter years of interest experience'), '2');
     fireEvent.changeText(getByPlaceholderText('Enter your email'), 'john@example.com');
-    fireEvent.changeText(getByPlaceholderText('Enter your phone number'), '+1234567890');
     fireEvent.press(getByText('Save Profile'));
 
     await waitFor(() => {
@@ -378,7 +331,6 @@ describe('CreateProfileScreen', () => {
     fireEvent.changeText(getByPlaceholderText('e.g., Data Science, Business Strategy, Photography'), 'Data Science');
     fireEvent.changeText(getByPlaceholderText('Enter years of interest experience'), '2');
     fireEvent.changeText(getByPlaceholderText('Enter your email'), 'john@example.com');
-    fireEvent.changeText(getByPlaceholderText('Enter your phone number'), '+1234567890');
     fireEvent.press(getByText('Save Profile'));
 
     await waitFor(() => {

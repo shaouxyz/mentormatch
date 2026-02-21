@@ -26,7 +26,6 @@ interface Profile {
   expertiseYears: number;
   interestYears: number;
   email: string;
-  phoneNumber: string;
   caspaRole?: string;
   ltmNumber?: string;
 }
@@ -241,16 +240,6 @@ export default function ProfileScreen() {
               <View style={styles.infoContent}>
                 <Text style={styles.infoLabel}>Email</Text>
                 <Text style={styles.infoValue}>{profile.email}</Text>
-              </View>
-            </View>
-          </View>
-
-          <View style={styles.infoCard}>
-            <View style={styles.infoRow}>
-              <Ionicons name="call-outline" size={20} color="#64748b" />
-              <View style={styles.infoContent}>
-                <Text style={styles.infoLabel}>Phone</Text>
-                <Text style={styles.infoValue}>{profile.phoneNumber}</Text>
               </View>
             </View>
           </View>

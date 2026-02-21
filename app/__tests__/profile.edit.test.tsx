@@ -84,7 +84,6 @@ describe('Edit Profile Screen', () => {
         expect(getByDisplayValue('Machine Learning')).toBeTruthy();
         expect(getByDisplayValue('5')).toBeTruthy();
         expect(getByDisplayValue('2')).toBeTruthy();
-        expect(getByDisplayValue('555-1234')).toBeTruthy();
         expect(getByDisplayValue('San Francisco, CA')).toBeTruthy();
       });
     });
@@ -241,7 +240,6 @@ describe('Edit Profile Screen', () => {
       fireEvent.changeText(yearsInputs[0], '10'); // expertise years
       fireEvent.changeText(yearsInputs[1], '8'); // interest years
       
-      fireEvent.changeText(getByDisplayValue('111-1111'), '999-9999');
       fireEvent.changeText(getByDisplayValue('Old City'), 'New City');
 
       // Save
@@ -259,7 +257,6 @@ describe('Edit Profile Screen', () => {
       expect(profile.interest).toBe('New Interest');
       expect(profile.expertiseYears).toBe(10);
       expect(profile.interestYears).toBe(8);
-      expect(profile.phoneNumber).toBe('999-9999');
       expect(profile.location).toBe('New City');
     });
   });

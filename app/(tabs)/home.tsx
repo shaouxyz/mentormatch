@@ -157,7 +157,6 @@ export default function HomeScreen() {
               expertiseYears: 5,
               interestYears: 1,
               email: 'sarah@example.com',
-              phoneNumber: '+1234567890',
             },
             {
               name: 'Michael Chen',
@@ -166,7 +165,6 @@ export default function HomeScreen() {
               expertiseYears: 7,
               interestYears: 2,
               email: 'michael@example.com',
-              phoneNumber: '+1234567891',
             },
             {
               name: 'Emily Davis',
@@ -175,12 +173,14 @@ export default function HomeScreen() {
               expertiseYears: 4,
               interestYears: 0,
               email: 'emily@example.com',
-              phoneNumber: '+1234567892',
             },
           ];
           await AsyncStorage.setItem('allProfiles', JSON.stringify(profilesList));
         }
       }
+
+      // Never show suspended accounts in discovery lists
+      profilesList = profilesList.filter((profile) => !profile.suspended);
 
       // Normalize current user email for comparison (lowercase, trim)
       const normalizedCurrentUserEmail = currentUserEmail 
